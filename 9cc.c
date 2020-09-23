@@ -5,6 +5,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+char *user_input;
+
+void error_at(char *location, char *fmt, ...) {
+  va_list ap;
+  va_start(ap, fmt);
+
+  int position = location - user_input;
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s\n", position, "");
+  fprintf(stderr, "^ ");
+  vfprintf(stderr, fmt, ap);
+  fprintf(stderr, "\n");
+}
+
 typedef enum {
   TOKEN_RESERVED, //記号
   TOKEN_NUMBER,   //整数
@@ -53,7 +67,7 @@ void expect(char op) {
 //それ以外の場合にはエラーを報告する
 int expect_number() {
   if (token->kind != TOKEN_NUMBER)
-    error("数ではありません");
+    error_at(token->string, "数ではありません");
   int value = token->value;
   token = token->next;
   return value;
@@ -93,7 +107,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("トークナイズできません");
+    error_at(p, "トークナイズできません");
   }
 
   new_token(TOKEN_EOF, current, p);
