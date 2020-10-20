@@ -113,7 +113,8 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
+        *p == ')') {
       current = new_token(TOKEN_RESERVED, current, p++);
       continue;
     }
@@ -150,6 +151,7 @@ Node *new_node_num(int val) {
 
 Node *expression();
 Node *multiply();
+Node *unary();
 Node *primary();
 
 //式をパースする
@@ -168,16 +170,25 @@ Node *expression() {
 
 //乗除算をパースする
 Node *multiply() {
-  Node *node = primary();
+  Node *node = unary();
 
   for (;;) {
     if (consume('*'))
-      node = new_node(NODE_MUL, node, primary());
+      node = new_node(NODE_MUL, node, unary());
     else if (consume('/'))
-      node = new_node(NODE_DIV, node, primary());
+      node = new_node(NODE_DIV, node, unary());
     else
       return node;
   }
+}
+
+//単項演算子をパースする
+Node *unary() {
+  if (consume('+'))
+    return primary();
+  if (consume('-'))
+    return new_node(NODE_SUB, new_node_num(0), primary());
+  return primary();
 }
 
 //抽象構文木の末端をパースする
