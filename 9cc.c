@@ -17,6 +17,7 @@ void error_at(char *location, char *fmt, ...) {
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
+  exit(EXIT_FAILURE);
 }
 
 typedef enum {
@@ -31,6 +32,7 @@ struct Token {
   Token *next;    //次の入力トークン
   int value;      // kindがTOKEN_NUMBERの場合、その値
   char *string;   //トークン文字列
+  int length;     //トークン文字列の長さ
 };
 
 //現在着目しているトークン
@@ -41,6 +43,10 @@ typedef enum {
   NODE_SUB, // -
   NODE_MUL, // *
   NODE_DIV, // /
+  NODE_EQ,  // ==
+  NODE_NE,  // !=
+  NODE_LT,  // <
+  NODE_LE,  // <=
   NODE_NUM  // 整数
 } NodeKind;
 
@@ -65,8 +71,9 @@ void error(char *fmt, ...) {
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
-bool consume(char op) {
-  if (token->kind != TOKEN_RESERVED || token->string[0] != op)
+bool consume(char *op) {
+  if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
+      memcmp(token->string, op, token->length))
     return false;
   token = token->next;
   return true;
@@ -74,8 +81,9 @@ bool consume(char op) {
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
-void expect(char op) {
-  if (token->kind != TOKEN_RESERVED || token->string[0] != op)
+void expect(char *op) {
+  if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
+      memcmp(token->string, op, token->length))
     error("'%c'ではありません", op);
   token = token->next;
 }
@@ -93,13 +101,16 @@ int expect_number() {
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
 //新しいトークンを作成してcurrentに繋げる
-Token *new_token(TokenKind kind, Token *current, char *string) {
+Token *new_token(TokenKind kind, Token *current, char *string, int length) {
   Token *token = calloc(1, sizeof(Token));
   token->kind = kind;
   token->string = string;
+  token->length = length;
   current->next = token;
   return token;
 }
+
+bool start_with(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 Token *tokenize(char *p) {
   Token head;
@@ -113,22 +124,30 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' ||
-        *p == ')') {
-      current = new_token(TOKEN_RESERVED, current, p++);
+    if (start_with(p, ">=") || start_with(p, "<=") || start_with(p, "==") ||
+        start_with(p, "!=")) {
+      current = new_token(TOKEN_RESERVED, current, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (strchr("+-*/()<>", *p)) {
+      current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }
 
     if (isdigit(*p)) {
-      current = new_token(TOKEN_NUMBER, current, p);
+      current = new_token(TOKEN_NUMBER, current, p, 0);
+      char *q = p;
       current->value = strtol(p, &p, 10);
+      current->length = p - q;
       continue;
     }
 
     error_at(p, "トークナイズできません");
   }
 
-  new_token(TOKEN_EOF, current, p);
+  new_token(TOKEN_EOF, current, p, 0);
   return head.next;
 }
 
@@ -150,18 +169,63 @@ Node *new_node_num(int val) {
 }
 
 Node *expression();
+Node *equality();
+Node *relational();
+Node *add();
 Node *multiply();
 Node *unary();
 Node *primary();
 
+// expression = equality
+// equality   = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add        = mul ("+" mul | "-" mul)*
+// mul        = unary ("*" unary | "/" unary)*
+// unary      = ("+" | "-")? primary
+// primary    = num | "(" expr ")"
+
 //式をパースする
-Node *expression() {
+Node *expression() { return equality(); }
+
+//等式をパースする
+Node *equality() {
+  Node *node = relational();
+
+  for (;;) {
+    if (consume("=="))
+      node = new_node(NODE_EQ, node, relational());
+    else if (consume("!="))
+      node = new_node(NODE_NE, node, relational());
+    else
+      return node;
+  }
+}
+
+//不等式をパースする
+Node *relational() {
+  Node *node = add();
+
+  for (;;) {
+    if (consume("<"))
+      node = new_node(NODE_LT, node, add());
+    else if (consume("<="))
+      node = new_node(NODE_LE, node, add());
+    else if (consume(">"))
+      node = new_node(NODE_LT, add(), node);
+    else if (consume(">="))
+      node = new_node(NODE_LE, add(), node);
+    else
+      return node;
+  }
+}
+
+Node *add() {
   Node *node = multiply();
 
   for (;;) {
-    if (consume('+'))
+    if (consume("+"))
       node = new_node(NODE_ADD, node, multiply());
-    else if (consume('-'))
+    else if (consume("-"))
       node = new_node(NODE_SUB, node, multiply());
     else
       return node;
@@ -173,9 +237,9 @@ Node *multiply() {
   Node *node = unary();
 
   for (;;) {
-    if (consume('*'))
+    if (consume("*"))
       node = new_node(NODE_MUL, node, unary());
-    else if (consume('/'))
+    else if (consume("/"))
       node = new_node(NODE_DIV, node, unary());
     else
       return node;
@@ -184,9 +248,9 @@ Node *multiply() {
 
 //単項演算子をパースする
 Node *unary() {
-  if (consume('+'))
+  if (consume("+"))
     return primary();
-  if (consume('-'))
+  if (consume("-"))
     return new_node(NODE_SUB, new_node_num(0), primary());
   return primary();
 }
@@ -194,9 +258,9 @@ Node *unary() {
 //抽象構文木の末端をパースする
 Node *primary() {
   //次のトークンが(なら入れ子になった式
-  if (consume('(')) {
+  if (consume("(")) {
     Node *node = expression();
-    expect(')');
+    expect(")");
     return node;
   }
 
@@ -228,9 +292,30 @@ void generate(Node *node) {
     printf("  imul rax, rdi\n");
     break;
   case NODE_DIV:
-    printf(
-        "  cqo\n"); // idiv命令のためにraxを符号を維持したままrdx+raxの128ビット整数に伸ばす
-    printf("  idiv rdi\n"); // idiv命令は暗黙のうちにrdx+raxを取る
+    // idiv命令のためにraxを符号を維持したままrdx+raxの128ビット整数に伸ばす
+    // idiv命令は暗黙のうちにrdx+raxを取る
+    printf("  cqo\n");
+    printf("  idiv rdi\n");
+    break;
+  case NODE_EQ:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case NODE_NE:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case NODE_LT:
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case NODE_LE:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
     break;
   }
 

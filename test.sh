@@ -25,6 +25,12 @@ assert 15 "5*(9-6)"
 assert 4 "(3+5)/2"
 assert 10 "-10+20"
 assert 2 "-10/-5"
+assert 1 "10 == 10"
+assert 0 "10 < 10"
+assert 1 "20-10*1+2 <= 2*7"
+assert 0 "80-50 > 20*2"
+assert 1 "80-50 < 20*2"
+assert 0 "80-0 <= 20*2"
 
 echo OK
 
