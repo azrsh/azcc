@@ -1,10 +1,12 @@
+#include "9cc.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "9cc.h"
+
+char *user_input;
 
 void error_at(char *location, char *fmt, ...) {
   va_list ap;
@@ -28,8 +30,6 @@ void error(char *fmt, ...) {
   exit(EXIT_FAILURE);
 }
 
-bool at_eof() { return token->kind == TOKEN_EOF; }
-
 //新しいトークンを作成してcurrentに繋げる
 Token *new_token(TokenKind kind, Token *current, char *string, int length) {
   Token *token = calloc(1, sizeof(Token));
@@ -43,6 +43,8 @@ Token *new_token(TokenKind kind, Token *current, char *string, int length) {
 bool start_with(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 
 Token *tokenize(char *p) {
+  user_input = p;
+
   Token head;
   head.next = NULL;
   Token *current = &head;
@@ -61,8 +63,13 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>", *p)) {
+    if (strchr("+-*/()<>=;", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
+      continue;
+    }
+
+    if (*p >= 'a' && *p <= 'z') {
+      current = new_token(TOKEN_IDENTIFIER, current, p++, 1);
       continue;
     }
 
@@ -80,4 +87,3 @@ Token *tokenize(char *p) {
   new_token(TOKEN_EOF, current, p, 0);
   return head.next;
 }
-

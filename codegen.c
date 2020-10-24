@@ -1,14 +1,39 @@
+#include "9cc.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "9cc.h"
+
+void generate_local_variable(Node *node) {
+  if (node->kind != NODE_LVAR)
+    error("代入の左辺値が変数ではありません");
+
+  printf("  mov rax, rbp\n");
+  printf("  sub rax, %d\n", node->offset);
+  printf("  push rax\n");
+}
 
 void generate(Node *node) {
-  if (node->kind == NODE_NUM) {
+  switch (node->kind) {
+  case NODE_NUM:
     printf("  push %d\n", node->val);
+    return;
+  case NODE_LVAR:
+    generate_local_variable(node);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
+    return;
+  case NODE_ASSIGN:
+    generate_local_variable(node->lhs);
+    generate(node->rhs);
+
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
+    printf("  mov [rax], rdi\n");
+    printf("  push rdi\n");
     return;
   }
 
@@ -60,17 +85,31 @@ void generate(Node *node) {
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_code(Node *node) {
+void generate_code(ListNode *node) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  //抽象構文木を降りながらコード生成
-  generate(node);
+  //プロローグ
+  //変数26個分の領域を確保
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, %d\n", 26 * 8);
 
-  //スタックトップに式全体の値が格納されているのでそれをraxにロードして関数の返り値とする
-  printf("  pop rax\n");
+  while (node) {
+    //抽象構文木を降りながらコード生成
+    generate(node->body);
+    node = node->next;
+
+    //式の評価結果をスタックからポップしてraxに格納
+    //スタック溢れ対策も兼ねている
+    printf("  pop rax\n");
+  }
+
+  //エピローグ
+  //最後の式の評価結果はraxに格納済なので、それが戻り値となる
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
   printf("  ret\n");
 }
-

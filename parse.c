@@ -7,7 +7,8 @@
 #include <string.h>
 
 Token *token;
-char *user_input;
+
+bool at_eof() { return token->kind == TOKEN_EOF; }
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
@@ -19,12 +20,22 @@ bool consume(char *op) {
   return true;
 }
 
+//次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合には偽を返す
+Token *consume_identifier() {
+  if (token->kind != TOKEN_IDENTIFIER)
+    return NULL;
+  Token *current = token;
+  token = token->next;
+  return current;
+}
+
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
 void expect(char *op) {
   if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
       memcmp(token->string, op, token->length))
-    error("'%c'ではありません", op);
+    error_at(token->string, "'%s'ではありません", op);
   token = token->next;
 }
 
@@ -55,7 +66,18 @@ Node *new_node_num(int val) {
   return node;
 }
 
+//抽象構文木のローカル変数のノードを新しく生成する
+Node *new_node_lvar(char *string) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = NODE_LVAR;
+  node->offset = (string[0] - 'a' + 1) * 8;
+  return node;
+}
+
+ListNode *program();
+Node *statement();
 Node *expression();
+Node *assign();
 Node *equality();
 Node *relational();
 Node *add();
@@ -63,16 +85,51 @@ Node *multiply();
 Node *unary();
 Node *primary();
 
-// expression = equality
+// program    = statement*
+// statement  = expression ";"
+// expression = assign
+// assign     = equality ("=" assign)?
 // equality   = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add        = mul ("+" mul | "-" mul)*
 // mul        = unary ("*" unary | "/" unary)*
 // unary      = ("+" | "-")? primary
-// primary    = num | "(" expr ")"
+// primary    = num | ident | "(" expr ")"
+
+//プログラムをパースする
+ListNode *program() {
+  ListNode head;
+  head.next = NULL;
+  ListNode *current = &head;
+
+  while (!at_eof()) {
+    current = new_list_node(statement(), current);
+  }
+
+  return head.next;
+}
+
+//文をパースする
+Node *statement() {
+  Node *node = expression();
+  expect(";");
+  return node;
+}
 
 //式をパースする
-Node *expression() { return equality(); }
+Node *expression() { return assign(); }
+
+//式をパースする
+Node *assign() {
+  Node *node = equality();
+
+  for (;;) {
+    if (consume("="))
+      node = new_node(NODE_ASSIGN, node, equality());
+    else
+      return node;
+  }
+}
 
 //等式をパースする
 Node *equality() {
@@ -151,6 +208,16 @@ Node *primary() {
     return node;
   }
 
+  Token *identifier = consume_identifier();
+  if (identifier) {
+    return new_node_lvar(identifier->string);
+  }
+
   //そうでなければ整数
   return new_node_num(expect_number());
+}
+
+ListNode *parse(Token *head) {
+  token = head;
+  return program();
 }

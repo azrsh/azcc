@@ -5,13 +5,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+//
+//コンテナ
+//
+typedef struct ListNode ListNode;
+struct ListNode {
+  void *body;
+  ListNode *next;
+};
+
+ListNode *new_list_node(void *body, ListNode *next);
+
 //
 //トークナイザ
 //
 typedef enum {
-  TOKEN_RESERVED, //記号
-  TOKEN_NUMBER,   //整数
-  TOKEN_EOF       //入力の終端
+  TOKEN_RESERVED,   //記号
+  TOKEN_IDENTIFIER, //識別子
+  TOKEN_NUMBER,     //整数
+  TOKEN_EOF         //入力の終端
 } TokenKind;
 
 typedef struct Token Token;
@@ -31,25 +44,21 @@ void error(char *fmt, ...);
 
 Token *tokenize(char *p);
 
-//現在着目しているトークン
-extern Token *token;
-
-extern char *user_input;
-
-
 //
 //パーサ
 //
 typedef enum {
-  NODE_ADD, // +
-  NODE_SUB, // -
-  NODE_MUL, // *
-  NODE_DIV, // /
-  NODE_EQ,  // ==
-  NODE_NE,  // !=
-  NODE_LT,  // <
-  NODE_LE,  // <=
-  NODE_NUM  // 整数
+  NODE_ADD,       // +
+  NODE_SUB,       // -
+  NODE_MUL,       // *
+  NODE_DIV,       // /
+  NODE_EQ,        // ==
+  NODE_NE,        // !=
+  NODE_LT,        // <
+  NODE_LE,        // <=
+  NODE_ASSIGN,    // 代入
+  NODE_LVAR,      // ローカル変数
+  NODE_NUM        // 整数
 } NodeKind;
 
 typedef struct Node Node;
@@ -58,14 +67,13 @@ struct Node {
   Node *lhs;
   Node *rhs;
   int val; // kindがNODE_NUMのときのみ使う
+  int offset; // kindがNODE_LVARのときのみ使う
 };
 
-Node *expression();
-
+ListNode *parse(Token *head);
 
 //
 //コードジェネレータ
 //
 //抽象構文木をもとにコード生成を行う
-void generate_code(Node *node);
-
+void generate_code(ListNode *node);

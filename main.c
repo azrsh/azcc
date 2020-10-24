@@ -13,9 +13,9 @@ int main(int argc, char **argv) {
   }
 
   //トークナイズしてパースする
-  user_input = argv[1];
-  token = tokenize(user_input);
-  Node *node = expression();
+  char *user_input = argv[1];
+  Token *head = tokenize(user_input);
+  ListNode *node = parse(head);
 
   //コード生成
   generate_code(node);
