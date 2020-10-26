@@ -34,6 +34,7 @@ assert 0 "80-0 <= 20*2;"
 assert 16 "a = 5*(9-6);b=a+1;"
 assert 44 "a=29;b=5*(9-6);a+b;"
 assert 25 "a=5*(9-6);b=26-3+2;"
+assert 44 "asaskjkas=29;bakjehjioaj=5*(9-6);asaskjkas+bakjehjioaj;"
 
 echo OK
 

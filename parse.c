@@ -7,6 +7,8 @@
 #include <string.h>
 
 Token *token;
+HashTable *localVariableTable;
+int currentOffset;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -49,6 +51,15 @@ int expect_number() {
   return value;
 }
 
+LocalVariable *new_local_variable(Token *token) {
+  LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
+  localVariable->name = new_string(token->string, token->length);
+  currentOffset += 8;
+  localVariable->offset = currentOffset;
+  hash_table_store(localVariableTable, localVariable->name, localVariable);
+  return localVariable;
+}
+
 //抽象構文木の数値以外のノードを新しく生成する
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
@@ -67,10 +78,16 @@ Node *new_node_num(int val) {
 }
 
 //抽象構文木のローカル変数のノードを新しく生成する
-Node *new_node_lvar(char *string) {
+Node *new_node_lvar(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_LVAR;
-  node->offset = (string[0] - 'a' + 1) * 8;
+
+  LocalVariable *localVariable = hash_table_find(
+      localVariableTable, new_string(token->string, token->length));
+  if (localVariable == NULL) {
+    localVariable = new_local_variable(token);
+  }
+  node->offset = localVariable->offset;
   return node;
 }
 
@@ -98,6 +115,9 @@ Node *primary();
 
 //プログラムをパースする
 ListNode *program() {
+  localVariableTable = new_hash_table();
+  currentOffset = 0;
+
   ListNode head;
   head.next = NULL;
   ListNode *current = &head;
@@ -210,7 +230,7 @@ Node *primary() {
 
   Token *identifier = consume_identifier();
   if (identifier) {
-    return new_node_lvar(identifier->string);
+    return new_node_lvar(identifier);
   }
 
   //そうでなければ整数

@@ -5,10 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 //
 //コンテナ
 //
+typedef struct String String;
+struct String {
+  char *head;
+  int length;
+};
+String new_string(char *source, int length);
+String char_to_string(char *source);
+bool string_compare(String string1, String string2);
+
 typedef struct ListNode ListNode;
 struct ListNode {
   void *body;
@@ -16,6 +24,16 @@ struct ListNode {
 };
 
 ListNode *new_list_node(void *body, ListNode *next);
+
+typedef struct HashTable HashTable;
+struct HashTable {
+  ListNode *table[256];
+};
+
+HashTable *new_hash_table();
+int hash_table_store(HashTable *table, String key, void *data);
+bool hash_table_contain(HashTable *table, String key);
+void *hash_table_find(HashTable *table, String key);
 
 //
 //トークナイザ
@@ -48,17 +66,17 @@ Token *tokenize(char *p);
 //パーサ
 //
 typedef enum {
-  NODE_ADD,       // +
-  NODE_SUB,       // -
-  NODE_MUL,       // *
-  NODE_DIV,       // /
-  NODE_EQ,        // ==
-  NODE_NE,        // !=
-  NODE_LT,        // <
-  NODE_LE,        // <=
-  NODE_ASSIGN,    // 代入
-  NODE_LVAR,      // ローカル変数
-  NODE_NUM        // 整数
+  NODE_ADD,    // +
+  NODE_SUB,    // -
+  NODE_MUL,    // *
+  NODE_DIV,    // /
+  NODE_EQ,     // ==
+  NODE_NE,     // !=
+  NODE_LT,     // <
+  NODE_LE,     // <=
+  NODE_ASSIGN, // 代入
+  NODE_LVAR,   // ローカル変数
+  NODE_NUM     // 整数
 } NodeKind;
 
 typedef struct Node Node;
@@ -66,8 +84,14 @@ struct Node {
   NodeKind kind; //ノードの型
   Node *lhs;
   Node *rhs;
-  int val; // kindがNODE_NUMのときのみ使う
+  int val;    // kindがNODE_NUMのときのみ使う
   int offset; // kindがNODE_LVARのときのみ使う
+};
+
+typedef struct LocalVariable LocalVariable;
+struct LocalVariable {
+  String name; //名前
+  int offset; // RBPからのオフセット
 };
 
 ListNode *parse(Token *head);
