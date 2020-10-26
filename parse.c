@@ -91,6 +91,14 @@ Node *new_node_lvar(Token *token) {
   return node;
 }
 
+//抽象構文木のreturn文のノードを新しく生成する
+Node *new_node_return(Node *lhs) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = NODE_RETURN;
+  node->lhs = lhs;
+  return node;
+}
+
 ListNode *program();
 Node *statement();
 Node *expression();
@@ -103,7 +111,7 @@ Node *unary();
 Node *primary();
 
 // program    = statement*
-// statement  = expression ";"
+// statement  = expression ";" | "return" expression ";"
 // expression = assign
 // assign     = equality ("=" assign)?
 // equality   = relational ("==" relational | "!=" relational)*
@@ -131,7 +139,12 @@ ListNode *program() {
 
 //文をパースする
 Node *statement() {
-  Node *node = expression();
+  Node *node;
+  if (consume("return")) {
+    node = new_node_return(expression());
+  } else {
+    node = expression();
+  }
   expect(";");
   return node;
 }
@@ -144,10 +157,11 @@ Node *assign() {
   Node *node = equality();
 
   for (;;) {
-    if (consume("="))
+    if (consume("=")) {
       node = new_node(NODE_ASSIGN, node, equality());
-    else
+    } else {
       return node;
+    }
   }
 }
 

@@ -35,6 +35,13 @@ void generate(Node *node) {
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
     return;
+  case NODE_RETURN:
+    generate(node->lhs);
+    printf("  pop rax\n");
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+    return;
   }
 
   generate(node->lhs);
@@ -85,7 +92,7 @@ void generate(Node *node) {
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_code(ListNode *node) {
+void generate_code(ListNode *listNode) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
@@ -97,10 +104,10 @@ void generate_code(ListNode *node) {
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
 
-  while (node) {
+  while (listNode) {
     //抽象構文木を降りながらコード生成
-    generate(node->body);
-    node = node->next;
+    generate(listNode->body);
+    listNode = listNode->next;
 
     //式の評価結果をスタックからポップしてraxに格納
     //スタック溢れ対策も兼ねている

@@ -74,6 +74,7 @@ typedef enum {
   NODE_NE,     // !=
   NODE_LT,     // <
   NODE_LE,     // <=
+  NODE_RETURN, // return文
   NODE_ASSIGN, // 代入
   NODE_LVAR,   // ローカル変数
   NODE_NUM     // 整数

@@ -41,6 +41,8 @@ Token *new_token(TokenKind kind, Token *current, char *string, int length) {
 }
 
 bool start_with(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
+bool is_identifier_initial(char p) { return isalpha(p) || p == '_'; }
+bool is_identifier(char p) { return is_identifier_initial(p) || isdigit(p); }
 
 Token *tokenize(char *p) {
   user_input = p;
@@ -56,6 +58,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    //---記号---
     if (start_with(p, ">=") || start_with(p, "<=") || start_with(p, "==") ||
         start_with(p, "!=")) {
       current = new_token(TOKEN_RESERVED, current, p, 2);
@@ -67,16 +70,28 @@ Token *tokenize(char *p) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }
+    //----------
 
-    if (isalpha(*p) || *p == '_') {
+    //--予約語--
+    if (start_with(p, "return") && !is_identifier(p[6])) {
+      current = new_token(TOKEN_RESERVED, current, p, 6);
+      p += 6;
+      continue;
+    }
+    //----------
+
+    //--識別子--
+    if (is_identifier_initial(*p)) {
       char *q = p + 1;
-      while (isalnum(*q) || *q == '_')
+      while (is_identifier(*q))
         q++;
       current = new_token(TOKEN_IDENTIFIER, current, p, q - p);
       p = q;
       continue;
     }
+    //----------
 
+    //---数値---
     if (isdigit(*p)) {
       current = new_token(TOKEN_NUMBER, current, p, 0);
       char *q = p;
@@ -84,6 +99,7 @@ Token *tokenize(char *p) {
       current->length = p - q;
       continue;
     }
+    //----------
 
     error_at(p, "トークナイズできません");
   }
