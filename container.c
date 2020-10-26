@@ -30,6 +30,13 @@ ListNode *new_list_node(void *body, ListNode *current) {
   return node;
 }
 
+//
+//HashTable
+//
+struct HashTable {
+  ListNode *table[256];
+};
+
 int hash(String source) {
   int sum = 0;
   for (int i = 0; i < source.length; i++) {

@@ -26,10 +26,6 @@ struct ListNode {
 ListNode *new_list_node(void *body, ListNode *next);
 
 typedef struct HashTable HashTable;
-struct HashTable {
-  ListNode *table[256];
-};
-
 HashTable *new_hash_table();
 int hash_table_store(HashTable *table, String key, void *data);
 bool hash_table_contain(HashTable *table, String key);
