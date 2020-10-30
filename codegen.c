@@ -145,7 +145,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       *labelCount += 1;
 
       generate_expression(forPattern->initialization);
-      
+
       printf("begin%d:\n", loopLabel);
 
       generate_expression(forPattern->condition);
@@ -158,6 +158,22 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       printf("  jmp begin%d\n", loopLabel);
 
       printf("end%d:\n", loopLabel);
+      return;
+    }
+  }
+
+  // match compound
+  {
+    CompoundStatement *compoundPattern =
+        statement_union_take_compound(statementUnion);
+    if (compoundPattern) {
+      ListNode *node = compoundPattern->statementHead;
+
+      while (node) {
+        generate_statement(node->body, labelCount);
+        node = node->next;
+      }
+
       return;
     }
   }

@@ -124,12 +124,18 @@ struct ForStatement {
   StatementUnion *statement;
 };
 
+typedef struct CompoundStatement CompoundStatement;
+struct CompoundStatement {
+  ListNode *statementHead;
+};
+
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
 ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
 IfStatement *statement_union_take_if(StatementUnion *statementUnion);
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
 ForStatement *statement_union_take_for(StatementUnion *statementUnion);
+CompoundStatement *statement_union_take_compound(StatementUnion *statementUnion);
 
 ListNode *parse(Token *head);
 

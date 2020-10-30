@@ -99,6 +99,7 @@ typedef enum {
   STATEMENT_IF,
   STATEMENT_WHILE,
   STATEMENT_FOR,
+  STATEMENT_COMPOUND,
   STATEMENT_RETURN,
 } StatementKind;
 
@@ -110,6 +111,7 @@ struct StatementUnion {
     IfStatement *ifStatement;
     WhileStatement *whileStatement;
     ForStatement *forStatement;
+    CompoundStatement *compoundStatement;
   };
 };
 
@@ -144,6 +146,13 @@ ForStatement *statement_union_take_for(StatementUnion *statementUnion) {
   return NULL;
 }
 
+CompoundStatement *
+statement_union_take_compound(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_COMPOUND)
+    return statementUnion->compoundStatement;
+  return NULL;
+}
+
 ListNode *program();
 StatementUnion *statement();
 ExpressionStatement *expression_statement();
@@ -151,6 +160,7 @@ ReturnStatement *return_statement();
 IfStatement *if_statement();
 WhileStatement *while_statement();
 ForStatement *for_statement();
+CompoundStatement *compound_statement();
 
 Node *expression();
 Node *assign();
@@ -162,12 +172,12 @@ Node *unary();
 Node *primary();
 
 // program              = statement*
-// statement            = expression_statement | return_statement | if_statement | while_statement
-// expression_statement = " expression ";"
-// return_statement     = ""return" expression ";"
-// if_statement         = "if" "(" expression ")" statement ("else" statement)?
-// while_statement      = "while" "(" expression ")" statement
-// for_statement        = "for" "(" expression ";" expression ";" expression ")" statement
+// statement            = expression_statement | return_statement | if_statement
+// | while_statement expression_statement = " expression ";" return_statement =
+// ""return" expression ";" if_statement         = "if" "(" expression ")"
+// statement ("else" statement)? while_statement      = "while" "(" expression
+// ")" statement for_statement        = "for" "(" expression ";" expression ";"
+// expression ")" statement compound_statement   = "{" statement* "}"
 
 // expression           = assign
 // assign               = equality ("=" assign)?
@@ -219,12 +229,20 @@ StatementUnion *statement() {
     result->tag = STATEMENT_WHILE;
     return result;
   }
-  
+
   ForStatement *forPattern = for_statement();
   if (forPattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->forStatement = forPattern;
     result->tag = STATEMENT_FOR;
+    return result;
+  }
+
+  CompoundStatement *compoundPattern = compound_statement();
+  if (compoundPattern) {
+    StatementUnion *result = calloc(1, sizeof(StatementUnion));
+    result->compoundStatement = compoundPattern;
+    result->tag = STATEMENT_COMPOUND;
     return result;
   }
 
@@ -290,13 +308,14 @@ WhileStatement *while_statement() {
   return result;
 }
 
+// for文をパースする
 ForStatement *for_statement() {
   if (!consume("for") || !consume("(")) {
     return NULL;
   }
 
   ForStatement *result = calloc(1, sizeof(ForStatement));
-  result->initialization= expression();
+  result->initialization = expression();
   expect(";");
   result->condition = expression();
   expect(";");
@@ -306,6 +325,22 @@ ForStatement *for_statement() {
 
   result->statement = statement();
 
+  return result;
+}
+
+// 複文をパースする
+CompoundStatement *compound_statement() {
+  if (!consume("{")) {
+    return NULL;
+  }
+
+  CompoundStatement *result = calloc(1, sizeof(CompoundStatement));
+  ListNode head;
+  ListNode *node = &head;
+  while (!consume("}")) {
+    node = new_list_node(statement(), node);
+  }
+  result->statementHead = head.next;
   return result;
 }
 
