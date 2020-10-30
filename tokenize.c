@@ -84,6 +84,8 @@ Token *tokenize(char *p) {
     //同時に成立しないのでやっているが、最悪ぽい
     int length = is_reserved(p, "if");
     length += is_reserved(p, "else");
+    length += is_reserved(p, "while");
+    length += is_reserved(p, "for");
     length += is_reserved(p, "return");
     if (length > 0) {
       current = new_token(TOKEN_RESERVED, current, p, length);
