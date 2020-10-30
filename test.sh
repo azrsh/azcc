@@ -40,6 +40,8 @@ assert 15 "return 5*(9-6);b=26-3+2;"
 assert 15 "if(1)return 5*(9-6);b=26-3+2;"
 assert 10 "if(0)return 5*(9-6);b=26-3+2;return 10;"
 assert 15 "if(0)return 0; else return 5*(9-6);b=26-3+2;"
+assert 15 "while(0)return 0; return 15;"
+assert 15 "a = 10;while(a > 0)a = a - 1; return 15;"
 
 echo OK
 

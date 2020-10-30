@@ -97,6 +97,7 @@ typedef struct StatementUnion StatementUnion;
 typedef enum {
   STATEMENT_EXPRESSION,
   STATEMENT_IF,
+  STATEMENT_WHILE,
   STATEMENT_RETURN,
 } StatementKind;
 
@@ -106,6 +107,7 @@ struct StatementUnion {
     ExpressionStatement *expressionStatement;
     ReturnStatement *returnStatement;
     IfStatement *ifStatement;
+    WhileStatement *whileStatement;
   };
 };
 
@@ -128,11 +130,18 @@ IfStatement *statement_union_take_if(StatementUnion *statementUnion) {
   return NULL;
 }
 
+WhileStatement *statement_union_take_while(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_WHILE)
+    return statementUnion->whileStatement;
+  return NULL;
+}
+
 ListNode *program();
 StatementUnion *statement();
 ExpressionStatement *expression_statement();
 ReturnStatement *return_statement();
 IfStatement *if_statement();
+WhileStatement *while_statement();
 
 Node *expression();
 Node *assign();
@@ -144,10 +153,11 @@ Node *unary();
 Node *primary();
 
 // program              = statement*
-// statement            = expression_statement | return_statement | if_statement
+// statement            = expression_statement | return_statement | if_statement | while_statement
 // expression_statement = " expression ";"
 // return_statement     = ""return" expression ";"
 // if_statement         = "if" "(" expression ")" statement ("else" statement)?
+// while_statement      = "while" "(" expression ")" statement
 
 // expression           = assign
 // assign               = equality ("=" assign)?
@@ -192,6 +202,14 @@ StatementUnion *statement() {
     return result;
   }
 
+  WhileStatement *whilePattern = while_statement();
+  if (whilePattern) {
+    StatementUnion *result = calloc(1, sizeof(StatementUnion));
+    result->whileStatement = whilePattern;
+    result->tag = STATEMENT_WHILE;
+    return result;
+  }
+
   ExpressionStatement *expressionPattern = expression_statement();
   StatementUnion *result = calloc(1, sizeof(StatementUnion));
   result->expressionStatement = expressionPattern;
@@ -226,7 +244,7 @@ IfStatement *if_statement() {
   }
 
   IfStatement *result = calloc(1, sizeof(IfStatement));
-  result->conditionExpression = expression();
+  result->condition = expression();
 
   expect(")");
 
@@ -234,6 +252,22 @@ IfStatement *if_statement() {
   if (consume("else")) {
     result->elseStatement = statement();
   }
+
+  return result;
+}
+
+// while文をパースする
+WhileStatement *while_statement() {
+  if (!consume("while") || !consume("(")) {
+    return NULL;
+  }
+
+  WhileStatement *result = calloc(1, sizeof(WhileStatement));
+  result->condition = expression();
+
+  expect(")");
+
+  result->statement = statement();
 
   return result;
 }

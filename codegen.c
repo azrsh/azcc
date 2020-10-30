@@ -85,15 +85,15 @@ void generate_expression(Node *node) {
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount) {
-  //match if
-    {
+  // match if
+  {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
     if (ifPattern) {
       int endLabel = *labelCount;
       int elseLabel = *labelCount + 1;
       *labelCount += 2;
 
-      generate_expression(ifPattern->conditionExpression);
+      generate_expression(ifPattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
 
@@ -115,7 +115,29 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
     }
   }
 
-  //match return
+  // match while
+  {
+    WhileStatement *whilePattern = statement_union_take_while(statementUnion);
+    if (whilePattern) {
+      int loopLabel = *labelCount;
+      *labelCount += 1;
+
+      printf("begin%d:\n", loopLabel);
+
+      generate_expression(whilePattern->condition);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je end%d\n", loopLabel);
+
+      generate_statement(whilePattern->statement, labelCount);
+      printf("  jmp begin%d\n", loopLabel);
+
+      printf("end%d:\n", loopLabel);
+      return;
+    }
+  }
+
+  // match return
   {
     ReturnStatement *returnPattern =
         statement_union_take_return(statementUnion);
@@ -129,7 +151,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
     }
   }
 
-  //match expression
+  // match expression
   {
     ExpressionStatement *expressionPattern =
         statement_union_take_expression(statementUnion);

@@ -105,15 +105,22 @@ struct ReturnStatement {
 
 typedef struct IfStatement IfStatement;
 struct IfStatement {
-  Node *conditionExpression;
+  Node *condition;
   StatementUnion *thenStatement;
   StatementUnion *elseStatement;
+};
+
+typedef struct WhileStatement WhileStatement;
+struct WhileStatement {
+  Node *condition;
+  StatementUnion *statement;
 };
 
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
 ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
 IfStatement *statement_union_take_if(StatementUnion *statementUnion);
+WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
 
 ListNode *parse(Token *head);
 
