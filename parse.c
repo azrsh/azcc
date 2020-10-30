@@ -98,6 +98,7 @@ typedef enum {
   STATEMENT_EXPRESSION,
   STATEMENT_IF,
   STATEMENT_WHILE,
+  STATEMENT_FOR,
   STATEMENT_RETURN,
 } StatementKind;
 
@@ -108,6 +109,7 @@ struct StatementUnion {
     ReturnStatement *returnStatement;
     IfStatement *ifStatement;
     WhileStatement *whileStatement;
+    ForStatement *forStatement;
   };
 };
 
@@ -136,12 +138,19 @@ WhileStatement *statement_union_take_while(StatementUnion *statementUnion) {
   return NULL;
 }
 
+ForStatement *statement_union_take_for(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_FOR)
+    return statementUnion->forStatement;
+  return NULL;
+}
+
 ListNode *program();
 StatementUnion *statement();
 ExpressionStatement *expression_statement();
 ReturnStatement *return_statement();
 IfStatement *if_statement();
 WhileStatement *while_statement();
+ForStatement *for_statement();
 
 Node *expression();
 Node *assign();
@@ -158,6 +167,7 @@ Node *primary();
 // return_statement     = ""return" expression ";"
 // if_statement         = "if" "(" expression ")" statement ("else" statement)?
 // while_statement      = "while" "(" expression ")" statement
+// for_statement        = "for" "(" expression ";" expression ";" expression ")" statement
 
 // expression           = assign
 // assign               = equality ("=" assign)?
@@ -207,6 +217,14 @@ StatementUnion *statement() {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->whileStatement = whilePattern;
     result->tag = STATEMENT_WHILE;
+    return result;
+  }
+  
+  ForStatement *forPattern = for_statement();
+  if (forPattern) {
+    StatementUnion *result = calloc(1, sizeof(StatementUnion));
+    result->forStatement = forPattern;
+    result->tag = STATEMENT_FOR;
     return result;
   }
 
@@ -264,6 +282,25 @@ WhileStatement *while_statement() {
 
   WhileStatement *result = calloc(1, sizeof(WhileStatement));
   result->condition = expression();
+
+  expect(")");
+
+  result->statement = statement();
+
+  return result;
+}
+
+ForStatement *for_statement() {
+  if (!consume("for") || !consume("(")) {
+    return NULL;
+  }
+
+  ForStatement *result = calloc(1, sizeof(ForStatement));
+  result->initialization= expression();
+  expect(";");
+  result->condition = expression();
+  expect(";");
+  result->afterthought = expression();
 
   expect(")");
 

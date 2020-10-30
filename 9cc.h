@@ -116,11 +116,20 @@ struct WhileStatement {
   StatementUnion *statement;
 };
 
+typedef struct ForStatement ForStatement;
+struct ForStatement {
+  Node *initialization;
+  Node *condition;
+  Node *afterthought;
+  StatementUnion *statement;
+};
+
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
 ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
 IfStatement *statement_union_take_if(StatementUnion *statementUnion);
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
+ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 
 ListNode *parse(Token *head);
 

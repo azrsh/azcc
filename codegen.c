@@ -137,6 +137,31 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
     }
   }
 
+  // match for
+  {
+    ForStatement *forPattern = statement_union_take_for(statementUnion);
+    if (forPattern) {
+      int loopLabel = *labelCount;
+      *labelCount += 1;
+
+      generate_expression(forPattern->initialization);
+      
+      printf("begin%d:\n", loopLabel);
+
+      generate_expression(forPattern->condition);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je end%d\n", loopLabel);
+
+      generate_statement(forPattern->statement, labelCount);
+      generate_expression(forPattern->afterthought);
+      printf("  jmp begin%d\n", loopLabel);
+
+      printf("end%d:\n", loopLabel);
+      return;
+    }
+  }
+
   // match return
   {
     ReturnStatement *returnPattern =
