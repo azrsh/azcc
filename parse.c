@@ -91,16 +91,49 @@ Node *new_node_lvar(Token *token) {
   return node;
 }
 
-//抽象構文木のreturn文のノードを新しく生成する
-Node *new_node_return(Node *lhs) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = NODE_RETURN;
-  node->lhs = lhs;
-  return node;
+// Statement Structure
+typedef struct StatementUnion StatementUnion;
+
+typedef enum {
+  STATEMENT_EXPRESSION,
+  STATEMENT_IF,
+  STATEMENT_RETURN,
+} StatementKind;
+
+struct StatementUnion {
+  StatementKind tag;
+  union {
+    ExpressionStatement *expressionStatement;
+    ReturnStatement *returnStatement;
+    IfStatement *ifStatement;
+  };
+};
+
+ExpressionStatement *
+statement_union_take_expression(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_EXPRESSION)
+    return statementUnion->expressionStatement;
+  return NULL;
+}
+
+ReturnStatement *statement_union_take_return(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_RETURN)
+    return statementUnion->returnStatement;
+  return NULL;
+}
+
+IfStatement *statement_union_take_if(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_IF)
+    return statementUnion->ifStatement;
+  return NULL;
 }
 
 ListNode *program();
-Node *statement();
+StatementUnion *statement();
+ExpressionStatement *expression_statement();
+ReturnStatement *return_statement();
+IfStatement *if_statement();
+
 Node *expression();
 Node *assign();
 Node *equality();
@@ -110,16 +143,20 @@ Node *multiply();
 Node *unary();
 Node *primary();
 
-// program    = statement*
-// statement  = expression ";" | "return" expression ";"
-// expression = assign
-// assign     = equality ("=" assign)?
-// equality   = relational ("==" relational | "!=" relational)*
-// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add        = mul ("+" mul | "-" mul)*
-// mul        = unary ("*" unary | "/" unary)*
-// unary      = ("+" | "-")? primary
-// primary    = num | ident | "(" expr ")"
+// program              = statement*
+// statement            = expression_statement | return_statement | if_statement
+// expression_statement = " expression ";"
+// return_statement     = ""return" expression ";"
+// if_statement         = "if" "(" expression ")" statement ("else" statement)?
+
+// expression           = assign
+// assign               = equality ("=" assign)?
+// equality             = relational ("==" relational | "!=" relational)*
+// relational           = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add                  = mul ("+" mul | "-" mul)*
+// mul                  = unary ("*" unary | "/" unary)*
+// unary                = ("+" | "-")? primary
+// primary              = num | ident | "(" expr ")"
 
 //プログラムをパースする
 ListNode *program() {
@@ -138,15 +175,67 @@ ListNode *program() {
 }
 
 //文をパースする
-Node *statement() {
-  Node *node;
-  if (consume("return")) {
-    node = new_node_return(expression());
-  } else {
-    node = expression();
+StatementUnion *statement() {
+  ReturnStatement *returnPattern = return_statement();
+  if (returnPattern) {
+    StatementUnion *result = calloc(1, sizeof(StatementUnion));
+    result->returnStatement = returnPattern;
+    result->tag = STATEMENT_RETURN;
+    return result;
   }
+
+  IfStatement *ifPattern = if_statement();
+  if (ifPattern) {
+    StatementUnion *result = calloc(1, sizeof(StatementUnion));
+    result->ifStatement = ifPattern;
+    result->tag = STATEMENT_IF;
+    return result;
+  }
+
+  ExpressionStatement *expressionPattern = expression_statement();
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->expressionStatement = expressionPattern;
+  result->tag = STATEMENT_EXPRESSION;
+  return result;
+}
+
+// 式の文をパースする
+ExpressionStatement *expression_statement() {
+  ExpressionStatement *result = calloc(1, sizeof(ExpressionStatement));
+  result->node = expression();
   expect(";");
-  return node;
+  return result;
+}
+
+// return文をパースする
+ReturnStatement *return_statement() {
+  if (!consume("return")) {
+    return NULL;
+  }
+
+  ReturnStatement *result = calloc(1, sizeof(ReturnStatement));
+  result->node = expression();
+  expect(";");
+  return result;
+}
+
+// if文をパースする
+IfStatement *if_statement() {
+  if (!consume("if") || !consume("(")) {
+    return NULL;
+  }
+
+  IfStatement *result = calloc(1, sizeof(IfStatement));
+  result->conditionExpression = expression();
+
+  expect(")");
+
+  result->thenStatement = statement();
+  if (consume("else")) {
+    result->elseStatement = statement();
+  }
+
+  return result;
 }
 
 //式をパースする

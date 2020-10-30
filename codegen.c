@@ -15,7 +15,7 @@ void generate_local_variable(Node *node) {
   printf("  push rax\n");
 }
 
-void generate(Node *node) {
+void generate_expression(Node *node) {
   switch (node->kind) {
   case NODE_NUM:
     printf("  push %d\n", node->val);
@@ -28,24 +28,17 @@ void generate(Node *node) {
     return;
   case NODE_ASSIGN:
     generate_local_variable(node->lhs);
-    generate(node->rhs);
+    generate_expression(node->rhs);
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
     return;
-  case NODE_RETURN:
-    generate(node->lhs);
-    printf("  pop rax\n");
-    printf("  mov rsp, rbp\n");
-    printf("  pop rbp\n");
-    printf("  ret\n");
-    return;
   }
 
-  generate(node->lhs);
-  generate(node->rhs);
+  generate_expression(node->lhs);
+  generate_expression(node->rhs);
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -91,6 +84,62 @@ void generate(Node *node) {
   printf("  push rax\n");
 }
 
+void generate_statement(StatementUnion *statementUnion, int *labelCount) {
+  //match if
+    {
+    IfStatement *ifPattern = statement_union_take_if(statementUnion);
+    if (ifPattern) {
+      int endLabel = *labelCount;
+      int elseLabel = *labelCount + 1;
+      *labelCount += 2;
+
+      generate_expression(ifPattern->conditionExpression);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+
+      if (ifPattern->elseStatement) {
+        printf("  je .LabelElse%d\n", elseLabel);
+      } else {
+        printf("  je .LabelEnd%d\n", endLabel);
+      }
+
+      generate_statement(ifPattern->thenStatement, labelCount);
+
+      if (ifPattern->elseStatement) {
+        printf(".LabelElse%d:\n", elseLabel);
+        generate_statement(ifPattern->elseStatement, labelCount);
+      }
+
+      printf(".LabelEnd%d:\n", endLabel);
+      return;
+    }
+  }
+
+  //match return
+  {
+    ReturnStatement *returnPattern =
+        statement_union_take_return(statementUnion);
+    if (returnPattern) {
+      generate_expression(returnPattern->node);
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      printf("  ret\n");
+      return;
+    }
+  }
+
+  //match expression
+  {
+    ExpressionStatement *expressionPattern =
+        statement_union_take_expression(statementUnion);
+    if (expressionPattern) {
+      generate_expression(expressionPattern->node);
+      return;
+    }
+  }
+}
+
 //抽象構文木をもとにコード生成を行う
 void generate_code(ListNode *listNode) {
   //アセンブリの前半部分を出力
@@ -104,9 +153,10 @@ void generate_code(ListNode *listNode) {
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
 
+  int labelCount = 0;
   while (listNode) {
     //抽象構文木を降りながらコード生成
-    generate(listNode->body);
+    generate_statement(listNode->body, &labelCount);
     listNode = listNode->next;
 
     //式の評価結果をスタックからポップしてraxに格納

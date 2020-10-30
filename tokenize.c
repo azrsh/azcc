@@ -43,6 +43,14 @@ Token *new_token(TokenKind kind, Token *current, char *string, int length) {
 bool start_with(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 bool is_identifier_initial(char p) { return isalpha(p) || p == '_'; }
 bool is_identifier(char p) { return is_identifier_initial(p) || isdigit(p); }
+int is_reserved(char *p, char *reserved) {
+  int length = strlen(reserved);
+  if (start_with(p, reserved) && !is_identifier(p[length])) {
+    return length;
+  }
+
+  return 0;
+}
 
 Token *tokenize(char *p) {
   user_input = p;
@@ -73,9 +81,13 @@ Token *tokenize(char *p) {
     //----------
 
     //--予約語--
-    if (start_with(p, "return") && !is_identifier(p[6])) {
-      current = new_token(TOKEN_RESERVED, current, p, 6);
-      p += 6;
+    //同時に成立しないのでやっているが、最悪ぽい
+    int length = is_reserved(p, "if");
+    length += is_reserved(p, "else");
+    length += is_reserved(p, "return");
+    if (length > 0) {
+      current = new_token(TOKEN_RESERVED, current, p, length);
+      p += length;
       continue;
     }
     //----------

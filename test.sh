@@ -37,6 +37,9 @@ assert 25 "a=5*(9-6);b=26-3+2;"
 assert 44 "asaskjkas=29;bakjehjioaj=5*(9-6);asaskjkas+bakjehjioaj;"
 assert 40 "a=5*(9-6);b=26-3+2;return a + b;"
 assert 15 "return 5*(9-6);b=26-3+2;"
+assert 15 "if(1)return 5*(9-6);b=26-3+2;"
+assert 10 "if(0)return 5*(9-6);b=26-3+2;return 10;"
+assert 15 "if(0)return 0; else return 5*(9-6);b=26-3+2;"
 
 echo OK
 

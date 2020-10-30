@@ -70,7 +70,7 @@ typedef enum {
   NODE_NE,     // !=
   NODE_LT,     // <
   NODE_LE,     // <=
-  NODE_RETURN, // return文
+  NODE_IF,     // if文
   NODE_ASSIGN, // 代入
   NODE_LVAR,   // ローカル変数
   NODE_NUM     // 整数
@@ -88,8 +88,32 @@ struct Node {
 typedef struct LocalVariable LocalVariable;
 struct LocalVariable {
   String name; //名前
-  int offset; // RBPからのオフセット
+  int offset;  // RBPからのオフセット
 };
+
+typedef struct StatementUnion StatementUnion;
+
+typedef struct ExpressionStatement ExpressionStatement;
+struct ExpressionStatement {
+  Node *node;
+};
+
+typedef struct ReturnStatement ReturnStatement;
+struct ReturnStatement {
+  Node *node;
+};
+
+typedef struct IfStatement IfStatement;
+struct IfStatement {
+  Node *conditionExpression;
+  StatementUnion *thenStatement;
+  StatementUnion *elseStatement;
+};
+
+ExpressionStatement *
+statement_union_take_expression(StatementUnion *statementUnion);
+ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
+IfStatement *statement_union_take_if(StatementUnion *statementUnion);
 
 ListNode *parse(Token *head);
 
