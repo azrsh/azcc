@@ -20,10 +20,13 @@ execute_func_test() {
     expected="$1"
     input="$2"
 
+    echo "epected $expected"
+    echo "execute $input"
     ./9cc "$input" > tmp.s
     cc -o tmp tmp.s funccalltest.o
     ./tmp
     actual="$?"
+    echo "$input => Pass"
 }
 
 assert 0 "0;"
@@ -56,6 +59,9 @@ assert 10 "b = 0;for(a = 0;a < 10;a = a + 1)b = b + 1; return b;"
 assert 20 "b = 0;c = 0;for(a = 0;a < 10;a = a + 1){b = b + 1;c = c + 2;} return c;"
 
 execute_func_test 0 "foo();"
+execute_func_test 13 "foo1(13);"
+execute_func_test 25 "foo2(13,12);"
+execute_func_test 36 "foo3(13,12,11);"
 
 echo OK
 

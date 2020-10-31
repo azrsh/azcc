@@ -70,7 +70,8 @@ struct LocalVariable {
 
 typedef struct FunctionCall FunctionCall;
 struct FunctionCall {
-  String name; //名前
+  String name;         //名前
+  ListNode *arguments; //引数の連結リスト, Node
 };
 
 typedef enum {
@@ -86,6 +87,7 @@ typedef enum {
   NODE_ASSIGN, // 代入
   NODE_LVAR,   // ローカル変数
   NODE_FUNC,   // 関数
+  NODE_ARG,    // 関数の引数
   NODE_NUM     // 整数
 } NodeKind;
 

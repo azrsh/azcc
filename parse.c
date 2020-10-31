@@ -184,14 +184,18 @@ Node *add();
 Node *multiply();
 Node *unary();
 Node *primary();
+ListNode *argument();
 
 // program              = statement*
 // statement            = expression_statement | return_statement | if_statement
-// | while_statement expression_statement = " expression ";" return_statement =
-// ""return" expression ";" if_statement         = "if" "(" expression ")"
-// statement ("else" statement)? while_statement      = "while" "(" expression
-// ")" statement for_statement        = "for" "(" expression ";" expression ";"
-// expression ")" statement compound_statement   = "{" statement* "}"
+// | while_statement
+// expression_statement = " expression ";"
+// return_statement     = "return" expression ";"
+// if_statement         = "if" "(" expression ")" statement ("else" statement)?
+// while_statement      = "while" "(" expression ")" statement
+// for_statement        = "for" "(" expression ";" expression ";" expression ")"
+// statement
+// compound_statement   = "{" statement* "}"
 
 // expression           = assign
 // assign               = equality ("=" assign)?
@@ -200,7 +204,9 @@ Node *primary();
 // add                  = mul ("+" mul | "-" mul)*
 // mul                  = unary ("*" unary | "/" unary)*
 // unary                = ("+" | "-")? primary
-// primary              = number | identity ("(" ")")? | "(" expr ")"
+// primary              = number | identity ("(" argument? ")")? |
+// "("expression")"
+// argument             = expression ("," expression)*
 
 //プログラムをパースする
 ListNode *program() {
@@ -455,7 +461,10 @@ Node *primary() {
   if (identifier) {
     if (consume("(")) {
       Node *function = new_node_function(identifier);
-      expect(")");
+      if (!consume(")")) {
+        function->functionCall->arguments = argument();
+        expect(")");
+      }
       return function;
     } else {
       return new_node_lvar(identifier);
@@ -464,6 +473,20 @@ Node *primary() {
 
   //そうでなければ整数
   return new_node_num(expect_number());
+}
+
+ListNode *argument() {
+  ListNode head;
+  ListNode *list = &head;
+
+  list = new_list_node(expression(), list);
+
+  for (;;) {
+    if (consume(","))
+      list = new_list_node(expression(), list);
+    else
+      return head.next;
+  }
 }
 
 ListNode *parse(Token *head) {

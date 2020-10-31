@@ -6,12 +6,41 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char *argumentRegister[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+void generate_expression(Node *node);
+void generate_local_variable(Node *node);
+void generate_fuction_call(Node *node);
+
 void generate_local_variable(Node *node) {
   if (node->kind != NODE_LVAR)
     error("代入の左辺値が変数ではありません");
 
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
+  printf("  push rax\n");
+}
+
+void generate_fuction_call(Node *node) {
+  if (node->kind != NODE_FUNC)
+    error("関数ではありません");
+
+  int numberOfArguments = 0;
+  ListNode *argumentList = node->functionCall->arguments;
+  while (argumentList) {
+    Node *argument = argumentList->body;
+    generate_expression(argument);
+    numberOfArguments++;
+    argumentList = argumentList->next;
+  }
+
+  for (int i = 0; i < numberOfArguments; i++) {
+    if (i < 6) {
+      printf("  pop %s\n", argumentRegister[i]);
+    }
+  }
+
+  printf("  call %s\n", string_to_char(node->functionCall->name));
   printf("  push rax\n");
 }
 
@@ -27,7 +56,7 @@ void generate_expression(Node *node) {
     printf("  push rax\n");
     return;
   case NODE_FUNC:
-    printf("  call %s\n", string_to_char(node->functionCall->name));
+    generate_fuction_call(node);
     return;
   case NODE_ASSIGN:
     generate_local_variable(node->lhs);
