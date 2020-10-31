@@ -15,6 +15,7 @@ struct String {
 };
 String new_string(char *source, int length);
 String char_to_string(char *source);
+char *string_to_char(String source);
 bool string_compare(String string1, String string2);
 
 typedef struct ListNode ListNode;
@@ -61,6 +62,17 @@ Token *tokenize(char *p);
 //
 //パーサ
 //
+typedef struct LocalVariable LocalVariable;
+struct LocalVariable {
+  String name; //名前
+  int offset;  // RBPからのオフセット
+};
+
+typedef struct FunctionCall FunctionCall;
+struct FunctionCall {
+  String name; //名前
+};
+
 typedef enum {
   NODE_ADD,    // +
   NODE_SUB,    // -
@@ -73,6 +85,7 @@ typedef enum {
   NODE_IF,     // if文
   NODE_ASSIGN, // 代入
   NODE_LVAR,   // ローカル変数
+  NODE_FUNC,   // 関数
   NODE_NUM     // 整数
 } NodeKind;
 
@@ -81,14 +94,9 @@ struct Node {
   NodeKind kind; //ノードの型
   Node *lhs;
   Node *rhs;
-  int val;    // kindがNODE_NUMのときのみ使う
-  int offset; // kindがNODE_LVARのときのみ使う
-};
-
-typedef struct LocalVariable LocalVariable;
-struct LocalVariable {
-  String name; //名前
-  int offset;  // RBPからのオフセット
+  int val;                    // kindがNODE_NUMのときのみ使う
+  int offset;                 // kindがNODE_LVARのときのみ使う
+  FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
 
 typedef struct StatementUnion StatementUnion;
@@ -135,7 +143,8 @@ ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
 IfStatement *statement_union_take_if(StatementUnion *statementUnion);
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
 ForStatement *statement_union_take_for(StatementUnion *statementUnion);
-CompoundStatement *statement_union_take_compound(StatementUnion *statementUnion);
+CompoundStatement *
+statement_union_take_compound(StatementUnion *statementUnion);
 
 ListNode *parse(Token *head);
 

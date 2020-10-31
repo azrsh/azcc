@@ -16,6 +16,16 @@ assert() {
     fi
 }
 
+execute_func_test() {
+    expected="$1"
+    input="$2"
+
+    ./9cc "$input" > tmp.s
+    cc -o tmp tmp.s funccalltest.o
+    ./tmp
+    actual="$?"
+}
+
 assert 0 "0;"
 assert 42 "42;"
 assert 21 "5+20-4;"
@@ -44,6 +54,8 @@ assert 15 "while(0)return 0; return 15;"
 assert 15 "a = 10;while(a > 0)a = a - 1; return 15;"
 assert 10 "b = 0;for(a = 0;a < 10;a = a + 1)b = b + 1; return b;"
 assert 20 "b = 0;c = 0;for(a = 0;a < 10;a = a + 1){b = b + 1;c = c + 2;} return c;"
+
+execute_func_test 0 "foo();"
 
 echo OK
 

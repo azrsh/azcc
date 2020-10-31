@@ -15,6 +15,13 @@ String char_to_string(char *source) {
   return new_string(source, strlen(source));
 }
 
+char *string_to_char(String source) {
+  char *p = calloc(source.length + 1, sizeof(char));
+  memcpy(p, source.head, source.length);
+  p[source.length] = '\0';
+  return p;
+}
+
 bool string_compare(String string1, String string2) {
   if (string1.length != string2.length) {
     return false;
@@ -31,7 +38,7 @@ ListNode *new_list_node(void *body, ListNode *current) {
 }
 
 //
-//HashTable
+// HashTable
 //
 struct HashTable {
   ListNode *table[256];
@@ -62,7 +69,7 @@ HashTable *new_hash_table() { return calloc(1, sizeof(HashTable)); }
 
 int hash_table_store(HashTable *table, String key, void *data) {
   const int keyhash = hash(key);
-  
+
   ListNode head;
   ListNode *node = &head;
   node->next = table->table[keyhash];

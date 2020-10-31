@@ -26,6 +26,9 @@ void generate_expression(Node *node) {
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
+  case NODE_FUNC:
+    printf("  call %s\n", string_to_char(node->functionCall->name));
+    return;
   case NODE_ASSIGN:
     generate_local_variable(node->lhs);
     generate_expression(node->rhs);

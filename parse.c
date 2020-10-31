@@ -60,6 +60,12 @@ LocalVariable *new_local_variable(Token *token) {
   return localVariable;
 }
 
+FunctionCall *new_function_call(Token *token) {
+  FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
+  functionCall->name = new_string(token->string, token->length);
+  return functionCall;
+}
+
 //抽象構文木の数値以外のノードを新しく生成する
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
@@ -88,6 +94,14 @@ Node *new_node_lvar(Token *token) {
     localVariable = new_local_variable(token);
   }
   node->offset = localVariable->offset;
+  return node;
+}
+
+//抽象構文木の関数のノードを新しく生成する
+Node *new_node_function(Token *token) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = NODE_FUNC;
+  node->functionCall = new_function_call(token);
   return node;
 }
 
@@ -186,7 +200,7 @@ Node *primary();
 // add                  = mul ("+" mul | "-" mul)*
 // mul                  = unary ("*" unary | "/" unary)*
 // unary                = ("+" | "-")? primary
-// primary              = num | ident | "(" expr ")"
+// primary              = number | identity ("(" ")")? | "(" expr ")"
 
 //プログラムをパースする
 ListNode *program() {
@@ -439,7 +453,13 @@ Node *primary() {
 
   Token *identifier = consume_identifier();
   if (identifier) {
-    return new_node_lvar(identifier);
+    if (consume("(")) {
+      Node *function = new_node_function(identifier);
+      expect(")");
+      return function;
+    } else {
+      return new_node_lvar(identifier);
+    }
   }
 
   //そうでなければ整数
