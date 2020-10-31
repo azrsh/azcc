@@ -148,6 +148,13 @@ ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 CompoundStatement *
 statement_union_take_compound(StatementUnion *statementUnion);
 
+typedef struct FunctionDefinition FunctionDefinition;
+struct FunctionDefinition {
+  String name;
+  ListNode *arguments; // String
+  CompoundStatement *body;
+};
+
 ListNode *parse(Token *head);
 
 //

@@ -236,11 +236,11 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_code(ListNode *listNode) {
-  //アセンブリの前半部分を出力
-  printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
-  printf("main:\n");
+void generate_function_definition(FunctionDefinition *functionDefinition,
+                                  int *labelCount) {
+  //ラベルを生成
+  // macは先頭に_を挿入するらしい
+  printf("%s:\n", string_to_char(functionDefinition->name));
 
   //プロローグ
   //変数26個分の領域を確保
@@ -248,13 +248,13 @@ void generate_code(ListNode *listNode) {
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
 
-  int labelCount = 0;
-  while (listNode) {
+  ListNode *statementList = functionDefinition->body->statementHead;
+  while (statementList) {
     //抽象構文木を降りながらコード生成
-    generate_statement(listNode->body, &labelCount);
-    listNode = listNode->next;
+    generate_statement(statementList->body, labelCount);
+    statementList = statementList->next;
 
-    //式の評価結果をスタックからポップしてraxに格納
+    //文の評価結果をスタックからポップしてraxに格納
     //スタック溢れ対策も兼ねている
     printf("  pop rax\n");
   }
@@ -264,4 +264,17 @@ void generate_code(ListNode *listNode) {
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");
+}
+
+//抽象構文木をもとにコード生成を行う
+void generate_code(ListNode *functionDefinitionList) {
+  //アセンブリの前半部分を出力
+  printf(".intel_syntax noprefix\n");
+  printf(".global main\n");
+
+  int labelCount = 0;
+  while (functionDefinitionList) {
+    generate_function_definition(functionDefinitionList->body, &labelCount);
+    functionDefinitionList = functionDefinitionList->next;
+  }
 }

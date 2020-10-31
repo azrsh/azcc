@@ -51,6 +51,16 @@ int expect_number() {
   return value;
 }
 
+//次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合には偽を返す
+Token *expect_identifier() {
+  if (token->kind != TOKEN_IDENTIFIER)
+    error_at(token->string, "識別子ではありません");
+  Token *current = token;
+  token = token->next;
+  return current;
+}
+
 LocalVariable *new_local_variable(Token *token) {
   LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
   localVariable->name = new_string(token->string, token->length);
@@ -98,11 +108,17 @@ Node *new_node_lvar(Token *token) {
 }
 
 //抽象構文木の関数のノードを新しく生成する
-Node *new_node_function(Token *token) {
+Node *new_node_function_call(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_FUNC;
   node->functionCall = new_function_call(token);
   return node;
+}
+
+FunctionDefinition *new_function_definition(Token *identifier) {
+  FunctionDefinition *definition = calloc(1, sizeof(FunctionDefinition));
+  definition->name = new_string(identifier->string, identifier->length);
+  return definition;
 }
 
 // Statement Structure
@@ -168,6 +184,8 @@ statement_union_take_compound(StatementUnion *statementUnion) {
 }
 
 ListNode *program();
+FunctionDefinition *function_definition();
+ListNode *function_definition_argument();
 StatementUnion *statement();
 ExpressionStatement *expression_statement();
 ReturnStatement *return_statement();
@@ -184,9 +202,12 @@ Node *add();
 Node *multiply();
 Node *unary();
 Node *primary();
-ListNode *argument();
+ListNode *function_call_argument();
 
 // program              = statement*
+// function_definition  = identity "(" function_definition_argument? ")"
+// compound_statement
+// function_definition_argument = identity ("," identity)*
 // statement            = expression_statement | return_statement | if_statement
 // | while_statement
 // expression_statement = " expression ";"
@@ -204,9 +225,9 @@ ListNode *argument();
 // add                  = mul ("+" mul | "-" mul)*
 // mul                  = unary ("*" unary | "/" unary)*
 // unary                = ("+" | "-")? primary
-// primary              = number | identity ("(" argument? ")")? |
+// primary              = number | identity ("(" function_call_argument? ")")? |
 // "("expression")"
-// argument             = expression ("," expression)*
+// function_call_argument = expression ("," expression)*
 
 //プログラムをパースする
 ListNode *program() {
@@ -214,13 +235,48 @@ ListNode *program() {
   currentOffset = 0;
 
   ListNode head;
-  head.next = NULL;
   ListNode *current = &head;
 
   while (!at_eof()) {
-    current = new_list_node(statement(), current);
+    FunctionDefinition *definition = function_definition();
+    if (!definition)
+      break;
+
+    current = new_list_node(definition, current);
   }
 
+  return head.next;
+}
+
+//関数の定義をパースする
+FunctionDefinition *function_definition() {
+  Token *identifier = consume_identifier();
+  if (!identifier) {
+    return NULL;
+  }
+
+  FunctionDefinition *definition = new_function_definition(identifier);
+  expect("(");
+  if (!consume(")")) {
+    definition->arguments = function_definition_argument();
+    expect(")");
+  }
+
+  definition->body = compound_statement();
+
+  return definition;
+}
+
+ListNode *function_definition_argument() {
+  ListNode head;
+  ListNode *list = &head;
+
+  do {
+    Token *identifier = expect_identifier();
+    String *name = calloc(1, sizeof(String));
+    *name = new_string(identifier->string, identifier->length);
+    list = new_list_node(name, list);
+  } while (consume(","));
   return head.next;
 }
 
@@ -460,9 +516,9 @@ Node *primary() {
   Token *identifier = consume_identifier();
   if (identifier) {
     if (consume("(")) {
-      Node *function = new_node_function(identifier);
+      Node *function = new_node_function_call(identifier);
       if (!consume(")")) {
-        function->functionCall->arguments = argument();
+        function->functionCall->arguments = function_call_argument();
         expect(")");
       }
       return function;
@@ -475,7 +531,7 @@ Node *primary() {
   return new_node_num(expect_number());
 }
 
-ListNode *argument() {
+ListNode *function_call_argument() {
   ListNode head;
   ListNode *list = &head;
 
