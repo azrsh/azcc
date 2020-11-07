@@ -1,4 +1,5 @@
 #include "9cc.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -7,7 +8,6 @@
 #include <string.h>
 
 Token *token;
-HashTable *localVariableTable;
 int currentOffset;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
@@ -61,12 +61,11 @@ Token *expect_identifier() {
   return current;
 }
 
-LocalVariable *new_local_variable(Token *token) {
+LocalVariable *new_local_variable(String name, VariableContainer *container) {
   LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
-  localVariable->name = new_string(token->string, token->length);
+  localVariable->name = name;
   currentOffset += 8;
   localVariable->offset = currentOffset;
-  hash_table_store(localVariableTable, localVariable->name, localVariable);
   return localVariable;
 }
 
@@ -94,15 +93,19 @@ Node *new_node_num(int val) {
 }
 
 //抽象構文木のローカル変数のノードを新しく生成する
-Node *new_node_lvar(Token *token) {
+Node *new_node_lvar(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_LVAR;
 
-  LocalVariable *localVariable = hash_table_find(
-      localVariableTable, new_string(token->string, token->length));
+  LocalVariable *localVariable = variable_container_get(
+      container, new_string(token->string, token->length));
   if (localVariable == NULL) {
-    localVariable = new_local_variable(token);
+    String variableName = new_string(token->string, token->length);
+    localVariable = new_local_variable(variableName, container);
+    if (!variable_container_push(container, localVariable))
+      error_at(token->string, "同名の変数が既に定義されています");
   }
+
   node->offset = localVariable->offset;
   return node;
 }
@@ -183,26 +186,82 @@ statement_union_take_compound(StatementUnion *statementUnion) {
   return NULL;
 }
 
-ListNode *program();
-FunctionDefinition *function_definition();
-ListNode *function_definition_argument();
-StatementUnion *statement();
-ExpressionStatement *expression_statement();
-ReturnStatement *return_statement();
-IfStatement *if_statement();
-WhileStatement *while_statement();
-ForStatement *for_statement();
-CompoundStatement *compound_statement();
+//
+// VariableContainer
+//
+struct VariableContainer {
+  ListNode *tableHead;
+};
 
-Node *expression();
-Node *assign();
-Node *equality();
-Node *relational();
-Node *add();
-Node *multiply();
-Node *unary();
-Node *primary();
-ListNode *function_call_argument();
+VariableContainer *new_variable_container(ListNode *tableHead) {
+  VariableContainer *container = calloc(1, sizeof(VariableContainer));
+  container->tableHead = tableHead;
+  return container;
+}
+
+LocalVariable *variable_container_get(VariableContainer *container,
+                                      String name) {
+  ListNode *list = container->tableHead;
+  while (list) {
+    LocalVariable *variable = hash_table_find(list->body, name);
+    if (variable)
+      return variable;
+
+    list = list->next;
+  }
+
+  return NULL;
+}
+
+bool variable_container_push(VariableContainer *container,
+                             LocalVariable *variable) {
+  HashTable *localTable = container->tableHead->body;
+  bool isExist = hash_table_contain(localTable, variable->name);
+  if (isExist)
+    return false;
+
+  hash_table_store(localTable, variable->name, variable);
+  return true;
+}
+
+bool variable_container_update(VariableContainer *container,
+                               LocalVariable *variable) {
+  if (variable_container_get(container, variable->name)) {
+    HashTable *localTable = container->tableHead->body;
+    hash_table_store(localTable, variable->name, variable);
+    return true;
+  }
+
+  return false;
+}
+
+VariableContainer *variable_container_push_table(VariableContainer *container,
+                                                 HashTable *table) {
+  ListNode *newHead = list_push_front(container->tableHead, table);
+  return new_variable_container(newHead);
+}
+
+// EBNFパーサ
+ListNode *program();
+FunctionDefinition *function_definition(VariableContainer *variableContainer);
+Vector *function_definition_argument(VariableContainer *variableContainer);
+StatementUnion *statement(VariableContainer *variableContainer);
+ExpressionStatement *expression_statement(VariableContainer *variableContainer);
+ReturnStatement *return_statement(VariableContainer *variableContainer);
+IfStatement *if_statement(VariableContainer *variableContainer);
+WhileStatement *while_statement(VariableContainer *variableContainer);
+ForStatement *for_statement(VariableContainer *variableContainer);
+CompoundStatement *compound_statement(VariableContainer *variableContainer);
+
+Node *expression(VariableContainer *variableContainer);
+Node *assign(VariableContainer *variableContainer);
+Node *equality(VariableContainer *variableContainer);
+Node *relational(VariableContainer *variableContainer);
+Node *add(VariableContainer *variableContainer);
+Node *multiply(VariableContainer *variableContainer);
+Node *unary(VariableContainer *variableContainer);
+Node *primary(VariableContainer *variableContainer);
+ListNode *function_call_argument(VariableContainer *variableContainer);
 
 // program              = statement*
 // function_definition  = identity "(" function_definition_argument? ")"
@@ -231,58 +290,90 @@ ListNode *function_call_argument();
 
 //プログラムをパースする
 ListNode *program() {
-  localVariableTable = new_hash_table();
+  HashTable *globalVariableTable = new_hash_table();
+  ListNode *listHead = new_list_node(globalVariableTable);
+  VariableContainer *variableContainer = new_variable_container(listHead);
+
   currentOffset = 0;
 
   ListNode head;
   ListNode *current = &head;
 
   while (!at_eof()) {
-    FunctionDefinition *definition = function_definition();
+    FunctionDefinition *definition = function_definition(variableContainer);
     if (!definition)
       break;
 
-    current = new_list_node(definition, current);
+    current = list_push_back(current, definition);
   }
 
   return head.next;
 }
 
 //関数の定義をパースする
-FunctionDefinition *function_definition() {
+FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   Token *identifier = consume_identifier();
   if (!identifier) {
     return NULL;
   }
 
   FunctionDefinition *definition = new_function_definition(identifier);
+
+  //新しいスコープなので先頭に新しい変数テーブルを追加
+  HashTable *localVariableTable = new_hash_table();
+  VariableContainer *mergedContainer =
+      variable_container_push_table(variableContainer, localVariableTable);
+
   expect("(");
-  if (!consume(")")) {
-    definition->arguments = function_definition_argument();
+  if (consume(")")) {
+    definition->arguments = new_vector(0);
+  } else {
+    definition->arguments = function_definition_argument(mergedContainer);
     expect(")");
   }
 
-  definition->body = compound_statement();
+  if (!consume("{")) {
+    return NULL;
+  }
+
+  //
+  //関数には引数があるので複文オブジェクトの生成を特別扱いしている
+  //
+  CompoundStatement *body = calloc(1, sizeof(CompoundStatement));
+
+  //新しいスコープの追加を外へ移動
+
+  //ブロック内の文をパ-ス
+  ListNode head;
+  ListNode *node = &head;
+  while (!consume("}")) {
+    node = list_push_back(node, statement(mergedContainer));
+  }
+  body->statementHead = head.next;
+  //
+  //
+  //
+
+  definition->body = body;
 
   return definition;
 }
 
-ListNode *function_definition_argument() {
-  ListNode head;
-  ListNode *list = &head;
+// Local Variable Nodes
+Vector *function_definition_argument(VariableContainer *variableContainer) {
+  Vector *arguments = new_vector(32);
 
   do {
     Token *identifier = expect_identifier();
-    String *name = calloc(1, sizeof(String));
-    *name = new_string(identifier->string, identifier->length);
-    list = new_list_node(name, list);
+    Node *node = new_node_lvar(identifier, variableContainer);
+    vector_push_back(arguments, node);
   } while (consume(","));
-  return head.next;
+  return arguments;
 }
 
 //文をパースする
-StatementUnion *statement() {
-  ReturnStatement *returnPattern = return_statement();
+StatementUnion *statement(VariableContainer *variableContainer) {
+  ReturnStatement *returnPattern = return_statement(variableContainer);
   if (returnPattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->returnStatement = returnPattern;
@@ -290,7 +381,7 @@ StatementUnion *statement() {
     return result;
   }
 
-  IfStatement *ifPattern = if_statement();
+  IfStatement *ifPattern = if_statement(variableContainer);
   if (ifPattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->ifStatement = ifPattern;
@@ -298,7 +389,7 @@ StatementUnion *statement() {
     return result;
   }
 
-  WhileStatement *whilePattern = while_statement();
+  WhileStatement *whilePattern = while_statement(variableContainer);
   if (whilePattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->whileStatement = whilePattern;
@@ -306,7 +397,7 @@ StatementUnion *statement() {
     return result;
   }
 
-  ForStatement *forPattern = for_statement();
+  ForStatement *forPattern = for_statement(variableContainer);
   if (forPattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->forStatement = forPattern;
@@ -314,7 +405,7 @@ StatementUnion *statement() {
     return result;
   }
 
-  CompoundStatement *compoundPattern = compound_statement();
+  CompoundStatement *compoundPattern = compound_statement(variableContainer);
   if (compoundPattern) {
     StatementUnion *result = calloc(1, sizeof(StatementUnion));
     result->compoundStatement = compoundPattern;
@@ -322,7 +413,8 @@ StatementUnion *statement() {
     return result;
   }
 
-  ExpressionStatement *expressionPattern = expression_statement();
+  ExpressionStatement *expressionPattern =
+      expression_statement(variableContainer);
   StatementUnion *result = calloc(1, sizeof(StatementUnion));
   result->expressionStatement = expressionPattern;
   result->tag = STATEMENT_EXPRESSION;
@@ -330,106 +422,117 @@ StatementUnion *statement() {
 }
 
 // 式の文をパースする
-ExpressionStatement *expression_statement() {
+ExpressionStatement *
+expression_statement(VariableContainer *variableContainer) {
   ExpressionStatement *result = calloc(1, sizeof(ExpressionStatement));
-  result->node = expression();
+  result->node = expression(variableContainer);
   expect(";");
   return result;
 }
 
 // return文をパースする
-ReturnStatement *return_statement() {
+ReturnStatement *return_statement(VariableContainer *variableContainer) {
   if (!consume("return")) {
     return NULL;
   }
 
   ReturnStatement *result = calloc(1, sizeof(ReturnStatement));
-  result->node = expression();
+  result->node = expression(variableContainer);
   expect(";");
   return result;
 }
 
 // if文をパースする
-IfStatement *if_statement() {
+IfStatement *if_statement(VariableContainer *variableContainer) {
   if (!consume("if") || !consume("(")) {
     return NULL;
   }
 
   IfStatement *result = calloc(1, sizeof(IfStatement));
-  result->condition = expression();
+  result->condition = expression(variableContainer);
 
   expect(")");
 
-  result->thenStatement = statement();
+  result->thenStatement = statement(variableContainer);
   if (consume("else")) {
-    result->elseStatement = statement();
+    result->elseStatement = statement(variableContainer);
   }
 
   return result;
 }
 
 // while文をパースする
-WhileStatement *while_statement() {
+WhileStatement *while_statement(VariableContainer *variableContainer) {
   if (!consume("while") || !consume("(")) {
     return NULL;
   }
 
   WhileStatement *result = calloc(1, sizeof(WhileStatement));
-  result->condition = expression();
+  result->condition = expression(variableContainer);
 
   expect(")");
 
-  result->statement = statement();
+  result->statement = statement(variableContainer);
 
   return result;
 }
 
 // for文をパースする
-ForStatement *for_statement() {
+ForStatement *for_statement(VariableContainer *variableContainer) {
   if (!consume("for") || !consume("(")) {
     return NULL;
   }
 
   ForStatement *result = calloc(1, sizeof(ForStatement));
-  result->initialization = expression();
+  result->initialization = expression(variableContainer);
   expect(";");
-  result->condition = expression();
+  result->condition = expression(variableContainer);
   expect(";");
-  result->afterthought = expression();
+  result->afterthought = expression(variableContainer);
 
   expect(")");
 
-  result->statement = statement();
+  result->statement = statement(variableContainer);
 
   return result;
 }
 
 // 複文をパースする
-CompoundStatement *compound_statement() {
+CompoundStatement *compound_statement(VariableContainer *variableContainer) {
   if (!consume("{")) {
     return NULL;
   }
 
   CompoundStatement *result = calloc(1, sizeof(CompoundStatement));
+
+  //新しいスコープなので先頭に新しい変数テーブルを追加
+  HashTable *localVariableTable = new_hash_table();
+  VariableContainer *mergedContainer =
+      variable_container_push_table(variableContainer, localVariableTable);
+
+  //ブロック内の文をパ-ス
   ListNode head;
   ListNode *node = &head;
   while (!consume("}")) {
-    node = new_list_node(statement(), node);
+    node = list_push_back(node, statement(mergedContainer));
   }
   result->statementHead = head.next;
+
   return result;
 }
 
 //式をパースする
-Node *expression() { return assign(); }
+Node *expression(VariableContainer *variableContainer) {
+  return assign(variableContainer);
+}
 
 //式をパースする
-Node *assign() {
-  Node *node = equality();
+Node *assign(VariableContainer *variableContainer) {
+  Node *node = equality(variableContainer);
 
   for (;;) {
     if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, equality());
+      node = new_node(NODE_ASSIGN, node, equality(variableContainer));
     } else {
       return node;
     }
@@ -437,78 +540,78 @@ Node *assign() {
 }
 
 //等式をパースする
-Node *equality() {
-  Node *node = relational();
+Node *equality(VariableContainer *variableContainer) {
+  Node *node = relational(variableContainer);
 
   for (;;) {
     if (consume("=="))
-      node = new_node(NODE_EQ, node, relational());
+      node = new_node(NODE_EQ, node, relational(variableContainer));
     else if (consume("!="))
-      node = new_node(NODE_NE, node, relational());
+      node = new_node(NODE_NE, node, relational(variableContainer));
     else
       return node;
   }
 }
 
 //不等式をパースする
-Node *relational() {
-  Node *node = add();
+Node *relational(VariableContainer *variableContainer) {
+  Node *node = add(variableContainer);
 
   for (;;) {
     if (consume("<"))
-      node = new_node(NODE_LT, node, add());
+      node = new_node(NODE_LT, node, add(variableContainer));
     else if (consume("<="))
-      node = new_node(NODE_LE, node, add());
+      node = new_node(NODE_LE, node, add(variableContainer));
     else if (consume(">"))
-      node = new_node(NODE_LT, add(), node);
+      node = new_node(NODE_LT, add(variableContainer), node);
     else if (consume(">="))
-      node = new_node(NODE_LE, add(), node);
+      node = new_node(NODE_LE, add(variableContainer), node);
     else
       return node;
   }
 }
 
-Node *add() {
-  Node *node = multiply();
+Node *add(VariableContainer *variableContainer) {
+  Node *node = multiply(variableContainer);
 
   for (;;) {
     if (consume("+"))
-      node = new_node(NODE_ADD, node, multiply());
+      node = new_node(NODE_ADD, node, multiply(variableContainer));
     else if (consume("-"))
-      node = new_node(NODE_SUB, node, multiply());
+      node = new_node(NODE_SUB, node, multiply(variableContainer));
     else
       return node;
   }
 }
 
 //乗除算をパースする
-Node *multiply() {
-  Node *node = unary();
+Node *multiply(VariableContainer *variableContainer) {
+  Node *node = unary(variableContainer);
 
   for (;;) {
     if (consume("*"))
-      node = new_node(NODE_MUL, node, unary());
+      node = new_node(NODE_MUL, node, unary(variableContainer));
     else if (consume("/"))
-      node = new_node(NODE_DIV, node, unary());
+      node = new_node(NODE_DIV, node, unary(variableContainer));
     else
       return node;
   }
 }
 
 //単項演算子をパースする
-Node *unary() {
+Node *unary(VariableContainer *variableContainer) {
   if (consume("+"))
-    return primary();
+    return primary(variableContainer);
   if (consume("-"))
-    return new_node(NODE_SUB, new_node_num(0), primary());
-  return primary();
+    return new_node(NODE_SUB, new_node_num(0), primary(variableContainer));
+  return primary(variableContainer);
 }
 
 //抽象構文木の末端をパースする
-Node *primary() {
+Node *primary(VariableContainer *variableContainer) {
   //次のトークンが(なら入れ子になった式
   if (consume("(")) {
-    Node *node = expression();
+    Node *node = expression(variableContainer);
     expect(")");
     return node;
   }
@@ -518,12 +621,13 @@ Node *primary() {
     if (consume("(")) {
       Node *function = new_node_function_call(identifier);
       if (!consume(")")) {
-        function->functionCall->arguments = function_call_argument();
+        function->functionCall->arguments =
+            function_call_argument(variableContainer);
         expect(")");
       }
       return function;
     } else {
-      return new_node_lvar(identifier);
+      return new_node_lvar(identifier, variableContainer);
     }
   }
 
@@ -531,15 +635,15 @@ Node *primary() {
   return new_node_num(expect_number());
 }
 
-ListNode *function_call_argument() {
+ListNode *function_call_argument(VariableContainer *variableContainer) {
   ListNode head;
   ListNode *list = &head;
 
-  list = new_list_node(expression(), list);
+  list = list_push_back(list, expression(variableContainer));
 
   for (;;) {
     if (consume(","))
-      list = new_list_node(expression(), list);
+      list = list_push_back(list, expression(variableContainer));
     else
       return head.next;
   }

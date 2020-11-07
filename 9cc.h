@@ -23,8 +23,17 @@ struct ListNode {
   void *body;
   ListNode *next;
 };
+ListNode *new_list_node(void *body);
+ListNode *list_head_to_tail(ListNode *head);
+void list_merge(ListNode *list1, ListNode *list2);
+ListNode *list_push_back(ListNode *tail, void *element);
+ListNode *list_push_front(ListNode *head, void *element);
 
-ListNode *new_list_node(void *body, ListNode *next);
+typedef struct Vector Vector;
+Vector *new_vector(int initialSize);
+void vector_push_back(Vector *vector, void *element);
+void *vector_get(Vector *vector, int index);
+int vector_length(Vector *vector);
 
 typedef struct HashTable HashTable;
 HashTable *new_hash_table();
@@ -101,6 +110,17 @@ struct Node {
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
 
+typedef struct VariableContainer VariableContainer;
+VariableContainer *new_variable_container(ListNode *tableHead);
+LocalVariable *variable_container_get(VariableContainer *container,
+                                      String name);
+bool variable_container_push(VariableContainer *container,
+                             LocalVariable *varibale);
+bool variable_container_update(VariableContainer *container,
+                               LocalVariable *variable);
+VariableContainer *variable_container_push_table(VariableContainer *container,
+                                                 HashTable *table);
+
 typedef struct StatementUnion StatementUnion;
 
 typedef struct ExpressionStatement ExpressionStatement;
@@ -151,7 +171,8 @@ statement_union_take_compound(StatementUnion *statementUnion);
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
   String name;
-  ListNode *arguments; // String
+  ListNode *variableContainer; // LocalVariable HashTable vector
+  Vector *arguments;           // Local Variavble Nodes
   CompoundStatement *body;
 };
 

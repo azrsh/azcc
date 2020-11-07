@@ -248,6 +248,15 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
 
+  //引数の代入処理
+  for (int i = 0; i < vector_length(functionDefinition->arguments); i++) {
+    Node *node = vector_get(functionDefinition->arguments, i);
+
+    generate_local_variable(node);
+    printf("  pop rax\n");
+    printf("  mov [rax], %s\n", argumentRegister[i]);
+  }
+
   ListNode *statementList = functionDefinition->body->statementHead;
   while (statementList) {
     //抽象構文木を降りながらコード生成
