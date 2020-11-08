@@ -22,11 +22,11 @@ void insert_comment(char *fmt, ...) {
 #endif
 }
 
-void generate_expression(Node *node);
-void generate_local_variable(Node *node);
-void generate_fuction_call(Node *node);
+void generate_expression(Node *node, int *labelCount);
+void generate_local_variable(Node *node, int *labelCount);
+void generate_fuction_call(Node *node, int *labelCount);
 
-void generate_local_variable(Node *node) {
+void generate_local_variable(Node *node, int *labelCount) {
   if (node->kind != NODE_LVAR)
     error("代入の左辺値が変数ではありません");
 
@@ -35,7 +35,7 @@ void generate_local_variable(Node *node) {
   printf("  push rax\n");
 }
 
-void generate_fuction_call(Node *node) {
+void generate_fuction_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     error("関数ではありません");
 
@@ -44,37 +44,66 @@ void generate_fuction_call(Node *node) {
   insert_comment("function call start : %s\n", functionName);
 
   Vector *arguments = node->functionCall->arguments;
+
+  //アライメント
+  if (vector_length(arguments) > 6) {
+    //スタックの使用予測に基づいてアライメント
+    const int stackUnitLength = 8;
+    const int alignmentLength = stackUnitLength * 2;
+    printf("  mov rax, rsp\n");
+    printf("  sub rax, %d\n", (vector_length(arguments) - 6) * 8);
+    printf("  and rax, %d\n", alignmentLength - 1);
+    printf("  jz .Lcall%d\n", *labelCount);
+    printf("  sub rsp, %d\n", stackUnitLength);
+    printf(".Lcall%d:\n", *labelCount);
+  }
+
   for (int i = vector_length(arguments) - 1; i >= 0; i--) {
     Node *argument = vector_get(arguments, i);
-    generate_expression(argument);
+    generate_expression(argument, labelCount);
     if (i < 6) {
       printf("  pop %s\n", argumentRegister[i]);
     }
   }
 
+  printf("  mov rax, 0\n");
   printf("  call %s\n", functionName);
+
+  //アライメントの判定とスタックの復元
+  if (vector_length(arguments) > 6) {
+    const int stackUnitLength = 8;
+    const int alignmentLength = stackUnitLength * 2;
+    printf("  mov rbx, rsp\n");
+    printf("  and rbx, %d\n", alignmentLength - 1);
+    printf("  jz .Lend%d\n", *labelCount);
+    printf("  add rsp, %d\n", stackUnitLength);
+    printf(".Lend%d:\n", *labelCount);
+
+    *labelCount += 1;
+  }
+
   printf("  push rax\n");
 
   insert_comment("function call end : %s\n", functionName);
 }
 
-void generate_expression(Node *node) {
+void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
     printf("  push %d\n", node->val);
     return;
   case NODE_LVAR:
-    generate_local_variable(node);
+    generate_local_variable(node, labelCount);
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
   case NODE_FUNC:
-    generate_fuction_call(node);
+    generate_fuction_call(node, labelCount);
     return;
   case NODE_ASSIGN:
-    generate_local_variable(node->lhs);
-    generate_expression(node->rhs);
+    generate_local_variable(node->lhs, labelCount);
+    generate_expression(node->rhs, labelCount);
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
@@ -83,8 +112,8 @@ void generate_expression(Node *node) {
     return;
   }
 
-  generate_expression(node->lhs);
-  generate_expression(node->rhs);
+  generate_expression(node->lhs, labelCount);
+  generate_expression(node->rhs, labelCount);
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -139,7 +168,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       int elseLabel = *labelCount + 1;
       *labelCount += 2;
 
-      generate_expression(ifPattern->condition);
+      generate_expression(ifPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
 
@@ -170,7 +199,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 
       printf("begin%d:\n", loopLabel);
 
-      generate_expression(whilePattern->condition);
+      generate_expression(whilePattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je end%d\n", loopLabel);
@@ -190,17 +219,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       int loopLabel = *labelCount;
       *labelCount += 1;
 
-      generate_expression(forPattern->initialization);
+      generate_expression(forPattern->initialization, labelCount);
 
       printf("begin%d:\n", loopLabel);
 
-      generate_expression(forPattern->condition);
+      generate_expression(forPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je end%d\n", loopLabel);
 
       generate_statement(forPattern->statement, labelCount);
-      generate_expression(forPattern->afterthought);
+      generate_expression(forPattern->afterthought, labelCount);
       printf("  jmp begin%d\n", loopLabel);
 
       printf("end%d:\n", loopLabel);
@@ -229,7 +258,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
     ReturnStatement *returnPattern =
         statement_union_take_return(statementUnion);
     if (returnPattern) {
-      generate_expression(returnPattern->node);
+      generate_expression(returnPattern->node, labelCount);
       printf("  pop rax\n");
       printf("  mov rsp, rbp\n");
       printf("  pop rbp\n");
@@ -243,7 +272,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
     ExpressionStatement *expressionPattern =
         statement_union_take_expression(statementUnion);
     if (expressionPattern) {
-      generate_expression(expressionPattern->node);
+      generate_expression(expressionPattern->node, labelCount);
       return;
     }
   }
@@ -270,7 +299,7 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   insert_comment("function arguments assign start : %s\n", functionName);
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
-    generate_local_variable(node);
+    generate_local_variable(node, labelCount);
     printf("  pop rax\n");
 
     if (i < 6) {
