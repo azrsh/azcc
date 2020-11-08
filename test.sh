@@ -92,6 +92,8 @@ assert 28 "test(a,b,c,d,e,f,g){ return a + b + c + d + e + f + g; } main(){ retu
 assert 36 "test(a,b,c,d,e,f,g,h){ return a + b + c + d + e + f + g + h; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8); }"
 assert 45 "test(a,b,c,d,e,f,g,h,i){ return a + b + c + d + e + f + g + h + i; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9); }"
 assert 55 "test(a,b,c,d,e,f,g,h,i,j){ return a + b + c + d + e + f + g + h + i + j; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
+assert 1 "main(){a = 1;b = &a; return *b;}"
+assert 2 "main(){a = 2;b = &a; return *b;}"
 
 echo OK
 

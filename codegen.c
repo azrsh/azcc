@@ -92,6 +92,15 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_NUM:
     printf("  push %d\n", node->val);
     return;
+  case NODE_REF:
+    generate_local_variable(node->lhs, labelCount);
+    return;
+  case NODE_DEREF:
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
+    return;
   case NODE_LVAR:
     generate_local_variable(node, labelCount);
     printf("  pop rax\n");

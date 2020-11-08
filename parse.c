@@ -283,7 +283,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // relational           = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add                  = mul ("+" mul | "-" mul)*
 // mul                  = unary ("*" unary | "/" unary)*
-// unary                = ("+" | "-")? primary
+// unary                = ("+" | "-" | "&" | "*")? primary
 // primary              = number | identity ("(" function_call_argument? ")")? |
 // "("expression")"
 // function_call_argument = expression ("," expression)*
@@ -604,6 +604,10 @@ Node *unary(VariableContainer *variableContainer) {
     return primary(variableContainer);
   if (consume("-"))
     return new_node(NODE_SUB, new_node_num(0), primary(variableContainer));
+  if (consume("&"))
+    return new_node(NODE_REF, primary(variableContainer), NULL);
+  if (consume("*"))
+    return new_node(NODE_DEREF, primary(variableContainer), NULL);
   return primary(variableContainer);
 }
 

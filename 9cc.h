@@ -92,6 +92,8 @@ typedef enum {
   NODE_NE,     // !=
   NODE_LT,     // <
   NODE_LE,     // <=
+  NODE_REF,    // &
+  NODE_DEREF,  // *
   NODE_IF,     // if文
   NODE_ASSIGN, // 代入
   NODE_LVAR,   // ローカル変数
