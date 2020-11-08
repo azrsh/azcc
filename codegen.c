@@ -172,19 +172,19 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       printf("  cmp rax, 0\n");
 
       if (ifPattern->elseStatement) {
-        printf("  je .LabelElse%d\n", ifLabel);
+        printf("  je .Lelse%d\n", ifLabel);
       } else {
-        printf("  je .LabelEnd%d\n", ifLabel);
+        printf("  je .Lend%d\n", ifLabel);
       }
 
       generate_statement(ifPattern->thenStatement, labelCount);
 
       if (ifPattern->elseStatement) {
-        printf(".LabelElse%d:\n", ifLabel);
+        printf(".Lelse%d:\n", ifLabel);
         generate_statement(ifPattern->elseStatement, labelCount);
       }
 
-      printf(".LabelEnd%d:\n", ifLabel);
+      printf(".Lend%d:\n", ifLabel);
       return;
     }
   }
