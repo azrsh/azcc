@@ -311,7 +311,7 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   }
   insert_comment("function arguments assign end : %s\n", functionName);
 
-  insert_comment("function arguments body start : %s\n", functionName);
+  insert_comment("function body start : %s\n", functionName);
   ListNode *statementList = functionDefinition->body->statementHead;
   while (statementList) {
     //抽象構文木を降りながらコード生成
@@ -322,15 +322,15 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
     //スタック溢れ対策も兼ねている
     printf("  pop rax\n");
   }
-  insert_comment("function arguments body end : %s\n", functionName);
+  insert_comment("function body end : %s\n", functionName);
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
-  insert_comment("function arguments epilogue start : %s\n", functionName);
+  insert_comment("function epilogue start : %s\n", functionName);
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");
-  insert_comment("function arguments epilogue end : %s\n", functionName);
+  insert_comment("function epilogue end : %s\n", functionName);
 }
 
 //抽象構文木をもとにコード生成を行う
