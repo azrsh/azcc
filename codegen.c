@@ -164,28 +164,27 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
     if (ifPattern) {
-      int endLabel = *labelCount;
-      int elseLabel = *labelCount + 1;
-      *labelCount += 2;
+      int ifLabel = *labelCount;
+      *labelCount += 1;
 
       generate_expression(ifPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
 
       if (ifPattern->elseStatement) {
-        printf("  je .LabelElse%d\n", elseLabel);
+        printf("  je .LabelElse%d\n", ifLabel);
       } else {
-        printf("  je .LabelEnd%d\n", endLabel);
+        printf("  je .LabelEnd%d\n", ifLabel);
       }
 
       generate_statement(ifPattern->thenStatement, labelCount);
 
       if (ifPattern->elseStatement) {
-        printf(".LabelElse%d:\n", elseLabel);
+        printf(".LabelElse%d:\n", ifLabel);
         generate_statement(ifPattern->elseStatement, labelCount);
       }
 
-      printf(".LabelEnd%d:\n", endLabel);
+      printf(".LabelEnd%d:\n", ifLabel);
       return;
     }
   }
