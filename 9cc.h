@@ -79,8 +79,8 @@ struct LocalVariable {
 
 typedef struct FunctionCall FunctionCall;
 struct FunctionCall {
-  String name;         //名前
-  ListNode *arguments; //引数の連結リスト, Node
+  String name;       //名前
+  Vector *arguments; //引数の連結リスト, Node
 };
 
 typedef enum {

@@ -6,7 +6,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define INSERT_COMMENT
+
 const char *argumentRegister[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+void insert_comment(char *fmt, ...) {
+#ifdef INSERT_COMMENT
+  va_list ap;
+  va_start(ap, fmt);
+
+  printf("# ");
+  vprintf(fmt, ap);
+
+  va_end(ap);
+#endif
+}
 
 void generate_expression(Node *node);
 void generate_local_variable(Node *node);
@@ -25,23 +39,23 @@ void generate_fuction_call(Node *node) {
   if (node->kind != NODE_FUNC)
     error("関数ではありません");
 
-  int numberOfArguments = 0;
-  ListNode *argumentList = node->functionCall->arguments;
-  while (argumentList) {
-    Node *argument = argumentList->body;
-    generate_expression(argument);
-    numberOfArguments++;
-    argumentList = argumentList->next;
-  }
+  const char *functionName = string_to_char(node->functionCall->name);
 
-  for (int i = 0; i < numberOfArguments; i++) {
+  insert_comment("function call start : %s\n", functionName);
+
+  Vector *arguments = node->functionCall->arguments;
+  for (int i = vector_length(arguments) - 1; i >= 0; i--) {
+    Node *argument = vector_get(arguments, i);
+    generate_expression(argument);
     if (i < 6) {
       printf("  pop %s\n", argumentRegister[i]);
     }
   }
 
-  printf("  call %s\n", string_to_char(node->functionCall->name));
+  printf("  call %s\n", functionName);
   printf("  push rax\n");
+
+  insert_comment("function call end : %s\n", functionName);
 }
 
 void generate_expression(Node *node) {
@@ -238,25 +252,37 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 //抽象構文木をもとにコード生成を行う
 void generate_function_definition(FunctionDefinition *functionDefinition,
                                   int *labelCount) {
+  const char *functionName = string_to_char(functionDefinition->name);
+
   //ラベルを生成
   // macは先頭に_を挿入するらしい
-  printf("%s:\n", string_to_char(functionDefinition->name));
+  printf("%s:\n", functionName);
 
   //プロローグ
   //変数26個分の領域を確保
+  insert_comment("function prologue start : %s\n", functionName);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
+  insert_comment("function prologue end : %s\n", functionName);
 
   //引数の代入処理
-  for (int i = 0; i < vector_length(functionDefinition->arguments); i++) {
+  insert_comment("function arguments assign start : %s\n", functionName);
+  for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
-
     generate_local_variable(node);
     printf("  pop rax\n");
-    printf("  mov [rax], %s\n", argumentRegister[i]);
-  }
 
+    if (i < 6) {
+      printf("  mov [rax], %s\n", argumentRegister[i]);
+    } else {
+      printf("  mov rbx, [rbp+%d]\n", (i - 4) * 8);
+      printf("  mov [rax], rbx\n");
+    }
+  }
+  insert_comment("function arguments assign end : %s\n", functionName);
+
+  insert_comment("function arguments body start : %s\n", functionName);
   ListNode *statementList = functionDefinition->body->statementHead;
   while (statementList) {
     //抽象構文木を降りながらコード生成
@@ -267,12 +293,15 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
     //スタック溢れ対策も兼ねている
     printf("  pop rax\n");
   }
+  insert_comment("function arguments body end : %s\n", functionName);
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
+  insert_comment("function arguments epilogue start : %s\n", functionName);
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");
+  insert_comment("function arguments epilogue end : %s\n", functionName);
 }
 
 //抽象構文木をもとにコード生成を行う

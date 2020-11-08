@@ -261,7 +261,7 @@ Node *add(VariableContainer *variableContainer);
 Node *multiply(VariableContainer *variableContainer);
 Node *unary(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
-ListNode *function_call_argument(VariableContainer *variableContainer);
+Vector *function_call_argument(VariableContainer *variableContainer);
 
 // program              = statement*
 // function_definition  = identity "(" function_definition_argument? ")"
@@ -620,7 +620,9 @@ Node *primary(VariableContainer *variableContainer) {
   if (identifier) {
     if (consume("(")) {
       Node *function = new_node_function_call(identifier);
-      if (!consume(")")) {
+      if (consume(")")) {
+        function->functionCall->arguments = new_vector(0);
+      } else {
         function->functionCall->arguments =
             function_call_argument(variableContainer);
         expect(")");
@@ -635,18 +637,13 @@ Node *primary(VariableContainer *variableContainer) {
   return new_node_num(expect_number());
 }
 
-ListNode *function_call_argument(VariableContainer *variableContainer) {
-  ListNode head;
-  ListNode *list = &head;
-
-  list = list_push_back(list, expression(variableContainer));
-
-  for (;;) {
-    if (consume(","))
-      list = list_push_back(list, expression(variableContainer));
-    else
-      return head.next;
-  }
+// Node Vector
+Vector *function_call_argument(VariableContainer *variableContainer) {
+  Vector *arguments = new_vector(32);
+  do {
+    vector_push_back(arguments, expression(variableContainer));
+  } while (consume(","));
+  return arguments;
 }
 
 ListNode *parse(Token *head) {

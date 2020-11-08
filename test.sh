@@ -16,6 +16,23 @@ assert() {
     fi
 }
 
+assert_with_funccall() {
+    expected="$1"
+    input="$2"
+
+    ./9cc "$input" > tmp.s
+    cc -o tmp tmp.s funccalltest.o
+    ./tmp
+    actual="$?"
+
+    if [ "$actual" = "$expected" ]; then
+        echo "$input => $actual"
+    else
+        echo "$input => $expected expected, but got $actual"
+        exit 1
+    fi
+}
+
 execute_func_test() {
     expected="$1"
     input="$2"
@@ -57,14 +74,24 @@ assert 15 "main(){while(0)return 0; return 15;}"
 assert 15 "main(){a = 10;while(a > 0)a = a - 1; return 15;}"
 assert 10 "main(){b = 0;for(a = 0;a < 10;a = a + 1)b = b + 1; return b;}"
 assert 20 "main(){b = 0;c = 0;for(a = 0;a < 10;a = a + 1){b = b + 1;c = c + 2;} return c;}"
+assert_with_funccall 0 "main(){ return foo();}"
+assert_with_funccall 13 "main(){ return foo1(13);}"
+assert_with_funccall 25 "main(){ return foo2(13,12);}"
+assert_with_funccall 36 "main(){ return foo3(13,12,11);}"
+assert_with_funccall 70 "main(){ return foo7(13,12,11,10,9,8,7);}"
+assert_with_funccall 76 "main(){ return foo8(13,12,11,10,9,8,7,6);}"
+assert_with_funccall 81 "main(){ return foo9(13,12,11,10,9,8,7,6,5);}"
+assert_with_funccall 85 "main(){ return foo10(13,12,11,10,9,8,7,6,5,4);}"
 assert 1 "test(a){ return a; } main(){ return test(1); }"
 assert 3 "test(a,b){ return a + b; } main(){ return test(1, 2); }"
 assert 6 "test(a,b,c){ return a + b + c; } main(){ return test(1, 2, 3); }"
-
-execute_func_test 0 "main(){foo();}"
-execute_func_test 13 "main(){foo1(13);}"
-execute_func_test 25 "main(){foo2(13,12);}"
-execute_func_test 36 "main(){foo3(13,12,11);}"
+assert 10 "test(a,b,c,d){ return a + b + c + d; } main(){ return test(1, 2, 3, 4); }"
+assert 15 "test(a,b,c,d,e){ return a + b + c + d + e; } main(){ return test(1, 2, 3, 4, 5); }"
+assert 21 "test(a,b,c,d,e,f){ return a + b + c + d + e + f; } main(){ return test(1, 2, 3, 4, 5, 6); }"
+assert 28 "test(a,b,c,d,e,f,g){ return a + b + c + d + e + f + g; } main(){ return test(1, 2, 3, 4, 5, 6, 7); }"
+assert 36 "test(a,b,c,d,e,f,g,h){ return a + b + c + d + e + f + g + h; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8); }"
+assert 45 "test(a,b,c,d,e,f,g,h,i){ return a + b + c + d + e + f + g + h + i; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9); }"
+assert 55 "test(a,b,c,d,e,f,g,h,i,j){ return a + b + c + d + e + f + g + h + i + j; } main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
 
 echo OK
 
