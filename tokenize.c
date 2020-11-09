@@ -14,7 +14,7 @@ void error_at(char *location, char *fmt, ...) {
 
   int position = location - user_input;
   fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%*s\n", position, "");
+  fprintf(stderr, "%*s", position, " ");
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
