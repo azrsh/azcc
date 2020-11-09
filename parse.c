@@ -14,7 +14,7 @@ bool at_eof() { return token->kind == TOKEN_EOF; }
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
-bool consume(char *op) {
+bool consume(const char *op) {
   if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
       memcmp(token->string, op, token->length))
     return false;
@@ -29,6 +29,15 @@ Token *consume_identifier() {
     return NULL;
   Token *current = token;
   token = token->next;
+  return current;
+}
+
+//次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合には偽を返す
+Token *consume_type() {
+  Token *current = token;
+  if (!consume("int"))
+    return NULL;
   return current;
 }
 
@@ -52,13 +61,28 @@ int expect_number() {
 }
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
-//それ以外の場合には偽を返す
+//それ以外の場合にはエラーを報告する
 Token *expect_identifier() {
   if (token->kind != TOKEN_IDENTIFIER)
     error_at(token->string, "識別子ではありません");
   Token *current = token;
   token = token->next;
   return current;
+}
+
+//次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合にはエラーを報告する
+Token *expect_type() {
+  const char *types[] = {"int"};
+  for (int i = 0; i < 1; i++) {
+    Token *current = token;
+    if (!consume(types[i]))
+      continue;
+    return current;
+  }
+
+  error_at(token->string, "組み込み型ではありません");
+  return NULL;
 }
 
 LocalVariable *new_local_variable(String name, VariableContainer *container) {
@@ -92,18 +116,33 @@ Node *new_node_num(int val) {
   return node;
 }
 
+//抽象構文木のローカル変数定義のノードを新しく生成する
+Node *new_node_variable_definition(Token *identifier,
+                                   VariableContainer *variableContainer) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = NODE_LVAR;
+
+  String variableName = new_string(identifier->string, identifier->length);
+  LocalVariable *localVariable =
+      new_local_variable(variableName, variableContainer);
+  if (!variable_container_push(variableContainer, localVariable))
+    error_at(token->string, "同名の変数が既に定義されています");
+
+  node->offset = localVariable->offset;
+  return node;
+}
+
 //抽象構文木のローカル変数のノードを新しく生成する
 Node *new_node_lvar(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_LVAR;
 
-  LocalVariable *localVariable = variable_container_get(
-      container, new_string(token->string, token->length));
-  if (localVariable == NULL) {
-    String variableName = new_string(token->string, token->length);
-    localVariable = new_local_variable(variableName, container);
-    if (!variable_container_push(container, localVariable))
-      error_at(token->string, "同名の変数が既に定義されています");
+  String variableName = new_string(token->string, token->length);
+  LocalVariable *localVariable =
+      variable_container_get(container, variableName);
+  if (!localVariable) {
+    error_at(token->string, "変数%sは定義されていません",
+             string_to_char(variableName));
   }
 
   node->offset = localVariable->offset;
@@ -254,6 +293,7 @@ ForStatement *for_statement(VariableContainer *variableContainer);
 CompoundStatement *compound_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
+Node *variable_definition(VariableContainer *variableContainer);
 Node *assign(VariableContainer *variableContainer);
 Node *equality(VariableContainer *variableContainer);
 Node *relational(VariableContainer *variableContainer);
@@ -263,28 +303,29 @@ Node *unary(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
 
-// program              = statement*
-// function_definition  = identity "(" function_definition_argument? ")"
+// program = function_definition*
+// function_definition = type identity "(" function_definition_argument? ")"
 // compound_statement
-// function_definition_argument = identity ("," identity)*
-// statement            = expression_statement | return_statement | if_statement
-// | while_statement
-// expression_statement = " expression ";"
-// return_statement     = "return" expression ";"
-// if_statement         = "if" "(" expression ")" statement ("else" statement)?
-// while_statement      = "while" "(" expression ")" statement
-// for_statement        = "for" "(" expression ";" expression ";" expression ")"
+// function_definition_argument = type identity ("," type identity)*
+// statement = expression_statement | return_statement | if_statement |
+// while_statement
+// expression_statement = " expression ";" return_statement =
+// "return" expression ";" if_statement = "if" "(" expression ")" statement
+// ("else" statement)? while_statement = "while" "(" expression ")" statement
+// for_statement = "for" "(" expression ";" expression ";" expression ")"
 // statement
-// compound_statement   = "{" statement* "}"
+// compound_statement = "{" statement* "}"
 
-// expression           = assign
-// assign               = equality ("=" assign)?
-// equality             = relational ("==" relational | "!=" relational)*
-// relational           = add ("<" add | "<=" add | ">" add | ">=" add)*
-// add                  = mul ("+" mul | "-" mul)*
-// mul                  = unary ("*" unary | "/" unary)*
-// unary                = ("+" | "-" | "&" | "*")? primary
-// primary              = number | identity ("(" function_call_argument? ")")? |
+// expression = assign | variable_definition
+// variable_definition = type identity
+// type = "int"
+// assign = equality ("=" assign)?
+// equality = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add = mul ("+" mul | "-" mul)*
+// mul = unary ("*" unary | "/" unary)*
+// unary = ("+" | "-" | "&" | "*")? primary
+// primary = number | identity ("(" function_call_argument? ")")? |
 // "("expression")"
 // function_call_argument = expression ("," expression)*
 
@@ -297,6 +338,7 @@ ListNode *program() {
   currentOffset = 0;
 
   ListNode head;
+  head.next = NULL;
   ListNode *current = &head;
 
   while (!at_eof()) {
@@ -312,6 +354,11 @@ ListNode *program() {
 
 //関数の定義をパースする
 FunctionDefinition *function_definition(VariableContainer *variableContainer) {
+  Token *type = consume_type();
+  if (!type) {
+    return NULL;
+  }
+
   Token *identifier = consume_identifier();
   if (!identifier) {
     return NULL;
@@ -345,6 +392,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
 
   //ブロック内の文をパ-ス
   ListNode head;
+  head.next = NULL;
   ListNode *node = &head;
   while (!consume("}")) {
     node = list_push_back(node, statement(mergedContainer));
@@ -364,8 +412,9 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(32);
 
   do {
+    Token *type = expect_type();
     Token *identifier = expect_identifier();
-    Node *node = new_node_lvar(identifier, variableContainer);
+    Node *node = new_node_variable_definition(identifier, variableContainer);
     vector_push_back(arguments, node);
   } while (consume(","));
   return arguments;
@@ -512,6 +561,7 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
 
   //ブロック内の文をパ-ス
   ListNode head;
+  head.next = NULL;
   ListNode *node = &head;
   while (!consume("}")) {
     node = list_push_back(node, statement(mergedContainer));
@@ -523,7 +573,28 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
 
 //式をパースする
 Node *expression(VariableContainer *variableContainer) {
+  Node *node = variable_definition(variableContainer);
+  if (node)
+    return node;
+
   return assign(variableContainer);
+}
+
+// 変数定義をパースする
+Node *variable_definition(VariableContainer *variableContainer) {
+  Token *current = token;
+  Token *type = consume_type();
+  if (!type) {
+    return NULL;
+  }
+
+  Token *identifier = consume_identifier();
+  if (!identifier) {
+    token = current;
+    return NULL;
+  }
+
+  return new_node_variable_definition(identifier, variableContainer);
 }
 
 //式をパースする
