@@ -40,7 +40,6 @@ Token *new_token(TokenKind kind, Token *current, char *string, int length) {
   return token;
 }
 
-bool start_with(char *p, char *q) { return memcmp(p, q, strlen(q)) == 0; }
 bool is_identifier_initial(char p) { return isalpha(p) || p == '_'; }
 bool is_identifier(char p) { return is_identifier_initial(p) || isdigit(p); }
 int is_reserved(char *p, char *reserved) {

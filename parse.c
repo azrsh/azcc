@@ -35,10 +35,18 @@ Token *consume_identifier() {
 //次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合には偽を返す
 Token *consume_type() {
-  Token *current = token;
-  if (!consume("int"))
-    return NULL;
-  return current;
+  const char *types[] = {"int"};
+  for (int i = 0; i < 1; i++) {
+    Token *current = token;
+    if (!consume(types[i]))
+      continue;
+
+    while (consume("*"))
+      ;
+    return current;
+  }
+
+  return NULL;
 }
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
@@ -73,20 +81,18 @@ Token *expect_identifier() {
 //次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはエラーを報告する
 Token *expect_type() {
-  const char *types[] = {"int"};
-  for (int i = 0; i < 1; i++) {
-    Token *current = token;
-    if (!consume(types[i]))
-      continue;
-    return current;
+  Token *type = consume_type();
+  if (!type) {
+    error_at(token->string, "組み込み型ではありません");
   }
 
-  error_at(token->string, "組み込み型ではありません");
-  return NULL;
+  return type;
 }
 
-LocalVariable *new_local_variable(String name, VariableContainer *container) {
+LocalVariable *new_local_variable(Type *type, String name,
+                                  VariableContainer *container) {
   LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
+  localVariable->type = type;
   localVariable->name = name;
   currentOffset += 8;
   localVariable->offset = currentOffset;
@@ -97,6 +103,34 @@ FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   functionCall->name = new_string(token->string, token->length);
   return functionCall;
+}
+
+TypeKind map_token_to_kind(Token *token) {
+  if (token->kind != TOKEN_RESERVED)
+    error_at(token->string, "組み込み型ではありません");
+
+  if (start_with(token->string, "int"))
+    return INT;
+
+  error_at(token->string, "組み込み型ではありません");
+  return 0;
+}
+
+Type *new_type(Token *type) {
+  Type *base = calloc(1, sizeof(Type));
+  base->kind = map_token_to_kind(type);
+  base->pointerTo = NULL;
+
+  Type *current = base;
+  while (type->next && memcmp(type->next->string, "*", type->next->length)) {
+    Type *pointer = calloc(1, sizeof(Type));
+    pointer->kind = PTR;
+    pointer->pointerTo = current;
+    current = pointer;
+
+    type = type->next;
+  }
+  return current;
 }
 
 //抽象構文木の数値以外のノードを新しく生成する
@@ -117,17 +151,19 @@ Node *new_node_num(int val) {
 }
 
 //抽象構文木のローカル変数定義のノードを新しく生成する
-Node *new_node_variable_definition(Token *identifier,
+Node *new_node_variable_definition(Token *type, Token *identifier,
                                    VariableContainer *variableContainer) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_LVAR;
 
+  Type *variableType = new_type(type);
   String variableName = new_string(identifier->string, identifier->length);
   LocalVariable *localVariable =
-      new_local_variable(variableName, variableContainer);
+      new_local_variable(variableType, variableName, variableContainer);
   if (!variable_container_push(variableContainer, localVariable))
     error_at(token->string, "同名の変数が既に定義されています");
 
+  node->type = localVariable->type;
   node->offset = localVariable->offset;
   return node;
 }
@@ -318,7 +354,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 
 // expression = assign | variable_definition
 // variable_definition = type identity
-// type = "int"
+// type = "int" "*"*
 // assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -414,7 +450,8 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   do {
     Token *type = expect_type();
     Token *identifier = expect_identifier();
-    Node *node = new_node_variable_definition(identifier, variableContainer);
+    Node *node =
+        new_node_variable_definition(type, identifier, variableContainer);
     vector_push_back(arguments, node);
   } while (consume(","));
   return arguments;
@@ -594,7 +631,7 @@ Node *variable_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  return new_node_variable_definition(identifier, variableContainer);
+  return new_node_variable_definition(type, identifier, variableContainer);
 }
 
 //式をパースする

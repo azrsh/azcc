@@ -17,6 +17,7 @@ void insert_comment(char *fmt, ...) {
 
   printf("# ");
   vprintf(fmt, ap);
+  printf("\n");
 
   va_end(ap);
 #endif
@@ -28,11 +29,25 @@ void generate_fuction_call(Node *node, int *labelCount);
 
 void generate_local_variable(Node *node, int *labelCount) {
   if (node->kind != NODE_LVAR)
-    error("代入の左辺値が変数ではありません");
+    error("変数ではありません");
 
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
+}
+
+void generate_assign_lhs(Node *node, int *labelCount) {
+  if (node->kind == NODE_LVAR) {
+    generate_local_variable(node, labelCount);
+    return;
+  }
+
+  if (node->kind == NODE_DEREF) {
+    generate_expression(node->lhs, labelCount);
+    return;
+  }
+
+  error("代入の左辺として予期しないノードが指定されました");
 }
 
 void generate_fuction_call(Node *node, int *labelCount) {
@@ -41,7 +56,7 @@ void generate_fuction_call(Node *node, int *labelCount) {
 
   const char *functionName = string_to_char(node->functionCall->name);
 
-  insert_comment("function call start : %s\n", functionName);
+  insert_comment("function call start : %s", functionName);
 
   Vector *arguments = node->functionCall->arguments;
 
@@ -84,7 +99,7 @@ void generate_fuction_call(Node *node, int *labelCount) {
 
   printf("  push rax\n");
 
-  insert_comment("function call end : %s\n", functionName);
+  insert_comment("function call end : %s", functionName);
 }
 
 void generate_expression(Node *node, int *labelCount) {
@@ -111,13 +126,21 @@ void generate_expression(Node *node, int *labelCount) {
     generate_fuction_call(node, labelCount);
     return;
   case NODE_ASSIGN:
-    generate_local_variable(node->lhs, labelCount);
+    insert_comment("assign start");
+
+    insert_comment("assign lhs start");
+    generate_assign_lhs(node->lhs, labelCount);
+    insert_comment("assign lhs end");
+    insert_comment("assign rhs start");
     generate_expression(node->rhs, labelCount);
+    insert_comment("assign rhs end");
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
+
+    insert_comment("assign end");
     return;
   }
 
@@ -297,14 +320,14 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
 
   //プロローグ
   //変数26個分の領域を確保
-  insert_comment("function prologue start : %s\n", functionName);
+  insert_comment("function prologue start : %s", functionName);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", 26 * 8);
-  insert_comment("function prologue end : %s\n", functionName);
+  insert_comment("function prologue end : %s", functionName);
 
   //引数の代入処理
-  insert_comment("function arguments assign start : %s\n", functionName);
+  insert_comment("function arguments assign start : %s", functionName);
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
     generate_local_variable(node, labelCount);
@@ -317,11 +340,13 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
       printf("  mov [rax], rbx\n");
     }
   }
-  insert_comment("function arguments assign end : %s\n", functionName);
+  insert_comment("function arguments assign end : %s", functionName);
 
-  insert_comment("function body start : %s\n", functionName);
+  insert_comment("function body start : %s", functionName);
   ListNode *statementList = functionDefinition->body->statementHead;
   while (statementList) {
+    insert_comment("statement start");
+
     //抽象構文木を降りながらコード生成
     generate_statement(statementList->body, labelCount);
     statementList = statementList->next;
@@ -329,16 +354,18 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
     //文の評価結果をスタックからポップしてraxに格納
     //スタック溢れ対策も兼ねている
     printf("  pop rax\n");
+
+    insert_comment("statement end");
   }
-  insert_comment("function body end : %s\n", functionName);
+  insert_comment("function body end : %s", functionName);
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
-  insert_comment("function epilogue start : %s\n", functionName);
+  insert_comment("function epilogue start : %s", functionName);
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");
-  insert_comment("function epilogue end : %s\n", functionName);
+  insert_comment("function epilogue end : %s", functionName);
 }
 
 //抽象構文木をもとにコード生成を行う

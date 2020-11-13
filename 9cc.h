@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+bool start_with(char *p, char *q);
+
 //
 //コンテナ
 //
@@ -71,9 +73,17 @@ Token *tokenize(char *p);
 //
 //パーサ
 //
+typedef enum { INT, PTR } TypeKind;
+typedef struct Type Type;
+struct Type {
+  TypeKind kind;
+  Type *pointerTo;
+};
+
 typedef struct LocalVariable LocalVariable;
 struct LocalVariable {
   String name; //名前
+  Type *type;  //名前
   int offset;  // RBPからのオフセット
 };
 
@@ -109,6 +119,7 @@ struct Node {
   Node *rhs;
   int val;                    // kindがNODE_NUMのときのみ使う
   int offset;                 // kindがNODE_LVARのときのみ使う
+  Type *type;                 // kindがNODE_LVARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
 
