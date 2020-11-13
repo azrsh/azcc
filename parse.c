@@ -89,8 +89,7 @@ Token *expect_type() {
   return type;
 }
 
-LocalVariable *new_local_variable(Type *type, String name,
-                                  VariableContainer *container) {
+LocalVariable *new_local_variable(Type *type, String name) {
   LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
   localVariable->type = type;
   localVariable->name = name;
@@ -158,8 +157,7 @@ Node *new_node_variable_definition(Token *type, Token *identifier,
 
   Type *variableType = new_type(type);
   String variableName = new_string(identifier->string, identifier->length);
-  LocalVariable *localVariable =
-      new_local_variable(variableType, variableName, variableContainer);
+  LocalVariable *localVariable = new_local_variable(variableType, variableName);
   if (!variable_container_push(variableContainer, localVariable))
     error_at(token->string, "同名の変数が既に定義されています");
 
