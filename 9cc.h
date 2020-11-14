@@ -78,8 +78,11 @@ typedef struct Type Type;
 struct Type {
   TypeKind kind;
   Type *base;
-  size_t size; // TypeKindがARRAYのときのみ使用する
+  size_t length; // TypeKindがARRAYのときのみ使用する
 };
+
+int type_to_size(Type *type);
+int type_to_stack_size(Type *type);
 
 typedef struct LocalVariable LocalVariable;
 struct LocalVariable {
@@ -189,6 +192,7 @@ struct FunctionDefinition {
   ListNode *variableContainer; // LocalVariable HashTable vector
   Vector *arguments;           // Local Variavble Nodes
   CompoundStatement *body;
+  size_t stackSize;
 };
 
 ListNode *parse(Token *head);

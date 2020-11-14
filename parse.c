@@ -89,12 +89,32 @@ Token *expect_type() {
   return type;
 }
 
+int type_to_size(Type *type) {
+  switch (type->kind) {
+  case INT:
+    return 4;
+  case PTR:
+    return 8;
+  case ARRAY:
+    return type_to_size(type->base) * type->length;
+  }
+
+  error("予期しない型が指定されました");
+  return 0;
+}
+
+int type_to_stack_size(Type *type) {
+  int size = type_to_size(type);
+  size += size % 8;
+  return size;
+}
+
 LocalVariable *new_local_variable(Type *type, String name) {
   LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
   localVariable->type = type;
   localVariable->name = name;
-  currentOffset += 8;
   localVariable->offset = currentOffset;
+  currentOffset += type_to_stack_size(type);
   return localVariable;
 }
 
@@ -142,22 +162,8 @@ Type *new_type_array(Type *base, size_t size) {
   Type *array = calloc(1, sizeof(Type));
   array->kind = ARRAY;
   array->base = base;
-  array->size = size;
+  array->length = size;
   return array;
-}
-
-int type_to_size(Type *type) {
-  switch (type->kind) {
-  case INT:
-    return 4;
-  case PTR:
-    return 8;
-  case ARRAY:
-    return type_to_size(type->base) * type->size;
-  }
-
-  error("予期しない型が指定されました");
-  return 0;
 }
 
 //抽象構文木の末端をパースする
@@ -398,8 +404,6 @@ ListNode *program() {
   ListNode *listHead = new_list_node(globalVariableTable);
   VariableContainer *variableContainer = new_variable_container(listHead);
 
-  currentOffset = 0;
-
   ListNode head;
   head.next = NULL;
   ListNode *current = &head;
@@ -430,6 +434,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   FunctionDefinition *definition = new_function_definition(identifier);
 
   //新しいスコープなので先頭に新しい変数テーブルを追加
+  currentOffset = 8;
   HashTable *localVariableTable = new_hash_table();
   VariableContainer *mergedContainer =
       variable_container_push_table(variableContainer, localVariableTable);
@@ -466,6 +471,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   //
 
   definition->body = body;
+  definition->stackSize = currentOffset;
 
   return definition;
 }

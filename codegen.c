@@ -153,21 +153,10 @@ void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_ADD:
     insert_comment("start add node");
-    //int+int、pointer+intのみを許可する
-    if (node->lhs->kind == NODE_LVAR && node->lhs->type->kind == PTR) {
+    // int+int、pointer+intのみを許可する
+    if (node->lhs->type->kind == PTR) {
       Type *pointerTo = node->lhs->type->base;
-      int typeSize = 1;
-      switch (pointerTo->kind) {
-      case PTR:
-        typeSize = 8;
-        break;
-      case INT:
-        typeSize = 4;
-        break;
-      default:
-        error("足し算の左辺に予期しないノードが指定されました");
-      }
-      printf("  imul rdi, %d\n", typeSize);
+      printf("  imul rdi, %d\n", type_to_size(pointerTo));
     }
 
     printf("  add rax, rdi\n");
@@ -175,22 +164,10 @@ void generate_expression(Node *node, int *labelCount) {
     break;
   case NODE_SUB:
     insert_comment("start sub node");
-    //int-int、pointer-intのみを許可する
-    if (node->lhs->kind == NODE_LVAR && node->lhs->type->kind == PTR) {
+    // int-int、pointer-intのみを許可する
+    if (node->lhs->type->kind == PTR) {
       Type *pointerTo = node->lhs->type->base;
-      int typeSize = 1;
-      switch (pointerTo->kind) {
-      case PTR:
-        typeSize = 8;
-        break;
-      case INT:
-        typeSize = 4;
-        break;
-      default:
-        error("引き算の左辺に予期しないノードが指定されました");
-      }
-
-      printf("  imul rdi, %d\n", typeSize);
+      printf("  imul rdi, %d\n", type_to_size(pointerTo));
     }
 
     printf("  sub rax, rdi\n");
@@ -361,11 +338,12 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   insert_comment("function prologue start : %s", functionName);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %d\n", 26 * 8);
+  printf("  sub rsp, %zu\n", functionDefinition->stackSize);
   insert_comment("function prologue end : %s", functionName);
 
   //引数の代入処理
   insert_comment("function arguments assign start : %s", functionName);
+  int argumentStackOffset = 0;
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
     generate_local_variable(node, labelCount);
@@ -374,7 +352,8 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
     if (i < 6) {
       printf("  mov [rax], %s\n", argumentRegister[i]);
     } else {
-      printf("  mov rbx, [rbp+%d]\n", (i - 4) * 8);
+      printf("  mov rbx, [rbp+%d]\n", 16 + argumentStackOffset);
+      argumentStackOffset += type_to_stack_size(node->type);
       printf("  mov [rax], rbx\n");
     }
   }
