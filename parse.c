@@ -133,6 +133,16 @@ Type *new_type(Token *type) {
   return current;
 }
 
+int type_to_size(Type *type) {
+  switch (type->kind) {
+  case INT:
+    return 4;
+  case PTR:
+    return 8;
+  }
+}
+
+//抽象構文木の末端をパースする
 //抽象構文木の数値以外のノードを新しく生成する
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = calloc(1, sizeof(Node));
@@ -362,7 +372,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "&" | "*")? primary
 // primary = number | identity ("(" function_call_argument? ")")? |
-// "("expression")"
+// "("expression")" | "sizeof" "(" (expression | type) ")"
 // function_call_argument = expression ("," expression)*
 
 //プログラムをパースする
@@ -719,12 +729,29 @@ Node *unary(VariableContainer *variableContainer) {
   return primary(variableContainer);
 }
 
-//抽象構文木の末端をパースする
 Node *primary(VariableContainer *variableContainer) {
   //次のトークンが(なら入れ子になった式
   if (consume("(")) {
     Node *node = expression(variableContainer);
     expect(")");
+    return node;
+  }
+
+  if (consume("sizeof")) {
+    expect("(");
+    Token *typeToken = consume_type();
+
+    int size;
+    if (typeToken) {
+      size = type_to_size(new_type(typeToken));
+    } else {
+      // expression(variableContainer);
+      error("式に対するsizeof演算は未実装です");
+    }
+
+    expect(")");
+    Node *node = new_node(NODE_NUM, NULL, NULL);
+    node->val = size;
     return node;
   }
 

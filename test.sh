@@ -101,6 +101,8 @@ assert_with_funccall 1 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = 
 assert_with_funccall 2 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 1; return *q; }"
 assert_with_funccall 4 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 2; return *q; }"
 assert_with_funccall 8 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 3; return *q; }"
+assert 4 "int main(){ return sizeof(int);}"
+assert 8 "int main(){ return sizeof(int*);}"
 
 echo OK
 
