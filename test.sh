@@ -21,7 +21,7 @@ assert_with_funccall() {
     input="$2"
 
     ./9cc "$input" > tmp.s
-    cc -o tmp tmp.s funccalltest.o
+    cc -o tmp tmp.s funccalltest.o alloctesthelper.o
     ./tmp
     actual="$?"
 
@@ -92,9 +92,15 @@ assert 28 "int test(int a, int b, int c, int d, int e, int f, int g){ return a +
 assert 36 "int test(int a, int b, int c, int d, int e, int f, int g, int h){ return a + b + c + d + e + f + g + h; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8); }"
 assert 45 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int i){ return a + b + c + d + e + f + g + h + i; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9); }"
 assert 55 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j){ return a + b + c + d + e + f + g + h + i + j; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
+assert 6 "int test(int a){ return a; } int main(){ return test(1) + test(2) + test(3); }"
+# assert 110 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j){ return a + b + c + d + e + f + g + h + i + j; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
 assert 1 "int main(){int a; int b; a = 1;b = &a; return *b;}"
 assert 2 "int main(){int a; int b; a = 2;b = &a; return *b;}"
 assert 3 "int main(){int x; int *y; y = &x; *y = 3; return x;}"
+assert_with_funccall 1 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 0; return *q; }"
+assert_with_funccall 2 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 1; return *q; }"
+assert_with_funccall 4 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 2; return *q; }"
+assert_with_funccall 8 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 3; return *q; }"
 
 echo OK
 

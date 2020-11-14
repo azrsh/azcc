@@ -121,7 +121,8 @@ Type *new_type(Token *type) {
   base->pointerTo = NULL;
 
   Type *current = base;
-  while (type->next && memcmp(type->next->string, "*", type->next->length)) {
+  while (type->next && strlen("*") == token->length &&
+         memcmp(type->next->string, "*", 1) == 0) {
     Type *pointer = calloc(1, sizeof(Type));
     pointer->kind = PTR;
     pointer->pointerTo = current;
@@ -179,6 +180,7 @@ Node *new_node_lvar(Token *token, VariableContainer *container) {
              string_to_char(variableName));
   }
 
+  node->type = localVariable->type;
   node->offset = localVariable->offset;
   return node;
 }

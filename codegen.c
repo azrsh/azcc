@@ -152,7 +152,27 @@ void generate_expression(Node *node, int *labelCount) {
 
   switch (node->kind) {
   case NODE_ADD:
+    insert_comment("start add node");
+    int typeSize = 1;
+    if (node->lhs->kind == NODE_LVAR && node->lhs->type->kind == PTR) {
+      Type *pointerTo = node->lhs->type->pointerTo;
+      switch (pointerTo->kind) {
+      case PTR:
+        typeSize = 8;
+        insert_comment("recieved %s", "pointer");
+        break;
+      case INT:
+        typeSize = 4;
+        insert_comment("recieved %s", "int");
+        break;
+      default:
+        error("足し算の左辺に予期しないノードが指定されました");
+      }
+    }
+
+    printf("  imul rdi, %d\n", typeSize);
     printf("  add rax, rdi\n");
+    insert_comment("end add node");
     break;
   case NODE_SUB:
     printf("  sub rax, rdi\n");
