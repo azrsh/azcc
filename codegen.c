@@ -66,7 +66,7 @@ void generate_fuction_call(Node *node, int *labelCount) {
     const int stackUnitLength = 8;
     const int alignmentLength = stackUnitLength * 2;
     printf("  mov rax, rsp\n");
-    printf("  sub rax, %d\n", (vector_length(arguments) - 6) * 8);
+    printf("  sub rax, %d\n", (vector_length(arguments) - 6) * stackUnitLength);
     printf("  and rax, %d\n", alignmentLength - 1);
     printf("  jz .Lcall%d\n", *labelCount);
     printf("  sub rsp, %d\n", stackUnitLength);
