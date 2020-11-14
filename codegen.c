@@ -155,7 +155,7 @@ void generate_expression(Node *node, int *labelCount) {
     insert_comment("start add node");
     //int+int、pointer+intのみを許可する
     if (node->lhs->kind == NODE_LVAR && node->lhs->type->kind == PTR) {
-      Type *pointerTo = node->lhs->type->pointerTo;
+      Type *pointerTo = node->lhs->type->base;
       int typeSize = 1;
       switch (pointerTo->kind) {
       case PTR:
@@ -177,7 +177,7 @@ void generate_expression(Node *node, int *labelCount) {
     insert_comment("start sub node");
     //int-int、pointer-intのみを許可する
     if (node->lhs->kind == NODE_LVAR && node->lhs->type->kind == PTR) {
-      Type *pointerTo = node->lhs->type->pointerTo;
+      Type *pointerTo = node->lhs->type->base;
       int typeSize = 1;
       switch (pointerTo->kind) {
       case PTR:

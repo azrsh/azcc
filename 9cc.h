@@ -73,11 +73,12 @@ Token *tokenize(char *p);
 //
 //パーサ
 //
-typedef enum { INT, PTR } TypeKind;
+typedef enum { INT, PTR, ARRAY } TypeKind;
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
-  Type *pointerTo;
+  Type *base;
+  size_t size; // TypeKindがARRAYのときのみ使用する
 };
 
 typedef struct LocalVariable LocalVariable;

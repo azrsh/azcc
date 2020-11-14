@@ -107,6 +107,7 @@ assert_with_funccall 4 "int main(){ int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; p
 assert_with_funccall 8 "int main(){ int *p; alloc4(&p, 1, 2, 4, 8); p = p + 3; p = p - 0; return *p; }"
 assert 4 "int main(){ return sizeof(int);}"
 assert 8 "int main(){ return sizeof(int*);}"
+assert 0 "int main(){ int a[128]; return 0; }"
 
 echo OK
 

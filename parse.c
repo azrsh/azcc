@@ -118,19 +118,27 @@ TypeKind map_token_to_kind(Token *token) {
 Type *new_type(Token *type) {
   Type *base = calloc(1, sizeof(Type));
   base->kind = map_token_to_kind(type);
-  base->pointerTo = NULL;
+  base->base = NULL;
 
   Type *current = base;
   while (type->next && strlen("*") == token->length &&
          memcmp(type->next->string, "*", 1) == 0) {
     Type *pointer = calloc(1, sizeof(Type));
     pointer->kind = PTR;
-    pointer->pointerTo = current;
+    pointer->base = current;
     current = pointer;
 
     type = type->next;
   }
   return current;
+}
+
+Type *new_type_array(Type *base, size_t size) {
+  Type *array = calloc(1, sizeof(Type));
+  array->kind = ARRAY;
+  array->base = base;
+  array->size = size;
+  return array;
 }
 
 int type_to_size(Type *type) {
@@ -161,14 +169,13 @@ Node *new_node_num(int val) {
 }
 
 //抽象構文木のローカル変数定義のノードを新しく生成する
-Node *new_node_variable_definition(Token *type, Token *identifier,
+Node *new_node_variable_definition(Type *type, Token *identifier,
                                    VariableContainer *variableContainer) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_LVAR;
 
-  Type *variableType = new_type(type);
   String variableName = new_string(identifier->string, identifier->length);
-  LocalVariable *localVariable = new_local_variable(variableType, variableName);
+  LocalVariable *localVariable = new_local_variable(type, variableName);
   if (!variable_container_push(variableContainer, localVariable))
     error_at(token->string, "同名の変数が既に定義されています");
 
@@ -458,7 +465,7 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(32);
 
   do {
-    Token *type = expect_type();
+    Type *type = new_type(expect_type());
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
@@ -630,8 +637,8 @@ Node *expression(VariableContainer *variableContainer) {
 // 変数定義をパースする
 Node *variable_definition(VariableContainer *variableContainer) {
   Token *current = token;
-  Token *type = consume_type();
-  if (!type) {
+  Token *typeToken = consume_type();
+  if (!typeToken) {
     return NULL;
   }
 
@@ -639,6 +646,13 @@ Node *variable_definition(VariableContainer *variableContainer) {
   if (!identifier) {
     token = current;
     return NULL;
+  }
+
+  Type *type = new_type(typeToken);
+  while (consume("[")) {
+    int size = expect_number();
+    type = new_type_array(type, size);
+    expect("]");
   }
 
   return new_node_variable_definition(type, identifier, variableContainer);
