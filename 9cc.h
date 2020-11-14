@@ -90,6 +90,7 @@ struct LocalVariable {
 
 typedef struct FunctionCall FunctionCall;
 struct FunctionCall {
+  Type *type;        //戻り値の型
   String name;       //名前
   Vector *arguments; //引数の連結リスト, Node
 };
@@ -191,6 +192,11 @@ struct FunctionDefinition {
 };
 
 ListNode *parse(Token *head);
+
+//
+//型検査器
+//
+void tag_type_to_node(Node *node);
 
 //
 //コードジェネレータ

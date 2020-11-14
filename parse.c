@@ -101,6 +101,11 @@ LocalVariable *new_local_variable(Type *type, String name) {
 FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   functionCall->name = new_string(token->string, token->length);
+
+  //関数呼び出しの戻り値は常にintであるト仮定する
+  functionCall->type = calloc(1, sizeof(FunctionCall));
+  functionCall->type->kind = INT;
+
   return functionCall;
 }
 
@@ -115,7 +120,7 @@ TypeKind map_token_to_kind(Token *token) {
   return 0;
 }
 
-Type *new_type(Token *type) {
+Type *new_type_from_token(Token *type) {
   Type *base = calloc(1, sizeof(Type));
   base->kind = map_token_to_kind(type);
   base->base = NULL;
@@ -470,7 +475,7 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(32);
 
   do {
-    Type *type = new_type(expect_type());
+    Type *type = new_type_from_token(expect_type());
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
@@ -633,10 +638,14 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
 //式をパースする
 Node *expression(VariableContainer *variableContainer) {
   Node *node = variable_definition(variableContainer);
-  if (node)
+  if (node) {
+    tag_type_to_node(node);
     return node;
+  }
 
-  return assign(variableContainer);
+  node = assign(variableContainer);
+  tag_type_to_node(node);
+  return node;
 }
 
 // 変数定義をパースする
@@ -653,7 +662,7 @@ Node *variable_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  Type *type = new_type(typeToken);
+  Type *type = new_type_from_token(typeToken);
   while (consume("[")) {
     int size = expect_number();
     type = new_type_array(type, size);
@@ -762,7 +771,7 @@ Node *primary(VariableContainer *variableContainer) {
 
     Type *type;
     if (typeToken) {
-      type = new_type(typeToken);
+      type = new_type_from_token(typeToken);
     } else {
       //識別子に対するsizeofのみを特別に許可する
       Token *identifier = consume_identifier();
