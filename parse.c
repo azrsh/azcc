@@ -147,7 +147,12 @@ int type_to_size(Type *type) {
     return 4;
   case PTR:
     return 8;
+  case ARRAY:
+    return type_to_size(type->base) * type->size;
   }
+
+  error("予期しない型が指定されました");
+  return 0;
 }
 
 //抽象構文木の末端をパースする
@@ -755,17 +760,23 @@ Node *primary(VariableContainer *variableContainer) {
     expect("(");
     Token *typeToken = consume_type();
 
-    int size;
+    Type *type;
     if (typeToken) {
-      size = type_to_size(new_type(typeToken));
+      type = new_type(typeToken);
     } else {
-      // expression(variableContainer);
-      error("式に対するsizeof演算は未実装です");
+      //識別子に対するsizeofのみを特別に許可する
+      Token *identifier = consume_identifier();
+      if (identifier) {
+        type = new_node_lvar(identifier, variableContainer)->type;
+      } else {
+        // expression(variableContainer);
+        error("式に対するsizeof演算は未実装です");
+      }
     }
 
     expect(")");
     Node *node = new_node(NODE_NUM, NULL, NULL);
-    node->val = size;
+    node->val = type_to_size(type);
     return node;
   }
 
