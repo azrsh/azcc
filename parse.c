@@ -37,23 +37,6 @@ Token *consume_identifier() {
   return current;
 }
 
-//次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
-//それ以外の場合には偽を返す
-Token *consume_type() {
-  const char *types[] = {"int"};
-  for (int i = 0; i < 1; i++) {
-    Token *current = token;
-    if (!consume(types[i]))
-      continue;
-
-    while (consume("*"))
-      ;
-    return current;
-  }
-
-  return NULL;
-}
-
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
 void expect(char *op) {
@@ -81,17 +64,6 @@ Token *expect_identifier() {
   Token *current = token;
   token = token->next;
   return current;
-}
-
-//次のトークンが組み込み型のときには、トークンを1つ読み進めてそのトークンを返す
-//それ以外の場合にはエラーを報告する
-Token *expect_type() {
-  Token *type = consume_type();
-  if (!type) {
-    error_at(token->string, "組み込み型ではありません");
-  }
-
-  return type;
 }
 
 LocalVariable *new_local_variable(Type *type, String name) {
@@ -231,6 +203,7 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
 Node *variable_definition(VariableContainer *variableContainer);
+Type *type_specifier();
 Node *assign(VariableContainer *variableContainer);
 Node *equality(VariableContainer *variableContainer);
 Node *relational(VariableContainer *variableContainer);
@@ -241,21 +214,22 @@ Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
 
 // program = function_definition*
-// function_definition = type identity "(" function_definition_argument? ")"
-// compound_statement
-// function_definition_argument = type identity ("," type identity)*
-// statement = expression_statement | return_statement | if_statement |
-// while_statement
-// expression_statement = " expression ";" return_statement =
-// "return" expression ";" if_statement = "if" "(" expression ")" statement
-// ("else" statement)? while_statement = "while" "(" expression ")" statement
+// function_definition = type_specifier identity "("
+// function_definition_argument? ")" compound_statement
+// function_definition_argument = type_specifier identity ("," type_specifier
+// identity)*
+// statement = expression_statement | return_statement | if_statement
+// | while_statement expression_statement = " expression ";"
+// return_statement = "return" expression ";"
+// if_statement = "if" "(" expression ")" statement ("else" statement)?
+// while_statement = "while" "(" expression ")" statement
 // for_statement = "for" "(" expression ";" expression ";" expression ")"
 // statement
 // compound_statement = "{" statement* "}"
 
 // expression = assign | variable_definition
-// variable_definition = type identity
-// type = "int" "*"*
+// variable_definition = type_specifier identity
+// type_specifier = "int" "*"*
 // assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -264,7 +238,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // unary = ("+" | "-" | "&" | "*")? primary
 // primary = number | identity ("(" function_call_argument? ")" | "[" expression
 // "]")? |
-// "("expression")" | "sizeof" "(" (expression | type) ")"
+// "("expression")" | "sizeof" "(" (expression | type_specifier) ")"
 // function_call_argument = expression ("," expression)*
 
 //プログラムをパースする
@@ -290,7 +264,7 @@ ListNode *program() {
 
 //関数の定義をパースする
 FunctionDefinition *function_definition(VariableContainer *variableContainer) {
-  Token *type = consume_type();
+  Type *type = type_specifier();
   if (!type) {
     return NULL;
   }
@@ -350,10 +324,14 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(32);
 
   do {
-    Type *type = new_type_from_token(expect_type());
+    Type *type = type_specifier();
+    if (!type)
+      error_at(token->string, "型指定子ではありません");
+
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
+
     vector_push_back(arguments, node);
   } while (consume(","));
   return arguments;
@@ -508,8 +486,8 @@ Node *expression(VariableContainer *variableContainer) {
 // 変数定義をパースする
 Node *variable_definition(VariableContainer *variableContainer) {
   Token *current = token;
-  Token *typeToken = consume_type();
-  if (!typeToken) {
+  Type *type = type_specifier();
+  if (!type) {
     return NULL;
   }
 
@@ -519,7 +497,6 @@ Node *variable_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  Type *type = new_type_from_token(typeToken);
   while (consume("[")) {
     int size = expect_number();
     type = new_type_array(type, size);
@@ -529,7 +506,25 @@ Node *variable_definition(VariableContainer *variableContainer) {
   return new_node_variable_definition(type, identifier, variableContainer);
 }
 
-//式をパースする
+//型指定子をパースする
+Type *type_specifier() {
+  const char *types[] = {"int"};
+  Token *current = token;
+
+  for (int i = 0; i < 1; i++) {
+    if (!consume(types[i]))
+      continue;
+
+    while (consume("*"))
+      ;
+
+    return new_type_from_token(current);
+  }
+
+  return NULL;
+}
+
+//代入をパースする
 Node *assign(VariableContainer *variableContainer) {
   Node *node = equality(variableContainer);
 
@@ -625,12 +620,9 @@ Node *primary(VariableContainer *variableContainer) {
   // sizeof演算子
   if (consume("sizeof")) {
     expect("(");
-    Token *typeToken = consume_type();
 
-    Type *type;
-    if (typeToken) {
-      type = new_type_from_token(typeToken);
-    } else {
+    Type *type = type_specifier();
+    if (!type) {
       //識別子に対するsizeofのみを特別に許可する
       Token *identifier = consume_identifier();
       if (identifier) {
