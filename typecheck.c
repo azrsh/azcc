@@ -1,4 +1,5 @@
-#include "9cc.h"
+#include "type.h"
+#include "typecheck.h"
 #include <stdlib.h>
 
 Type *new_type(TypeKind kind) {
@@ -56,14 +57,11 @@ void tag_type_to_node(Node *node) {
     tag_type_to_node(node->lhs);
     tag_type_to_node(node->rhs);
 
-    printf("# %s\n", "region");
     if (type_compare_deep_with_implicit_cast(node->lhs->type,
                                              node->rhs->type)) {
-      printf("# %s\n", "true");
       node->type = node->lhs->type;
       return;
     }
-    printf("# %s\n", "false");
     error("演算子=のオペランド型が不正です");
   }
 

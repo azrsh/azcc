@@ -1,4 +1,9 @@
-#include "9cc.h"
+#include "parse.h"
+#include "tokenize.h"
+#include "type.h"
+#include "typecheck.h"
+#include "util.h"
+#include "variablecontainer.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -87,26 +92,6 @@ Token *expect_type() {
   }
 
   return type;
-}
-
-int type_to_size(Type *type) {
-  switch (type->kind) {
-  case INT:
-    return 4;
-  case PTR:
-    return 8;
-  case ARRAY:
-    return type_to_size(type->base) * type->length;
-  }
-
-  error("予期しない型が指定されました");
-  return 0;
-}
-
-int type_to_stack_size(Type *type) {
-  int size = type_to_size(type);
-  size += size % 8;
-  return size;
 }
 
 LocalVariable *new_local_variable(Type *type, String name) {
@@ -230,123 +215,6 @@ FunctionDefinition *new_function_definition(Token *identifier) {
   FunctionDefinition *definition = calloc(1, sizeof(FunctionDefinition));
   definition->name = new_string(identifier->string, identifier->length);
   return definition;
-}
-
-// Statement Structure
-typedef struct StatementUnion StatementUnion;
-
-typedef enum {
-  STATEMENT_EXPRESSION,
-  STATEMENT_IF,
-  STATEMENT_WHILE,
-  STATEMENT_FOR,
-  STATEMENT_COMPOUND,
-  STATEMENT_RETURN,
-} StatementKind;
-
-struct StatementUnion {
-  StatementKind tag;
-  union {
-    ExpressionStatement *expressionStatement;
-    ReturnStatement *returnStatement;
-    IfStatement *ifStatement;
-    WhileStatement *whileStatement;
-    ForStatement *forStatement;
-    CompoundStatement *compoundStatement;
-  };
-};
-
-ExpressionStatement *
-statement_union_take_expression(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_EXPRESSION)
-    return statementUnion->expressionStatement;
-  return NULL;
-}
-
-ReturnStatement *statement_union_take_return(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_RETURN)
-    return statementUnion->returnStatement;
-  return NULL;
-}
-
-IfStatement *statement_union_take_if(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_IF)
-    return statementUnion->ifStatement;
-  return NULL;
-}
-
-WhileStatement *statement_union_take_while(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_WHILE)
-    return statementUnion->whileStatement;
-  return NULL;
-}
-
-ForStatement *statement_union_take_for(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_FOR)
-    return statementUnion->forStatement;
-  return NULL;
-}
-
-CompoundStatement *
-statement_union_take_compound(StatementUnion *statementUnion) {
-  if (statementUnion->tag == STATEMENT_COMPOUND)
-    return statementUnion->compoundStatement;
-  return NULL;
-}
-
-//
-// VariableContainer
-//
-struct VariableContainer {
-  ListNode *tableHead;
-};
-
-VariableContainer *new_variable_container(ListNode *tableHead) {
-  VariableContainer *container = calloc(1, sizeof(VariableContainer));
-  container->tableHead = tableHead;
-  return container;
-}
-
-LocalVariable *variable_container_get(VariableContainer *container,
-                                      String name) {
-  ListNode *list = container->tableHead;
-  while (list) {
-    LocalVariable *variable = hash_table_find(list->body, name);
-    if (variable)
-      return variable;
-
-    list = list->next;
-  }
-
-  return NULL;
-}
-
-bool variable_container_push(VariableContainer *container,
-                             LocalVariable *variable) {
-  HashTable *localTable = container->tableHead->body;
-  bool isExist = hash_table_contain(localTable, variable->name);
-  if (isExist)
-    return false;
-
-  hash_table_store(localTable, variable->name, variable);
-  return true;
-}
-
-bool variable_container_update(VariableContainer *container,
-                               LocalVariable *variable) {
-  if (variable_container_get(container, variable->name)) {
-    HashTable *localTable = container->tableHead->body;
-    hash_table_store(localTable, variable->name, variable);
-    return true;
-  }
-
-  return false;
-}
-
-VariableContainer *variable_container_push_table(VariableContainer *container,
-                                                 HashTable *table) {
-  ListNode *newHead = list_push_front(container->tableHead, table);
-  return new_variable_container(newHead);
 }
 
 // EBNFパーサ
@@ -495,50 +363,32 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
 StatementUnion *statement(VariableContainer *variableContainer) {
   ReturnStatement *returnPattern = return_statement(variableContainer);
   if (returnPattern) {
-    StatementUnion *result = calloc(1, sizeof(StatementUnion));
-    result->returnStatement = returnPattern;
-    result->tag = STATEMENT_RETURN;
-    return result;
+    return new_statement_union_return(returnPattern);
   }
 
   IfStatement *ifPattern = if_statement(variableContainer);
   if (ifPattern) {
-    StatementUnion *result = calloc(1, sizeof(StatementUnion));
-    result->ifStatement = ifPattern;
-    result->tag = STATEMENT_IF;
-    return result;
+    return new_statement_union_if(ifPattern);
   }
 
   WhileStatement *whilePattern = while_statement(variableContainer);
   if (whilePattern) {
-    StatementUnion *result = calloc(1, sizeof(StatementUnion));
-    result->whileStatement = whilePattern;
-    result->tag = STATEMENT_WHILE;
-    return result;
+    return new_statement_union_while(whilePattern);
   }
 
   ForStatement *forPattern = for_statement(variableContainer);
   if (forPattern) {
-    StatementUnion *result = calloc(1, sizeof(StatementUnion));
-    result->forStatement = forPattern;
-    result->tag = STATEMENT_FOR;
-    return result;
+    return new_statement_union_for(forPattern);
   }
 
   CompoundStatement *compoundPattern = compound_statement(variableContainer);
   if (compoundPattern) {
-    StatementUnion *result = calloc(1, sizeof(StatementUnion));
-    result->compoundStatement = compoundPattern;
-    result->tag = STATEMENT_COMPOUND;
-    return result;
+    return new_statement_union_compound(compoundPattern);
   }
 
   ExpressionStatement *expressionPattern =
       expression_statement(variableContainer);
-  StatementUnion *result = calloc(1, sizeof(StatementUnion));
-  result->expressionStatement = expressionPattern;
-  result->tag = STATEMENT_EXPRESSION;
-  return result;
+  return new_statement_union_expression(expressionPattern);
 }
 
 // 式の文をパースする

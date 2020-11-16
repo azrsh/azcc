@@ -1,4 +1,7 @@
-#include "9cc.h"
+#include "node.h"
+#include "parse.h"
+#include "statement.h"
+#include "util.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>

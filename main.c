@@ -1,10 +1,8 @@
-#include "9cc.h"
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdbool.h>
+#include "codegen.h"
+#include "parse.h"
+#include "tokenize.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 int main(int argc, char **argv) {
   if (argc != 2) {
