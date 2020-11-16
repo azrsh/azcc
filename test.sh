@@ -94,8 +94,8 @@ assert 45 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int 
 assert 55 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j){ return a + b + c + d + e + f + g + h + i + j; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
 assert 6 "int test(int a){ return a; } int main(){ return test(1) + test(2) + test(3); }"
 # assert 110 "int test(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j){ return a + b + c + d + e + f + g + h + i + j; } int main(){ return test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) + test(1, 2, 3, 4, 5, 6, 7, 8, 9, 10); }"
-assert 1 "int main(){int a; int b; a = 1;b = &a; return *b;}"
-assert 2 "int main(){int a; int b; a = 2;b = &a; return *b;}"
+assert 1 "int main(){int a; int *b; a = 1;b = &a; return *b;}"
+assert 2 "int main(){int a; int *b; a = 2;b = &a; return *b;}"
 assert 3 "int main(){int x; int *y; y = &x; *y = 3; return x;}"
 assert_with_funccall 1 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 0; return *q; }"
 assert_with_funccall 2 "int main(){ int *p; int *q; alloc4(&p, 1, 2, 4, 8); q = p + 1; return *q; }"
@@ -117,6 +117,10 @@ assert 4 "int main(){ return sizeof(int);}"
 assert 8 "int main(){ return sizeof(int*);}"
 assert 0 "int main(){ int a[16]; return 0; }"
 assert 64 "int main(){ int a[16]; return sizeof(a); }"
+assert_with_funccall 3 "int main(){ int *a; alloc4(&a, 1, 2, 3, 4); int *p; p = a; return *p + *(p + 1); }"
+# assert 1 "int main(){ int a[2]; *a = 1; return *a; }"
+# assert 2 "int main(){ int a[2]; *(a + 1) = 2; return *(a + 1); }"
+assert 3 "int main(){ int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }"
 
 echo OK
 

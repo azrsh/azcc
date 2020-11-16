@@ -808,7 +808,8 @@ Node *primary(VariableContainer *variableContainer) {
       }
       return function;
     } else {
-      return new_node_lvar(identifier, variableContainer);
+      Node *node = new_node_lvar(identifier, variableContainer);
+      return node;
     }
   }
 

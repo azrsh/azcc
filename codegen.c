@@ -118,9 +118,14 @@ void generate_expression(Node *node, int *labelCount) {
     return;
   case NODE_LVAR:
     generate_local_variable(node, labelCount);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+
+    //配列の暗黙的なキャスト
+    if (node->type->kind != ARRAY) {
+      printf("  pop rax\n");
+      printf("  mov rax, [rax]\n");
+      printf("  push rax\n");
+    }
+
     return;
   case NODE_FUNC:
     generate_fuction_call(node, labelCount);
@@ -153,10 +158,11 @@ void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_ADD:
     insert_comment("start add node");
+
     // int+int、pointer+intのみを許可する
-    if (node->lhs->type->kind == PTR) {
-      Type *pointerTo = node->lhs->type->base;
-      printf("  imul rdi, %d\n", type_to_size(pointerTo));
+    Type *addLhsPointerTo = node->lhs->type->base;
+    if (addLhsPointerTo) {
+      printf("  imul rdi, %d\n", type_to_size(addLhsPointerTo));
     }
 
     printf("  add rax, rdi\n");
@@ -164,10 +170,11 @@ void generate_expression(Node *node, int *labelCount) {
     break;
   case NODE_SUB:
     insert_comment("start sub node");
+
     // int-int、pointer-intのみを許可する
-    if (node->lhs->type->kind == PTR) {
-      Type *pointerTo = node->lhs->type->base;
-      printf("  imul rdi, %d\n", type_to_size(pointerTo));
+    Type *subLhsPointerTo = node->lhs->type->base;
+    if (subLhsPointerTo) {
+      printf("  imul rdi, %d\n", type_to_size(subLhsPointerTo));
     }
 
     printf("  sub rax, rdi\n");
