@@ -394,7 +394,8 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "&" | "*")? primary
-// primary = number | identity ("(" function_call_argument? ")")? |
+// primary = number | identity ("(" function_call_argument? ")" | "[" expression
+// "]")? |
 // "("expression")" | "sizeof" "(" (expression | type) ")"
 // function_call_argument = expression ("," expression)*
 
@@ -771,6 +772,7 @@ Node *primary(VariableContainer *variableContainer) {
     return node;
   }
 
+  // sizeof演算子
   if (consume("sizeof")) {
     expect("(");
     Token *typeToken = consume_type();
@@ -795,6 +797,7 @@ Node *primary(VariableContainer *variableContainer) {
     return node;
   }
 
+  //変数、関数呼び出し、添字付の配列
   Token *identifier = consume_identifier();
   if (identifier) {
     if (consume("(")) {
@@ -807,6 +810,17 @@ Node *primary(VariableContainer *variableContainer) {
         expect(")");
       }
       return function;
+    } else if (consume("[")) {
+      //配列の添字をポインタ演算に置き換え
+      //ポインタ演算の構文木を生成
+      Node *variableNode = new_node_lvar(identifier, variableContainer);
+      Node *addNode =
+          new_node(NODE_ADD, variableNode, expression(variableContainer));
+      Node *result = new_node(NODE_DEREF, addNode, NULL);
+
+      expect("]");
+
+      return result;
     } else {
       Node *node = new_node_lvar(identifier, variableContainer);
       return node;

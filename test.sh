@@ -118,9 +118,10 @@ assert 8 "int main(){ return sizeof(int*);}"
 assert 0 "int main(){ int a[16]; return 0; }"
 assert 64 "int main(){ int a[16]; return sizeof(a); }"
 assert_with_funccall 3 "int main(){ int *a; alloc4(&a, 1, 2, 3, 4); int *p; p = a; return *p + *(p + 1); }"
-# assert 1 "int main(){ int a[2]; *a = 1; return *a; }"
-# assert 2 "int main(){ int a[2]; *(a + 1) = 2; return *(a + 1); }"
+assert 1 "int main(){ int a[2]; *a = 1; return *a; }"
+assert 2 "int main(){ int a[2]; *(a + 1) = 2; return *(a + 1); }"
 assert 3 "int main(){ int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1); }"
+assert 3 "int main(){ int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1]; }"
 
 echo OK
 
