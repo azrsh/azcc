@@ -1,0 +1,72 @@
+codegen.c:  if (node->kind != NODE_LVAR)
+codegen.c:  const Variable *variable = node->variable;
+codegen.c:  if (node->kind == NODE_LVAR) {
+codegen.c:  if (node->kind == NODE_DEREF) {
+codegen.c:    generate_expression(node->lhs, labelCount);
+codegen.c:  if (node->kind != NODE_FUNC)
+codegen.c:  const char *functionName = string_to_char(node->functionCall->name);
+codegen.c:  Vector *arguments = node->functionCall->arguments;
+codegen.c:  switch (node->kind) {
+codegen.c:    printf("  push %d\n", node->val);
+codegen.c:    generate_local_variable(node->lhs, labelCount);
+codegen.c:    generate_expression(node->lhs, labelCount);
+codegen.c:    if (node->type->kind != ARRAY) {
+codegen.c:    generate_assign_lhs(node->lhs, labelCount);
+codegen.c:    generate_expression(node->rhs, labelCount);
+codegen.c:  generate_expression(node->lhs, labelCount);
+codegen.c:  generate_expression(node->rhs, labelCount);
+codegen.c:  switch (node->kind) {
+codegen.c:    Type *addLhsPointerTo = node->lhs->type->base;
+codegen.c:    Type *subLhsPointerTo = node->lhs->type->base;
+codegen.c:        generate_statement(node->body, labelCount);
+codegen.c:        node = node->next;
+codegen.c:      argumentStackOffset += type_to_stack_size(node->type);
+container.c:  node->body = body;
+container.c:  node->next = head;
+container.c:  node->next = table->table[keyhash];
+container.c:  while (node->next) {
+container.c:    node = node->next;
+container.c:    KeyValuePair *pair = node->body;
+container.c:    node = node->next;
+parse.c:  node->kind = kind;
+parse.c:  node->lhs = lhs;
+parse.c:  node->rhs = rhs;
+parse.c:  node->kind = NODE_NUM;
+parse.c:  node->val = val;
+parse.c:  node->kind = NODE_LVAR;
+parse.c:  node->variable = localVariable;
+parse.c:  node->kind = NODE_LVAR;
+parse.c:  node->variable = localVariable;
+parse.c:  node->kind = NODE_FUNC;
+parse.c:  node->functionCall = new_function_call(token);
+parse.c:    node->val = type_to_size(type);
+typecheck.c:  switch (node->kind) {
+typecheck.c:    node->type = new_type(INT);
+typecheck.c:    tag_type_to_node(node->lhs);
+typecheck.c:    node->type = new_type(PTR);
+typecheck.c:    node->type->base = node->lhs->type;
+typecheck.c:    tag_type_to_node(node->lhs);
+typecheck.c:    Type *lhsBase = node->lhs->type->base;
+typecheck.c:    node->type = lhsBase;
+typecheck.c:    node->type = node->variable->type;
+typecheck.c:    node->type = node->functionCall->type;
+typecheck.c:    tag_type_to_node(node->lhs);
+typecheck.c:    tag_type_to_node(node->rhs);
+typecheck.c:    if (type_compare_deep_with_implicit_cast(node->lhs->type,
+typecheck.c:                                             node->rhs->type)) {
+typecheck.c:      node->type = node->lhs->type;
+typecheck.c:  tag_type_to_node(node->lhs);
+typecheck.c:  tag_type_to_node(node->rhs);
+typecheck.c:  Type *lhs = node->lhs->type;
+typecheck.c:  Type *rhs = node->rhs->type;
+typecheck.c:  switch (node->kind) {
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;
+typecheck.c:      node->type = lhs;

@@ -9,12 +9,17 @@
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
   String name;
-  ListNode *variableContainer; // LocalVariable HashTable vector
-  Vector *arguments;           // Local Variavble Nodes
+  Vector *arguments;           // Variavble Nodes
   CompoundStatement *body;
   size_t stackSize;
 };
 
-ListNode *parse(Token *head);
+typedef struct Program Program;
+struct Program {
+  Vector *functions;       // FunctionDefinition vector
+  Vector *globalVariables; // Variable vector
+};
+
+Program *parse(Token *head);
 
 #endif

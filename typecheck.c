@@ -1,5 +1,5 @@
-#include "type.h"
 #include "typecheck.h"
+#include "type.h"
 #include <stdlib.h>
 
 Type *new_type(TypeKind kind) {
@@ -48,7 +48,7 @@ void tag_type_to_node(Node *node) {
     node->type = lhsBase;
     return;
   case NODE_LVAR:
-    //検査済みのため通過
+    node->type = node->variable->type;
     return;
   case NODE_FUNC:
     node->type = node->functionCall->type;

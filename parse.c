@@ -3,6 +3,7 @@
 #include "type.h"
 #include "typecheck.h"
 #include "util.h"
+#include "variable.h"
 #include "variablecontainer.h"
 #include <assert.h>
 #include <ctype.h>
@@ -66,12 +67,21 @@ Token *expect_identifier() {
   return current;
 }
 
-LocalVariable *new_local_variable(Type *type, String name) {
-  LocalVariable *localVariable = calloc(1, sizeof(LocalVariable));
+Variable *new_local_variable(Type *type, String name) {
+  Variable *localVariable = calloc(1, sizeof(Variable));
   localVariable->type = type;
   localVariable->name = name;
+  localVariable->kind = VARIABLE_LOCAL;
   localVariable->offset = currentOffset;
   currentOffset += type_to_stack_size(type);
+  return localVariable;
+}
+
+Variable *new_global_variable(Type *type, String name) {
+  Variable *localVariable = calloc(1, sizeof(Variable));
+  localVariable->type = type;
+  localVariable->name = name;
+  localVariable->kind = VARIABLE_GLOBAL;
   return localVariable;
 }
 
@@ -148,12 +158,12 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
   node->kind = NODE_LVAR;
 
   String variableName = new_string(identifier->string, identifier->length);
-  LocalVariable *localVariable = new_local_variable(type, variableName);
+  Variable *localVariable = new_local_variable(type, variableName);
   if (!variable_container_push(variableContainer, localVariable))
     error_at(token->string, "同名の変数が既に定義されています");
 
-  node->type = localVariable->type;
-  node->offset = localVariable->offset;
+  node->type = type; //本当は消したい
+  node->variable = localVariable;
   return node;
 }
 
@@ -163,15 +173,14 @@ Node *new_node_lvar(Token *token, VariableContainer *container) {
   node->kind = NODE_LVAR;
 
   String variableName = new_string(token->string, token->length);
-  LocalVariable *localVariable =
-      variable_container_get(container, variableName);
+  Variable *localVariable = variable_container_get(container, variableName);
   if (!localVariable) {
     error_at(token->string, "変数%sは定義されていません",
              string_to_char(variableName));
   }
 
-  node->type = localVariable->type;
-  node->offset = localVariable->offset;
+  node->type = localVariable->type; //本当は消したい
+  node->variable = localVariable;
   return node;
 }
 
@@ -190,9 +199,10 @@ FunctionDefinition *new_function_definition(Token *identifier) {
 }
 
 // EBNFパーサ
-ListNode *program();
+Program *program();
 FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
+Variable *global_variable_definition(VariableContainer *variableContainer);
 StatementUnion *statement(VariableContainer *variableContainer);
 ExpressionStatement *expression_statement(VariableContainer *variableContainer);
 ReturnStatement *return_statement(VariableContainer *variableContainer);
@@ -213,11 +223,12 @@ Node *unary(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
 
-// program = function_definition*
+// program = (function_definition | global_variable_definition)*
 // function_definition = type_specifier identity "("
 // function_definition_argument? ")" compound_statement
 // function_definition_argument = type_specifier identity ("," type_specifier
 // identity)*
+// global_variable_definition = variable_definition ";"
 // statement = expression_statement | return_statement | if_statement
 // | while_statement expression_statement = " expression ";"
 // return_statement = "return" expression ";"
@@ -242,28 +253,40 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // function_call_argument = expression ("," expression)*
 
 //プログラムをパースする
-ListNode *program() {
+Program *program() {
   HashTable *globalVariableTable = new_hash_table();
   ListNode *listHead = new_list_node(globalVariableTable);
   VariableContainer *variableContainer = new_variable_container(listHead);
 
-  ListNode head;
-  head.next = NULL;
-  ListNode *current = &head;
+  Program *result = calloc(1, sizeof(Program));
+  result->functions = new_vector(16);
+  result->globalVariables = new_vector(16);
 
   while (!at_eof()) {
-    FunctionDefinition *definition = function_definition(variableContainer);
-    if (!definition)
-      break;
+    FunctionDefinition *functionDefinition =
+        function_definition(variableContainer);
+    if (functionDefinition) {
+      vector_push_back(result->functions, functionDefinition);
+      continue;
+    }
 
-    current = list_push_back(current, definition);
+    Variable *globalVariableDefinition =
+        global_variable_definition(variableContainer);
+    if (globalVariableDefinition) {
+      vector_push_back(result->globalVariables, globalVariableDefinition);
+      continue;
+    }
+
+    error_at(token->string, "認識できない構文です");
   }
 
-  return head.next;
+  return result;
 }
 
 //関数の定義をパースする
 FunctionDefinition *function_definition(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
   Type *type = type_specifier();
   if (!type) {
     return NULL;
@@ -271,6 +294,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
 
   Token *identifier = consume_identifier();
   if (!identifier) {
+    token = tokenHead;
     return NULL;
   }
 
@@ -282,7 +306,11 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   VariableContainer *mergedContainer =
       variable_container_push_table(variableContainer, localVariableTable);
 
-  expect("(");
+  if (!consume("(")) {
+    token = tokenHead;
+    return NULL;
+  }
+
   if (consume(")")) {
     definition->arguments = new_vector(0);
   } else {
@@ -291,6 +319,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   }
 
   if (!consume("{")) {
+    token = tokenHead;
     return NULL;
   }
 
@@ -335,6 +364,39 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     vector_push_back(arguments, node);
   } while (consume(","));
   return arguments;
+}
+
+Variable *global_variable_definition(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
+  Type *type = type_specifier();
+  if (!type) {
+    return NULL;
+  }
+
+  Token *identifier = consume_identifier();
+  if (!identifier) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  while (consume("[")) {
+    int size = expect_number();
+    type = new_type_array(type, size);
+    expect("]");
+  }
+
+  if (!consume(";")) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  String variableName = new_string(identifier->string, identifier->length);
+  Variable *globalVariable = new_global_variable(type, variableName);
+  if (!variable_container_push(variableContainer, globalVariable))
+    error_at(token->string, "同名の変数が既に定義されています");
+
+  return globalVariable;
 }
 
 //文をパースする
@@ -626,7 +688,7 @@ Node *primary(VariableContainer *variableContainer) {
       //識別子に対するsizeofのみを特別に許可する
       Token *identifier = consume_identifier();
       if (identifier) {
-        type = new_node_lvar(identifier, variableContainer)->type;
+        type = new_node_lvar(identifier, variableContainer)->variable->type;
       } else {
         // expression(variableContainer);
         error("式に対するsizeof演算は未実装です");
@@ -635,6 +697,8 @@ Node *primary(VariableContainer *variableContainer) {
 
     expect(")");
     Node *node = new_node(NODE_NUM, NULL, NULL);
+    if (!type)
+      error("undefind");
     node->val = type_to_size(type);
     return node;
   }
@@ -682,7 +746,7 @@ Vector *function_call_argument(VariableContainer *variableContainer) {
   return arguments;
 }
 
-ListNode *parse(Token *head) {
+Program *parse(Token *head) {
   token = head;
   return program();
 }

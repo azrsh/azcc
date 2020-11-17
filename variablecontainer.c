@@ -1,5 +1,5 @@
 #include "variablecontainer.h"
-#include "localvariable.h"
+#include "variable.h"
 
 struct VariableContainer {
   ListNode *tableHead;
@@ -11,11 +11,10 @@ VariableContainer *new_variable_container(ListNode *tableHead) {
   return container;
 }
 
-LocalVariable *variable_container_get(VariableContainer *container,
-                                      String name) {
+Variable *variable_container_get(VariableContainer *container, String name) {
   ListNode *list = container->tableHead;
   while (list) {
-    LocalVariable *variable = hash_table_find(list->body, name);
+    Variable *variable = hash_table_find(list->body, name);
     if (variable)
       return variable;
 
@@ -25,8 +24,7 @@ LocalVariable *variable_container_get(VariableContainer *container,
   return NULL;
 }
 
-bool variable_container_push(VariableContainer *container,
-                             LocalVariable *variable) {
+bool variable_container_push(VariableContainer *container, Variable *variable) {
   HashTable *localTable = container->tableHead->body;
   bool isExist = hash_table_contain(localTable, variable->name);
   if (isExist)
@@ -37,7 +35,7 @@ bool variable_container_push(VariableContainer *container,
 }
 
 bool variable_container_update(VariableContainer *container,
-                               LocalVariable *variable) {
+                               Variable *variable) {
   if (variable_container_get(container, variable->name)) {
     HashTable *localTable = container->tableHead->body;
     hash_table_store(localTable, variable->name, variable);

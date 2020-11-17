@@ -3,7 +3,7 @@
 
 #include "container.h"
 #include "functioncall.h"
-#include "type.h"
+#include "variable.h"
 
 typedef enum {
   NODE_ADD,    // +
@@ -26,12 +26,12 @@ typedef enum {
 
 typedef struct Node Node;
 struct Node {
-  NodeKind kind; //ノードの型
-  Node *lhs;
-  Node *rhs;
+  NodeKind kind;              //ノードの種類
+  Type *type;                 //ノードの型
+  Node *lhs;                  //左辺
+  Node *rhs;                  //右辺
   int val;                    // kindがNODE_NUMのときのみ使う
-  int offset;                 // kindがNODE_LVARのときのみ使う
-  Type *type;                 // kindがNODE_LVARのときのみ使う
+  Variable *variable;         // kindがNODE_LVARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
 

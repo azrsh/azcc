@@ -13,10 +13,10 @@ int main(int argc, char **argv) {
   //トークナイズしてパースする
   char *user_input = argv[1];
   Token *head = tokenize(user_input);
-  ListNode *node = parse(head); // FunctionDefinition List
+  Program *program = parse(head); // FunctionDefinition List
 
   //コード生成
-  generate_code(node);
+  generate_code(program);
 
   return EXIT_SUCCESS;
 }

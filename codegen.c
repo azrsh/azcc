@@ -1,7 +1,9 @@
+#include "container.h"
 #include "node.h"
 #include "parse.h"
 #include "statement.h"
 #include "util.h"
+#include "variable.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -34,9 +36,19 @@ void generate_local_variable(Node *node, int *labelCount) {
   if (node->kind != NODE_LVAR)
     error("変数ではありません");
 
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
-  printf("  push rax\n");
+  const Variable *variable = node->variable;
+  const char *name = string_to_char(variable->name);
+  switch (variable->kind) {
+  case VARIABLE_LOCAL:
+    printf("  mov rax, rbp\n");
+    printf("  sub rax, %d\n", variable->offset);
+    printf("  push rax\n");
+    return;
+  case VARIABLE_GLOBAL:
+    printf("  lea rax, %s[rip]\n", name);
+    printf("  push rax\n");
+    return;
+  }
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -216,6 +228,17 @@ void generate_expression(Node *node, int *labelCount) {
   printf("  push rax\n");
 }
 
+void generate_global_variable(Variable *globalVariable) {
+  if (globalVariable->kind != VARIABLE_GLOBAL)
+    error("グローバル変数ではありません");
+
+  const char *name = string_to_char(globalVariable->name);
+  printf("  .globl %s\n", name);
+  printf("  .data\n");
+  printf("%s:\n", name);
+  printf("  .zero 4\n");
+}
+
 void generate_statement(StatementUnion *statementUnion, int *labelCount) {
   // match if
   {
@@ -340,6 +363,8 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   const char *functionName = string_to_char(functionDefinition->name);
 
   //ラベルを生成
+  printf("  .text\n");
+  printf("  .global %s\n", functionName);
   // macは先頭に_を挿入するらしい
   printf("%s:\n", functionName);
 
@@ -396,14 +421,19 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_code(ListNode *functionDefinitionList) {
+void generate_code(Program *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
-  printf(".global main\n");
+  //printf(".global main\n");
+
+  for (int i = 0; i < vector_length(program->globalVariables); i++) {
+    Variable *variable = vector_get(program->globalVariables, i);
+    generate_global_variable(variable);
+  }
 
   int labelCount = 0;
-  while (functionDefinitionList) {
-    generate_function_definition(functionDefinitionList->body, &labelCount);
-    functionDefinitionList = functionDefinitionList->next;
+  for (int i = 0; i < vector_length(program->functions); i++) {
+    FunctionDefinition *function = vector_get(program->functions, i);
+    generate_function_definition(function, &labelCount);
   }
 }
