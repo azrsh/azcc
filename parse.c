@@ -89,7 +89,7 @@ FunctionCall *new_function_call(Token *token) {
   functionCall->name = token->string;
 
   //関数呼び出しの戻り値は常にintであるト仮定する
-  functionCall->type = calloc(1, sizeof(FunctionCall));
+  functionCall->type = calloc(1, sizeof(Type));
   functionCall->type->kind = INT;
 
   return functionCall;
