@@ -249,10 +249,11 @@ void generate_global_variable(Variable *globalVariable) {
     error("グローバル変数ではありません");
 
   const char *name = string_to_char(globalVariable->name);
+  const size_t typeSize = type_to_size(globalVariable->type);
   printf("  .globl %s\n", name);
   printf("  .data\n");
   printf("%s:\n", name);
-  printf("  .zero 4\n");
+  printf("  .zero %zu\n", typeSize);
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount) {
