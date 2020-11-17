@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-typedef enum { INT, PTR, ARRAY } TypeKind;
+typedef enum { INT, CHAR, PTR, ARRAY } TypeKind;
 typedef struct Type Type;
 struct Type {
   TypeKind kind;

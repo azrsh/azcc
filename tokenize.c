@@ -65,6 +65,7 @@ Token *tokenize(const char *p) {
     length += is_reserved(p, "for");
     length += is_reserved(p, "return");
     length += is_reserved(p, "int");
+    length += is_reserved(p, "char");
     length += is_reserved(p, "sizeof");
     if (length > 0) {
       current = new_token(TOKEN_RESERVED, current, p, length);

@@ -102,6 +102,9 @@ TypeKind map_token_to_kind(Token *token) {
   if (string_compare(token->string, new_string("int", 3)))
     return INT;
 
+  if (string_compare(token->string, new_string("char", 4)))
+    return CHAR;
+
   error_at(token->string.head, "組み込み型ではありません");
   return 0;
 }
@@ -241,7 +244,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
-// type_specifier = "int" "*"*
+// type_specifier = ("int" | "char") "*"*
 // assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -571,7 +574,7 @@ Node *variable_definition(VariableContainer *variableContainer) {
 
 //型指定子をパースする
 Type *type_specifier() {
-  const char *types[] = {"int"};
+  const char *types[] = {"int", "char"};
   Token *current = token;
 
   for (int i = 0; i < 1; i++) {
