@@ -1,4 +1,5 @@
 #include "tokenize.h"
+#include "container.h"
 #include "util.h"
 #include <ctype.h>
 #include <stdarg.h>
@@ -12,8 +13,7 @@ Token *new_token(TokenKind kind, Token *current, const char *string,
                  int length) {
   Token *token = calloc(1, sizeof(Token));
   token->kind = kind;
-  token->string = string;
-  token->length = length;
+  token->string = new_string(string, length);
   current->next = token;
   return token;
 }
@@ -86,12 +86,14 @@ Token *tokenize(const char *p) {
 
     //---数値---
     if (isdigit(*p)) {
-      current = new_token(TOKEN_NUMBER, current, p, 0);
       const char *q = p;
       char *end;
-      current->value = strtol(p, &end, 10);
-      current->length = end - q;
-      p += current->length;
+      int value = strtol(p, &end, 10);
+      int length = end - q;
+      current = new_token(TOKEN_NUMBER, current, p, length);
+      current->value = value;
+
+      p += length;
       continue;
     }
     //----------

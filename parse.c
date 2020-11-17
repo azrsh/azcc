@@ -1,4 +1,5 @@
 #include "parse.h"
+#include "container.h"
 #include "tokenize.h"
 #include "type.h"
 #include "typecheck.h"
@@ -21,8 +22,8 @@ bool at_eof() { return token->kind == TOKEN_EOF; }
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
 bool consume(const char *op) {
-  if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
-      memcmp(token->string, op, token->length))
+  const String operator= new_string(op, strlen(op));
+  if (token->kind != TOKEN_RESERVED || !string_compare(token->string, operator))
     return false;
   token = token->next;
   return true;
@@ -41,18 +42,16 @@ Token *consume_identifier() {
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
 void expect(char *op) {
-  if (token->kind != TOKEN_RESERVED || strlen(op) != token->length ||
-      memcmp(token->string, op, token->length))
-    error_at(token->string, "'%s'ではありません", op);
-  token = token->next;
+  if (!consume(op))
+    error_at(token->string.head, "'%s'ではありません", op);
 }
 
 //次のトークンが数値のときには、トークンを1つ読み進めてその数値を返す
 //それ以外の場合にはエラーを報告する
 int expect_number() {
   if (token->kind != TOKEN_NUMBER)
-    error_at(token->string, "数ではありません");
-  int value = token->value;
+    error_at(token->string.head, "数ではありません");
+  const int value = token->value;
   token = token->next;
   return value;
 }
@@ -61,7 +60,7 @@ int expect_number() {
 //それ以外の場合にはエラーを報告する
 Token *expect_identifier() {
   if (token->kind != TOKEN_IDENTIFIER)
-    error_at(token->string, "識別子ではありません");
+    error_at(token->string.head, "識別子ではありません");
   Token *current = token;
   token = token->next;
   return current;
@@ -87,7 +86,7 @@ Variable *new_global_variable(Type *type, String name) {
 
 FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
-  functionCall->name = new_string(token->string, token->length);
+  functionCall->name = token->string;
 
   //関数呼び出しの戻り値は常にintであるト仮定する
   functionCall->type = calloc(1, sizeof(FunctionCall));
@@ -98,29 +97,29 @@ FunctionCall *new_function_call(Token *token) {
 
 TypeKind map_token_to_kind(Token *token) {
   if (token->kind != TOKEN_RESERVED)
-    error_at(token->string, "組み込み型ではありません");
+    error_at(token->string.head, "組み込み型ではありません");
 
-  if (start_with(token->string, "int"))
+  if (string_compare(token->string, new_string("int", 3)))
     return INT;
 
-  error_at(token->string, "組み込み型ではありません");
+  error_at(token->string.head, "組み込み型ではありません");
   return 0;
 }
 
-Type *new_type_from_token(Token *type) {
+Type *new_type_from_token(Token *typeToken) {
   Type *base = calloc(1, sizeof(Type));
-  base->kind = map_token_to_kind(type);
+  base->kind = map_token_to_kind(typeToken);
   base->base = NULL;
 
   Type *current = base;
-  while (type->next && strlen("*") == token->length &&
-         memcmp(type->next->string, "*", 1) == 0) {
+  const String star = new_string("*", 1);
+  while (typeToken->next && string_compare(typeToken->next->string, star)) {
     Type *pointer = calloc(1, sizeof(Type));
     pointer->kind = PTR;
     pointer->base = current;
     current = pointer;
 
-    type = type->next;
+    typeToken = typeToken->next;
   }
   return current;
 }
@@ -157,10 +156,10 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  String variableName = new_string(identifier->string, identifier->length);
+  String variableName = identifier->string;
   Variable *localVariable = new_local_variable(type, variableName);
   if (!variable_container_push(variableContainer, localVariable))
-    error_at(token->string, "同名の変数が既に定義されています");
+    error_at(variableName.head, "同名の変数が既に定義されています");
 
   node->type = type; //本当は消したい
   node->variable = localVariable;
@@ -172,10 +171,10 @@ Node *new_node_lvar(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  String variableName = new_string(token->string, token->length);
+  String variableName = token->string;
   Variable *localVariable = variable_container_get(container, variableName);
   if (!localVariable) {
-    error_at(token->string, "変数%sは定義されていません",
+    error_at(variableName.head, "変数%sは定義されていません",
              string_to_char(variableName));
   }
 
@@ -194,7 +193,7 @@ Node *new_node_function_call(Token *token) {
 
 FunctionDefinition *new_function_definition(Token *identifier) {
   FunctionDefinition *definition = calloc(1, sizeof(FunctionDefinition));
-  definition->name = new_string(identifier->string, identifier->length);
+  definition->name = identifier->string;
   return definition;
 }
 
@@ -277,7 +276,7 @@ Program *program() {
       continue;
     }
 
-    error_at(token->string, "認識できない構文です");
+    error_at(token->string.head, "認識できない構文です");
   }
 
   return result;
@@ -355,7 +354,7 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   do {
     Type *type = type_specifier();
     if (!type)
-      error_at(token->string, "型指定子ではありません");
+      error_at(token->string.head, "型指定子ではありません");
 
     Token *identifier = expect_identifier();
     Node *node =
@@ -391,10 +390,10 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  String variableName = new_string(identifier->string, identifier->length);
+  String variableName = identifier->string;
   Variable *globalVariable = new_global_variable(type, variableName);
   if (!variable_container_push(variableContainer, globalVariable))
-    error_at(token->string, "同名の変数が既に定義されています");
+    error_at(token->string.head, "同名の変数が既に定義されています");
 
   return globalVariable;
 }

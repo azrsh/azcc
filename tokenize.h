@@ -1,6 +1,8 @@
 #ifndef TOKENIZE_H
 #define TOKENIZE_H
 
+#include "container.h"
+
 typedef enum {
   TOKEN_RESERVED,   //記号
   TOKEN_IDENTIFIER, //識別子
@@ -10,11 +12,10 @@ typedef enum {
 
 typedef struct Token Token;
 struct Token {
-  TokenKind kind;     //トークンの種類
-  Token *next;        //次の入力トークン
-  int value;          // kindがTOKEN_NUMBERの場合、その値
-  const char *string; //トークン文字列
-  int length;         //トークン文字列の長さ
+  TokenKind kind; //トークンの種類
+  Token *next;    //次の入力トークン
+  int value;      // kindがTOKEN_NUMBERの場合、その値
+  String string;  //トークン文字列
 };
 
 Token *tokenize(const char *p);
