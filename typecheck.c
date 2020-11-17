@@ -47,7 +47,7 @@ void tag_type_to_node(Node *node) {
       error("単項演算子*のオペランド型が不正です");
     node->type = lhsBase;
     return;
-  case NODE_LVAR:
+  case NODE_VAR:
     node->type = node->variable->type;
     return;
   case NODE_FUNC:

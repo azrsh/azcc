@@ -29,11 +29,11 @@ void insert_comment(char *fmt, ...) {
 }
 
 void generate_expression(Node *node, int *labelCount);
-void generate_local_variable(Node *node, int *labelCount);
+void generate_variable(Node *node, int *labelCount);
 void generate_fuction_call(Node *node, int *labelCount);
 
-void generate_local_variable(Node *node, int *labelCount) {
-  if (node->kind != NODE_LVAR)
+void generate_variable(Node *node, int *labelCount) {
+  if (node->kind != NODE_VAR)
     error("変数ではありません");
 
   const Variable *variable = node->variable;
@@ -52,8 +52,8 @@ void generate_local_variable(Node *node, int *labelCount) {
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
-  if (node->kind == NODE_LVAR) {
-    generate_local_variable(node, labelCount);
+  if (node->kind == NODE_VAR) {
+    generate_variable(node, labelCount);
     return;
   }
 
@@ -123,7 +123,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push %d\n", node->val);
     return;
   case NODE_REF:
-    generate_local_variable(node->lhs, labelCount);
+    generate_variable(node->lhs, labelCount);
     return;
   case NODE_DEREF:
     generate_expression(node->lhs, labelCount);
@@ -131,8 +131,8 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
-  case NODE_LVAR:
-    generate_local_variable(node, labelCount);
+  case NODE_VAR:
+    generate_variable(node, labelCount);
 
     //配列の暗黙的なキャスト
     if (node->type->kind != ARRAY) {
@@ -381,7 +381,7 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
   int argumentStackOffset = 0;
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
-    generate_local_variable(node, labelCount);
+    generate_variable(node, labelCount);
     printf("  pop rax\n");
 
     if (i < 6) {
@@ -424,7 +424,7 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
 void generate_code(Program *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
-  //printf(".global main\n");
+  // printf(".global main\n");
 
   for (int i = 0; i < vector_length(program->globalVariables); i++) {
     Variable *variable = vector_get(program->globalVariables, i);

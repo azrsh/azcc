@@ -155,7 +155,7 @@ Node *new_node_num(int val) {
 Node *new_node_variable_definition(Type *type, Token *identifier,
                                    VariableContainer *variableContainer) {
   Node *node = calloc(1, sizeof(Node));
-  node->kind = NODE_LVAR;
+  node->kind = NODE_VAR;
 
   String variableName = new_string(identifier->string, identifier->length);
   Variable *localVariable = new_local_variable(type, variableName);
@@ -170,7 +170,7 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
 //抽象構文木のローカル変数のノードを新しく生成する
 Node *new_node_lvar(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
-  node->kind = NODE_LVAR;
+  node->kind = NODE_VAR;
 
   String variableName = new_string(token->string, token->length);
   Variable *localVariable = variable_container_get(container, variableName);

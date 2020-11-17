@@ -18,7 +18,7 @@ typedef enum {
   NODE_DEREF,  // *
   NODE_IF,     // if文
   NODE_ASSIGN, // 代入
-  NODE_LVAR,   // ローカル変数
+  NODE_VAR,    // 変数
   NODE_FUNC,   // 関数
   NODE_ARG,    // 関数の引数
   NODE_NUM     // 整数
