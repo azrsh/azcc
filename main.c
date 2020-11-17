@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
   }
 
   //トークナイズしてパースする
-  char *user_input = argv[1];
+  user_input = argv[1];
   Token *head = tokenize(user_input);
   Program *program = parse(head); // FunctionDefinition List
 

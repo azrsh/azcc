@@ -10,13 +10,13 @@ typedef enum {
 
 typedef struct Token Token;
 struct Token {
-  TokenKind kind; //トークンの種類
-  Token *next;    //次の入力トークン
-  int value;      // kindがTOKEN_NUMBERの場合、その値
-  char *string;   //トークン文字列
-  int length;     //トークン文字列の長さ
+  TokenKind kind;     //トークンの種類
+  Token *next;        //次の入力トークン
+  int value;          // kindがTOKEN_NUMBERの場合、その値
+  const char *string; //トークン文字列
+  int length;         //トークン文字列の長さ
 };
 
-Token *tokenize(char *p);
+Token *tokenize(const char *p);
 
 #endif

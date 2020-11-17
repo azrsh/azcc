@@ -3,15 +3,16 @@
 
 #include <stdbool.h>
 
-bool start_with(char *p, char *q);
+bool start_with(const char *p, const char *q);
 
+extern const char *user_input;
 
 //エラーを報告するための関数
 // printfと同じ引数に加えてエラーの位置をとる
-void error_at(char *location, char *fmt, ...);
+void error_at(const char *location, const char *fmt, ...);
 
 //エラーを報告するための関数
 // printfと同じ引数をとる
-void error(char *fmt, ...);
+void error(const char *fmt, ...);
 
 #endif

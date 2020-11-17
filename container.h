@@ -6,11 +6,11 @@
 
 typedef struct String String;
 struct String {
-  char *head;
+  const char *head;
   int length;
 };
-String new_string(char *source, int length);
-String char_to_string(char *source);
+String new_string(const char *source, int length);
+String char_to_string(const char *source);
 char *string_to_char(String source);
 bool string_compare(String string1, String string2);
 
