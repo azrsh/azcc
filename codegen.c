@@ -2,6 +2,7 @@
 #include "node.h"
 #include "parse.h"
 #include "statement.h"
+#include "type.h"
 #include "util.h"
 #include "variable.h"
 #include <ctype.h>
@@ -117,6 +118,20 @@ void generate_fuction_call(Node *node, int *labelCount) {
   insert_comment("function call end : %s", functionName);
 }
 
+void generate_assign_i64(Node *node, int *labelCount) {
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  printf("  mov [rax], rdi\n");
+  printf("  push rdi\n");
+}
+
+void generate_assign_i8(Node *node, int *labelCount) {
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  printf("  movsx BYTE PTR [rax], rdi\n");
+  printf("  push rdi\n");
+}
+
 void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
@@ -155,10 +170,11 @@ void generate_expression(Node *node, int *labelCount) {
     generate_expression(node->rhs, labelCount);
     insert_comment("assign rhs end");
 
-    printf("  pop rdi\n");
-    printf("  pop rax\n");
-    printf("  mov [rax], rdi\n");
-    printf("  push rdi\n");
+    size_t nodeTypeSize = type_to_size(node->type);
+    if (nodeTypeSize <= 1)
+      generate_assign_i8(node, labelCount);
+    else
+      generate_assign_i64(node, labelCount);
 
     insert_comment("assign end");
     return;

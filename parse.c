@@ -577,7 +577,7 @@ Type *type_specifier() {
   const char *types[] = {"int", "char"};
   Token *current = token;
 
-  for (int i = 0; i < 1; i++) {
+  for (int i = 0; i < 2; i++) {
     if (!consume(types[i]))
       continue;
 

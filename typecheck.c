@@ -23,7 +23,24 @@ bool type_compare_deep_with_implicit_cast(Type *type1, Type *type2) {
   if (type1->base && type2->base)
     return type_compare_deep_with_implicit_cast(type1->base, type2->base);
 
+  if (!type1->base && !type2->base)
+    return true;
+
   return false;
+}
+
+Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
+  if (lhs->base || rhs->base)
+    return NULL;
+
+  size_t lhsSize = type_to_size(lhs);
+  size_t rhsSize = type_to_size(rhs);
+  if (lhsSize >= rhsSize)
+    return lhs;
+  else
+    return rhs;
+
+  return NULL;
 }
 
 void tag_type_to_node(Node *node) {
@@ -59,9 +76,10 @@ void tag_type_to_node(Node *node) {
 
     if (type_compare_deep_with_implicit_cast(node->lhs->type,
                                              node->rhs->type)) {
-      node->type = node->lhs->type;
+      node->type = node->lhs->type; //代入は代入先の型を最優先とする
       return;
     }
+
     error("演算子=のオペランド型が不正です");
   }
 
@@ -77,12 +95,15 @@ void tag_type_to_node(Node *node) {
       node->type = lhs;
       return;
     }
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
-      return;
-    }
     if (lhs->kind == INT && rhs->base != NULL) {
       error("未実装の演算です");
+    }
+    {
+      Type *result = check_arithmetic_binary_operator(lhs, rhs);
+      if (result) {
+        node->type = result;
+        return;
+      }
     }
     error("演算子+のオペランド型が不正です");
   case NODE_SUB:
@@ -90,50 +111,65 @@ void tag_type_to_node(Node *node) {
       node->type = lhs;
       return;
     }
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
-      return;
-    }
     if (lhs->kind == PTR && rhs->base != NULL) {
       error("未実装の演算です");
     }
+    {
+      Type *result = check_arithmetic_binary_operator(lhs, rhs);
+      if (result) {
+        node->type = result;
+        return;
+      }
+    }
     error("演算子-のオペランド型が不正です");
-  case NODE_MUL:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  case NODE_MUL: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子*のオペランド型が不正です");
-  case NODE_DIV:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  }
+  case NODE_DIV: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子/のオペランド型が不正です");
-  case NODE_EQ:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  }
+  case NODE_EQ: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子==のオペランド型が不正です");
-  case NODE_NE:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  }
+  case NODE_NE: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子!=のオペランド型が不正です");
-  case NODE_LT:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  }
+  case NODE_LT: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子<または>=のオペランド型が不正です");
-  case NODE_LE:
-    if (lhs->kind == INT && rhs->kind == INT) {
-      node->type = lhs;
+  }
+  case NODE_LE: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
       return;
     }
     error("演算子<=または>のオペランド型が不正です");
+  }
   }
 
   error("予期しないノードが指定されました");

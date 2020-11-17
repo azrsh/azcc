@@ -126,6 +126,8 @@ assert 3 "int a; int main(){ int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return
 assert 3 "int asdjuwgehij; int main(){ int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1]; }"
 assert 1 "int a; int main(){ a = 1; return a; }"
 assert 3 "int a; int b; int main(){ a = 1; b = 2; return a + b; }"
+assert 3 "int main() { int x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }"
+assert 3 "int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }"
 
 echo OK
 
