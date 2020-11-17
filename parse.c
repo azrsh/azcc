@@ -110,10 +110,11 @@ Type *new_type_from_token(Token *typeToken) {
   Type *base = calloc(1, sizeof(Type));
   base->kind = map_token_to_kind(typeToken);
   base->base = NULL;
+  typeToken = typeToken->next;
 
   Type *current = base;
   const String star = new_string("*", 1);
-  while (typeToken->next && string_compare(typeToken->next->string, star)) {
+  while (typeToken && string_compare(typeToken->string, star)) {
     Type *pointer = calloc(1, sizeof(Type));
     pointer->kind = PTR;
     pointer->base = current;
@@ -121,6 +122,7 @@ Type *new_type_from_token(Token *typeToken) {
 
     typeToken = typeToken->next;
   }
+
   return current;
 }
 
