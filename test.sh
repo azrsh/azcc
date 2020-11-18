@@ -131,6 +131,12 @@ assert 1 "int main() { char x[3]; x[0] = 1; return x[0]; }"
 assert 1 "int main() { char x[3]; x[0] = 1; x[1] = 2; int y; y = x[0]; return y; }"
 assert 5 "int main() { char x[3]; x[0] = 1; x[1] = 2; int y; y = 4; return x[0] + y; }"
 assert 3 "int main() { char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; }"
+assert 97 "int main() { char* x; x = \"abcdefghij\"; return x[0]; }"
+assert 98 "int main() { char* x; x = \"abcdefghij\"; return x[1]; }"
+assert 99 "int main() { char* x; x = \"abcdefghij\"; return x[2]; }"
+assert 100 "int main() { char* x; x = \"abcdefghij\"; return x[3]; }"
+assert 101 "int main() { char* x; x = \"abcdefghij\"; return x[4]; }"
+assert 102 "int main() { char* x; x = \"abcdefghij\"; return x[5]; }"
 
 echo OK
 

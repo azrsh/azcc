@@ -76,6 +76,10 @@ void tag_type_to_node(Node *node) {
   case NODE_NUM:
     node->type = new_type(INT);
     return;
+  case NODE_STRING:
+    node->type = new_type(PTR);
+    node->type->base = new_type(CHAR);
+    return;
   case NODE_REF:
     tag_type_to_node(node->lhs);
     node->type = new_type(PTR);

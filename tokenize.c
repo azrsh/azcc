@@ -85,6 +85,19 @@ Token *tokenize(const char *p) {
     }
     //----------
 
+    //--文字列--
+    if (strchr("\"", *p)) {
+      p++;
+      const char *q = p;
+      while (!strchr("\"", *p)) {
+        p++;
+      }
+      current = new_token(TOKEN_STRING, current, q, p - q);
+      p++;
+      continue;
+    }
+    //----------
+
     //---数値---
     if (isdigit(*p)) {
       const char *q = p;

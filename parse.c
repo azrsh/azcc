@@ -16,6 +16,7 @@
 
 Token *token;
 int currentOffset;
+Vector *stringLiterals;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -29,8 +30,18 @@ bool consume(const char *op) {
   return true;
 }
 
+//次のトークンが文字列のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合にはNULLを返す
+Token *consume_string() {
+  if (token->kind != TOKEN_STRING)
+    return NULL;
+  Token *current = token;
+  token = token->next;
+  return current;
+}
+
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
-//それ以外の場合には偽を返す
+//それ以外の場合にはNULLを返す
 Token *consume_identifier() {
   if (token->kind != TOKEN_IDENTIFIER)
     return NULL;
@@ -251,9 +262,9 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "&" | "*")? primary
-// primary = number | identity ("(" function_call_argument? ")" | "[" expression
-// "]")? |
-// "("expression")" | "sizeof" "(" (expression | type_specifier) ")"
+// primary = number | "\"" string_literal "\"" | identity ("("
+// function_call_argument? ")" | "[" expression "]")? | "("expression")" |
+// "sizeof" "(" (expression | type_specifier) ")"
 // function_call_argument = expression ("," expression)*
 
 //プログラムをパースする
@@ -265,6 +276,8 @@ Program *program() {
   Program *result = calloc(1, sizeof(Program));
   result->functions = new_vector(16);
   result->globalVariables = new_vector(16);
+  result->stringLiterals = new_vector(16);
+  stringLiterals = result->stringLiterals;
 
   while (!at_eof()) {
     FunctionDefinition *functionDefinition =
@@ -735,6 +748,15 @@ Node *primary(VariableContainer *variableContainer) {
       Node *node = new_node_lvar(identifier, variableContainer);
       return node;
     }
+  }
+
+  Token *string = consume_string();
+  if (string) {
+    Node *node = new_node(NODE_STRING, NULL, NULL);
+    node->val = vector_length(stringLiterals);
+    //コンテナはポインタしか受け入れられないので
+    vector_push_back(stringLiterals, string_to_char(string->string));
+    return node;
   }
 
   //そうでなければ整数

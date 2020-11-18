@@ -128,8 +128,8 @@ void generate_cast(Node *node, int *labelCount) {
   if (source->kind == CHAR && dest->kind == INT) {
     printf("  movsx rax, al\n");
   } else if (source->kind == INT && dest->kind == CHAR) {
-    //printf("  shl rax, %d\n", 64 - 8);
-    //printf("  shr rax, %d\n", 64 - 8);
+    // printf("  shl rax, %d\n", 64 - 8);
+    // printf("  shr rax, %d\n", 64 - 8);
   } else if (source->kind == ARRAY && dest->kind == PTR) {
     generate_variable(node, labelCount);
   }
@@ -156,6 +156,11 @@ void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
     printf("  push %d\n", node->val);
+    return;
+  case NODE_STRING:
+    //処理はグローバル変数と同じなので共通化できそう
+    printf("  lea rax, .LC%d[rip]\n", node->val);
+    printf("  push rax\n");
     return;
   case NODE_REF:
     generate_variable(node->lhs, labelCount);
@@ -273,7 +278,13 @@ void generate_expression(Node *node, int *labelCount) {
   printf("  push rax\n");
 }
 
-void generate_global_variable(Variable *globalVariable) {
+void generate_string_literal(int index, const char *string) {
+  printf("  .data\n");
+  printf(".LC%d:\n", index);
+  printf("  .string \"%s\"\n", string);
+}
+
+void generate_global_variable(const Variable *globalVariable) {
   if (globalVariable->kind != VARIABLE_GLOBAL)
     error("グローバル変数ではありません");
 
@@ -404,7 +415,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_function_definition(FunctionDefinition *functionDefinition,
+void generate_function_definition(const FunctionDefinition *functionDefinition,
                                   int *labelCount) {
   const char *functionName = string_to_char(functionDefinition->name);
 
@@ -470,16 +481,20 @@ void generate_function_definition(FunctionDefinition *functionDefinition,
 void generate_code(Program *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
-  // printf(".global main\n");
+
+  for (int i = 0; i < vector_length(program->stringLiterals); i++) {
+    const char *string = vector_get(program->stringLiterals, i);
+    generate_string_literal(i, string);
+  }
 
   for (int i = 0; i < vector_length(program->globalVariables); i++) {
-    Variable *variable = vector_get(program->globalVariables, i);
+    const Variable *variable = vector_get(program->globalVariables, i);
     generate_global_variable(variable);
   }
 
   int labelCount = 0;
   for (int i = 0; i < vector_length(program->functions); i++) {
-    FunctionDefinition *function = vector_get(program->functions, i);
+    const FunctionDefinition *function = vector_get(program->functions, i);
     generate_function_definition(function, &labelCount);
   }
 }

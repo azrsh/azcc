@@ -7,6 +7,7 @@ typedef enum {
   TOKEN_RESERVED,   //記号
   TOKEN_IDENTIFIER, //識別子
   TOKEN_NUMBER,     //整数
+  TOKEN_STRING,     //文字列
   TOKEN_EOF         //入力の終端
 } TokenKind;
 

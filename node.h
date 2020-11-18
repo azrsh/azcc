@@ -22,16 +22,17 @@ typedef enum {
   NODE_FUNC,   // 関数
   NODE_ARG,    // 関数の引数
   NODE_NUM,    // 整数
+  NODE_STRING, // 文字列
   NODE_CAST    // キャスト
 } NodeKind;
 
 typedef struct Node Node;
 struct Node {
-  NodeKind kind;              //ノードの種類
-  Type *type;                 //ノードの型
-  Node *lhs;                  //左辺
-  Node *rhs;                  //右辺
-  int val;                    // kindがNODE_NUMのときのみ使う
+  NodeKind kind; //ノードの種類
+  Type *type;    //ノードの型
+  Node *lhs;     //左辺
+  Node *rhs;     //右辺
+  int val; // kindがNODE_NUMのときに数字、NODE_STRINGのとき文字列リテラルの識別に使用
   Variable *variable;         // kindがNODE_VARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
