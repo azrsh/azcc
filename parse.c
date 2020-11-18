@@ -66,17 +66,17 @@ Token *expect_identifier() {
   return current;
 }
 
-Variable *new_local_variable(Type *type, String name) {
+Variable *new_variable_local(Type *type, String name) {
   Variable *localVariable = calloc(1, sizeof(Variable));
   localVariable->type = type;
   localVariable->name = name;
   localVariable->kind = VARIABLE_LOCAL;
-  localVariable->offset = currentOffset;
   currentOffset += type_to_stack_size(type);
+  localVariable->offset = currentOffset;
   return localVariable;
 }
 
-Variable *new_global_variable(Type *type, String name) {
+Variable *new_variable_global(Type *type, String name) {
   Variable *localVariable = calloc(1, sizeof(Variable));
   localVariable->type = type;
   localVariable->name = name;
@@ -162,7 +162,7 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
   node->kind = NODE_VAR;
 
   String variableName = identifier->string;
-  Variable *localVariable = new_local_variable(type, variableName);
+  Variable *localVariable = new_variable_local(type, variableName);
   if (!variable_container_push(variableContainer, localVariable))
     error_at(variableName.head, "同名の変数が既に定義されています");
 
@@ -305,7 +305,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   FunctionDefinition *definition = new_function_definition(identifier);
 
   //新しいスコープなので先頭に新しい変数テーブルを追加
-  currentOffset = 8;
+  currentOffset = 0;
   HashTable *localVariableTable = new_hash_table();
   VariableContainer *mergedContainer =
       variable_container_push_table(variableContainer, localVariableTable);
@@ -396,7 +396,7 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
   }
 
   String variableName = identifier->string;
-  Variable *globalVariable = new_global_variable(type, variableName);
+  Variable *globalVariable = new_variable_global(type, variableName);
   if (!variable_container_push(variableContainer, globalVariable))
     error_at(token->string.head, "同名の変数が既に定義されています");
 

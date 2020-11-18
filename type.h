@@ -13,5 +13,7 @@ struct Type {
 
 int type_to_size(Type *type);
 int type_to_stack_size(Type *type);
+char *type_kind_to_char(TypeKind kind);
+char *type_to_char(Type *type);
 
 #endif

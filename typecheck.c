@@ -1,5 +1,7 @@
 #include "typecheck.h"
+#include "node.h"
 #include "type.h"
+#include "util.h"
 #include <stdlib.h>
 
 Type *new_type(TypeKind kind) {
@@ -14,19 +16,21 @@ bool type_compare_deep(Type *type1, Type *type2) {
                                 type_compare_deep(type1->base, type2->base));
 }
 
-bool type_compare_deep_with_implicit_cast(Type *type1, Type *type2) {
-  if (type_compare_deep(type1, type2))
-    return true;
-  if (!type1 || !type2)
-    return false;
+Type *type_compare_deep_with_implicit_cast(Type *advantage,
+                                           Type *disadvantage) {
+  if (type_compare_deep(advantage, disadvantage))
+    return advantage;
+  if (!advantage || !disadvantage)
+    return NULL;
 
-  if (type1->base && type2->base)
-    return type_compare_deep_with_implicit_cast(type1->base, type2->base);
+  if (advantage->base && disadvantage->base)
+    return type_compare_deep_with_implicit_cast(advantage->base,
+                                                disadvantage->base);
 
-  if (!type1->base && !type2->base)
-    return true;
+  if (!advantage->base && !disadvantage->base)
+    return advantage;
 
-  return false;
+  return NULL;
 }
 
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
@@ -41,6 +45,26 @@ Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
     return rhs;
 
   return NULL;
+}
+
+void add_implicit_cast_node(Node *node) {
+  Node *lhs = node->lhs;
+  if (!type_compare_deep(node->type, lhs->type)) {
+    Node *castNode = calloc(1, sizeof(Node));
+    castNode->kind = NODE_CAST;
+    castNode->type = node->type;
+    node->lhs = castNode;
+    castNode->lhs = lhs;
+  }
+
+  Node *rhs = node->rhs;
+  if (!type_compare_deep(node->type, rhs->type)) {
+    Node *castNode = calloc(1, sizeof(Node));
+    castNode->kind = NODE_CAST;
+    castNode->type = node->type;
+    node->rhs = castNode;
+    castNode->lhs = rhs;
+  }
 }
 
 void tag_type_to_node(Node *node) {
@@ -70,17 +94,23 @@ void tag_type_to_node(Node *node) {
   case NODE_FUNC:
     node->type = node->functionCall->type;
     return;
-  case NODE_ASSIGN:
+  case NODE_ASSIGN: {
     tag_type_to_node(node->lhs);
     tag_type_to_node(node->rhs);
 
-    if (type_compare_deep_with_implicit_cast(node->lhs->type,
-                                             node->rhs->type)) {
-      node->type = node->lhs->type; //代入は代入先の型を最優先とする
+    //代入は代入先の型を最優先とする
+    Type *result =
+        type_compare_deep_with_implicit_cast(node->lhs->type, node->rhs->type);
+    if (result) {
+      node->type = result;
+      if (!node->lhs->type->base && !node->rhs->type->base) {
+        add_implicit_cast_node(node);
+      }
       return;
     }
 
     error("演算子=のオペランド型が不正です");
+  }
   }
 
   //二項演算子の型検査
@@ -102,6 +132,7 @@ void tag_type_to_node(Node *node) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
+        add_implicit_cast_node(node);
         return;
       }
     }
@@ -118,6 +149,7 @@ void tag_type_to_node(Node *node) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
+        add_implicit_cast_node(node);
         return;
       }
     }
@@ -126,6 +158,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子*のオペランド型が不正です");
@@ -134,6 +167,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子/のオペランド型が不正です");
@@ -142,6 +176,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子==のオペランド型が不正です");
@@ -150,6 +185,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子!=のオペランド型が不正です");
@@ -158,6 +194,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子<または>=のオペランド型が不正です");
@@ -166,6 +203,7 @@ void tag_type_to_node(Node *node) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
+      add_implicit_cast_node(node);
       return;
     }
     error("演算子<=または>のオペランド型が不正です");

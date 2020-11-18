@@ -118,17 +118,37 @@ void generate_fuction_call(Node *node, int *labelCount) {
   insert_comment("function call end : %s", functionName);
 }
 
-void generate_assign_i64(Node *node, int *labelCount) {
+void generate_cast(Node *node, int *labelCount) {
+  insert_comment("cast start");
+
+  Type *source = node->lhs->type;
+  Type *dest = node->type;
+  printf("  pop rax\n");
+
+  if (source->kind == CHAR && dest->kind == INT) {
+    printf("  movsx rax, al\n");
+  } else if (source->kind == INT && dest->kind == CHAR) {
+    //printf("  shl rax, %d\n", 64 - 8);
+    //printf("  shr rax, %d\n", 64 - 8);
+  } else if (source->kind == ARRAY && dest->kind == PTR) {
+    generate_variable(node, labelCount);
+  }
+  printf("  push rax\n");
+
+  insert_comment("cast end");
+}
+
+void generate_assign_i64_to_i64(Node *node, int *labelCount) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov [rax], rdi\n");
   printf("  push rdi\n");
 }
 
-void generate_assign_i8(Node *node, int *labelCount) {
+void generate_assign_i8_to_i8(Node *node, int *labelCount) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
-  printf("  movsx BYTE PTR [rax], rdi\n");
+  printf("  mov BYTE PTR [rax], dil\n");
   printf("  push rdi\n");
 }
 
@@ -155,7 +175,6 @@ void generate_expression(Node *node, int *labelCount) {
       printf("  mov rax, [rax]\n");
       printf("  push rax\n");
     }
-
     return;
   case NODE_FUNC:
     generate_fuction_call(node, labelCount);
@@ -170,18 +189,28 @@ void generate_expression(Node *node, int *labelCount) {
     generate_expression(node->rhs, labelCount);
     insert_comment("assign rhs end");
 
-    size_t nodeTypeSize = type_to_size(node->type);
-    if (nodeTypeSize <= 1)
-      generate_assign_i8(node, labelCount);
+    size_t lhsSize = type_to_size(node->lhs->type);
+    size_t rhsSize = type_to_size(node->rhs->type);
+    if (lhsSize != rhsSize)
+      error("右辺を左辺と同じ型にキャストできない不正な代入です");
+
+    if (lhsSize == 1 && rhsSize == 1)
+      generate_assign_i8_to_i8(node, labelCount);
     else
-      generate_assign_i64(node, labelCount);
+      generate_assign_i64_to_i64(node, labelCount);
 
     insert_comment("assign end");
+    return;
+  case NODE_CAST:
+    generate_expression(node->lhs, labelCount);
+    generate_cast(node, labelCount);
     return;
   }
 
   generate_expression(node->lhs, labelCount);
   generate_expression(node->rhs, labelCount);
+  Type *lhsType = node->lhs->type;
+  Type *rhsType = node->rhs->type;
 
   printf("  pop rdi\n");
   printf("  pop rax\n");

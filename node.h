@@ -21,7 +21,8 @@ typedef enum {
   NODE_VAR,    // 変数
   NODE_FUNC,   // 関数
   NODE_ARG,    // 関数の引数
-  NODE_NUM     // 整数
+  NODE_NUM,    // 整数
+  NODE_CAST    // キャスト
 } NodeKind;
 
 typedef struct Node Node;
@@ -31,7 +32,7 @@ struct Node {
   Node *lhs;                  //左辺
   Node *rhs;                  //右辺
   int val;                    // kindがNODE_NUMのときのみ使う
-  Variable *variable;         // kindがNODE_LVARのときのみ使う
+  Variable *variable;         // kindがNODE_VARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
 };
 
