@@ -10,8 +10,10 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  filename = argv[1];
+  user_input = read_file(filename);
+
   //トークナイズしてパースする
-  user_input = argv[1];
   Token *head = tokenize(user_input);
   Program *program = parse(head); // FunctionDefinition List
 
