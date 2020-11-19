@@ -124,6 +124,7 @@ assert 99 "tests/test-dj.c"
 assert 100 "tests/test-dk.c"
 assert 101 "tests/test-dl.c"
 assert 102 "tests/test-dm.c"
+assert 102 "tests/test-dn.c"
 
 echo OK
 
