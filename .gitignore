@@ -1,6 +1,7 @@
 *~
 *.o
 tmp*
-a.out
+*.s
+*.out
 9cc
 
