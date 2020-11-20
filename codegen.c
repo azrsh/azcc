@@ -75,19 +75,22 @@ void generate_fuction_call(Node *node, int *labelCount) {
   insert_comment("function call start : %s", functionName);
 
   Vector *arguments = node->functionCall->arguments;
+  const int currentLabel = *labelCount;
+  *labelCount += 1;
 
   //アライメント
+  //スタックの使用予測に基づいてアライメント
+  const int stackUnitLength = 8;
+  const int alignmentLength = stackUnitLength * 2;
+  printf("  push 0\n");
+  printf("  mov rax, rsp\n");
   if (vector_length(arguments) > 6) {
-    //スタックの使用予測に基づいてアライメント
-    const int stackUnitLength = 8;
-    const int alignmentLength = stackUnitLength * 2;
-    printf("  mov rax, rsp\n");
     printf("  sub rax, %d\n", (vector_length(arguments) - 6) * stackUnitLength);
-    printf("  and rax, %d\n", alignmentLength - 1);
-    printf("  jz .Lcall%d\n", *labelCount);
-    printf("  sub rsp, %d\n", stackUnitLength);
-    printf(".Lcall%d:\n", *labelCount);
   }
+  printf("  and rax, %d\n", alignmentLength - 1);
+  printf("  jz .Lcall%d\n", currentLabel);
+  printf("  push 1\n");
+  printf(".Lcall%d:\n", currentLabel);
 
   for (int i = vector_length(arguments) - 1; i >= 0; i--) {
     Node *argument = vector_get(arguments, i);
@@ -100,18 +103,17 @@ void generate_fuction_call(Node *node, int *labelCount) {
   printf("  mov rax, 0\n");
   printf("  call %s\n", functionName);
 
-  //アライメントの判定とスタックの復元
+  //スタックに積んだ引数を処理
   if (vector_length(arguments) > 6) {
-    const int stackUnitLength = 8;
-    const int alignmentLength = stackUnitLength * 2;
-    printf("  mov rbx, rsp\n");
-    printf("  and rbx, %d\n", alignmentLength - 1);
-    printf("  jz .Lend%d\n", *labelCount);
-    printf("  add rsp, %d\n", stackUnitLength);
-    printf(".Lend%d:\n", *labelCount);
-
-    *labelCount += 1;
+    printf("  add rsp, %d\n", (vector_length(arguments) - 6) * stackUnitLength);
   }
+
+  //アライメントの判定とスタックの復元
+  printf("  pop rbx\n");
+  printf("  cmp rbx, 0\n");
+  printf("  je .Lend%d\n", currentLabel);
+  printf("  add rsp, %d\n", stackUnitLength);
+  printf(".Lend%d:\n", currentLabel);
 
   printf("  push rax\n");
 
