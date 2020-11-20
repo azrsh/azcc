@@ -92,12 +92,16 @@ void generate_fuction_call(Node *node, int *labelCount) {
   printf("  push 1\n");
   printf(".Lcall%d:\n", currentLabel);
 
+  //引数の評価
   for (int i = vector_length(arguments) - 1; i >= 0; i--) {
     Node *argument = vector_get(arguments, i);
     generate_expression(argument, labelCount);
-    if (i < 6) {
-      printf("  pop %s\n", argumentRegister[i]);
-    }
+  }
+
+  //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
+  //引数を全て評価してからレジスタに割り当て
+  for (int i = 0; i < 6 && i < vector_length(arguments); i++) {
+    printf("  pop %s\n", argumentRegister[i]);
   }
 
   printf("  mov rax, 0\n");
