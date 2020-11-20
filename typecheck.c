@@ -294,8 +294,9 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
         statement_union_take_return(statementUnion);
     if (returnPattern) {
       tag_type_to_node(returnPattern->node);
-      if (!type_compare_deep_with_implicit_cast(returnType,
-                                                returnPattern->node->type)) {
+      if (!type_compare_deep(returnType, returnPattern->node->type) &&
+          type_compare_deep_with_implicit_cast(returnType,
+                                               returnPattern->node->type)) {
         returnPattern->node = new_node_cast(returnType, returnPattern->node);
       }
       return;
