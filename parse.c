@@ -1,5 +1,6 @@
 #include "parse.h"
 #include "container.h"
+#include "statement.h"
 #include "tokenize.h"
 #include "type.h"
 #include "typecheck.h"
@@ -352,7 +353,9 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   head.next = NULL;
   ListNode *node = &head;
   while (!consume("}")) {
-    node = list_push_back(node, statement(mergedContainer));
+    StatementUnion *statementUnion = statement(mergedContainer);
+    tag_type_to_statement(statementUnion, type);
+    node = list_push_back(node, statementUnion);
   }
   body->statementHead = head.next;
   //
@@ -377,6 +380,8 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
+    // 関数の引数に対する型検査ができていないが、変数ノードはノード生成の時点で型付けを行うので問題ない
+    // tag_type_to_node(type);
 
     vector_push_back(arguments, node);
   } while (consume(","));
@@ -553,12 +558,10 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
 Node *expression(VariableContainer *variableContainer) {
   Node *node = variable_definition(variableContainer);
   if (node) {
-    tag_type_to_node(node);
     return node;
   }
 
   node = assign(variableContainer);
-  tag_type_to_node(node);
   return node;
 }
 

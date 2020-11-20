@@ -1,5 +1,8 @@
 #include "typecheck.h"
+#include "container.h"
+#include "functioncall.h"
 #include "node.h"
+#include "statement.h"
 #include "type.h"
 #include "util.h"
 #include <stdlib.h>
@@ -10,7 +13,7 @@ Type *new_type(TypeKind kind) {
   return type;
 }
 
-bool type_compare_deep(Type *type1, Type *type2) {
+bool type_compare_deep(const Type *type1, const Type *type2) {
   return (!type1 && !type2) || (type1 && type2 && type1->kind == type2->kind &&
                                 type1->length == type2->length &&
                                 type_compare_deep(type1->base, type2->base));
@@ -47,23 +50,25 @@ Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
   return NULL;
 }
 
+Node *new_node_cast(Type *target, Node *source) {
+  Node *castNode = calloc(1, sizeof(Node));
+  castNode->kind = NODE_CAST;
+  castNode->type = target;
+  castNode->lhs = source;
+  return castNode;
+}
+
 void add_implicit_cast_node(Node *node) {
   Node *lhs = node->lhs;
   if (!type_compare_deep(node->type, lhs->type)) {
-    Node *castNode = calloc(1, sizeof(Node));
-    castNode->kind = NODE_CAST;
-    castNode->type = node->type;
+    Node *castNode = new_node_cast(node->type, lhs);
     node->lhs = castNode;
-    castNode->lhs = lhs;
   }
 
   Node *rhs = node->rhs;
   if (!type_compare_deep(node->type, rhs->type)) {
-    Node *castNode = calloc(1, sizeof(Node));
-    castNode->kind = NODE_CAST;
-    castNode->type = node->type;
+    Node *castNode = new_node_cast(node->type, rhs);
     node->rhs = castNode;
-    castNode->lhs = rhs;
   }
 }
 
@@ -95,9 +100,16 @@ void tag_type_to_node(Node *node) {
   case NODE_VAR:
     node->type = node->variable->type;
     return;
-  case NODE_FUNC:
-    node->type = node->functionCall->type;
+  case NODE_FUNC: {
+    Type *returnType = node->functionCall->type;
+    Vector *arguments = node->functionCall->arguments;
+    node->type = returnType;
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *arg = vector_get(arguments, i);
+      tag_type_to_node(arg);
+    }
     return;
+  }
   case NODE_ASSIGN: {
     tag_type_to_node(node->lhs);
     tag_type_to_node(node->rhs);
@@ -215,4 +227,84 @@ void tag_type_to_node(Node *node) {
   }
 
   error("予期しないノードが指定されました");
+}
+
+void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
+  if (!statementUnion) {
+    error("指定された文が存在しません");
+  }
+
+  // match if
+  {
+    IfStatement *ifPattern = statement_union_take_if(statementUnion);
+    if (ifPattern) {
+      tag_type_to_node(ifPattern->condition);
+      tag_type_to_statement(ifPattern->thenStatement, returnType);
+      if (ifPattern->elseStatement)
+        tag_type_to_statement(ifPattern->elseStatement, returnType);
+      return;
+    }
+  }
+
+  // match while
+  {
+    WhileStatement *whilePattern = statement_union_take_while(statementUnion);
+    if (whilePattern) {
+      tag_type_to_node(whilePattern->condition);
+      tag_type_to_statement(whilePattern->statement, returnType);
+      return;
+    }
+  }
+
+  // match for
+  {
+    ForStatement *forPattern = statement_union_take_for(statementUnion);
+    if (forPattern) {
+      tag_type_to_node(forPattern->initialization);
+      tag_type_to_node(forPattern->condition);
+      tag_type_to_node(forPattern->afterthought);
+      tag_type_to_statement(forPattern->statement, returnType);
+      return;
+    }
+  }
+
+  // match compound
+  {
+    CompoundStatement *compoundPattern =
+        statement_union_take_compound(statementUnion);
+    if (compoundPattern) {
+      ListNode *node = compoundPattern->statementHead;
+      while (node) {
+        tag_type_to_statement(node->body, returnType);
+        node = node->next;
+      }
+      return;
+    }
+  }
+
+  // match return
+  {
+    ReturnStatement *returnPattern =
+        statement_union_take_return(statementUnion);
+    if (returnPattern) {
+      tag_type_to_node(returnPattern->node);
+      if (!type_compare_deep_with_implicit_cast(returnType,
+                                                returnPattern->node->type)) {
+        returnPattern->node = new_node_cast(returnType, returnPattern->node);
+      }
+      return;
+    }
+  }
+
+  // match expression
+  {
+    ExpressionStatement *expressionPattern =
+        statement_union_take_expression(statementUnion);
+    if (expressionPattern) {
+      tag_type_to_node(expressionPattern->node);
+      return;
+    }
+  }
+
+  error("予期しない文が指定されました");
 }

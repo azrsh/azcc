@@ -1,8 +1,8 @@
 #ifndef TYPECHECK_H
 #define TYPECHECK_H
 
-#include "node.h"
+#include "statement.h"
 
-void tag_type_to_node(Node *node);
+void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType);
 
 #endif
