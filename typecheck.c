@@ -107,6 +107,12 @@ void tag_type_to_node(Node *node) {
     for (int i = 0; i < vector_length(arguments); i++) {
       Node *arg = vector_get(arguments, i);
       tag_type_to_node(arg);
+
+      //引数のchar型は暗黙的にint型に拡張する
+      //前方宣言実装までの暫定的な実装
+      if (arg->type->kind == CHAR) {
+        vector_set(arguments, i, new_node_cast(new_type(INT), arg));
+      }
     }
     return;
   }

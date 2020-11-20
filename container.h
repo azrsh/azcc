@@ -29,6 +29,7 @@ typedef struct Vector Vector;
 Vector *new_vector(int initialSize);
 void vector_push_back(Vector *vector, void *element);
 void *vector_get(Vector *vector, int index);
+void vector_set(Vector *vector, int index, void *element);
 int vector_length(Vector *vector);
 
 typedef struct HashTable HashTable;
