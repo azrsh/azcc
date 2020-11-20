@@ -118,7 +118,7 @@ int main() {
   assert(15, test7(), "int b; if(1)return 5*(9-6);b=26-3+2;");
   assert(10, test8(), "int b; if(0)return 5*(9-6);b=26-3+2;return 10;");
   assert(15, test9(), "int b; if(0)return 0; else return 5*(9-6);b=26-3+2;");
-  //assert(15, test10(), "while(0)return 0; return 15;");   //このテストを実行するとOKの出力後にセグフォ
+  assert(15, test10(), "while(0)return 0; return 15;");
   assert(15, test11(), "int a; a = 10;while(a > 0)a = a - 1; return 15;");
   assert(10, test12(),
          "int a; int b; b = 0;for(a = 0;a < 10;a = a + 1)b = b + 1; return b;");

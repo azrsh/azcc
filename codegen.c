@@ -339,17 +339,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       int loopLabel = *labelCount;
       *labelCount += 1;
 
-      printf("begin%d:\n", loopLabel);
+      printf(".Lbegin%d:\n", loopLabel);
 
       generate_expression(whilePattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je end%d\n", loopLabel);
+      printf("  je .Lend%d\n", loopLabel);
 
       generate_statement(whilePattern->statement, labelCount);
-      printf("  jmp begin%d\n", loopLabel);
+      printf("  jmp .Lbegin%d\n", loopLabel);
 
-      printf("end%d:\n", loopLabel);
+      printf(".Lend%d:\n", loopLabel);
       return;
     }
   }
@@ -363,18 +363,18 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 
       generate_expression(forPattern->initialization, labelCount);
 
-      printf("begin%d:\n", loopLabel);
+      printf(".Lbegin%d:\n", loopLabel);
 
       generate_expression(forPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je end%d\n", loopLabel);
+      printf("  je .Lend%d\n", loopLabel);
 
       generate_statement(forPattern->statement, labelCount);
       generate_expression(forPattern->afterthought, labelCount);
-      printf("  jmp begin%d\n", loopLabel);
+      printf("  jmp .Lbegin%d\n", loopLabel);
 
-      printf("end%d:\n", loopLabel);
+      printf(".Lend%d:\n", loopLabel);
       return;
     }
   }
@@ -415,6 +415,10 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
         statement_union_take_expression(statementUnion);
     if (expressionPattern) {
       generate_expression(expressionPattern->node, labelCount);
+
+      //文の評価結果をスタックからポップしてraxに格納
+      //スタック溢れ対策も兼ねている
+      printf("  pop rax\n");
       return;
     }
   }
@@ -465,10 +469,6 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     //抽象構文木を降りながらコード生成
     generate_statement(statementList->body, labelCount);
     statementList = statementList->next;
-
-    //文の評価結果をスタックからポップしてraxに格納
-    //スタック溢れ対策も兼ねている
-    printf("  pop rax\n");
 
     insert_comment("statement end");
   }
