@@ -311,6 +311,15 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
     }
   }
 
+  // match break
+  {
+    ContinueStatement *continuePattern =
+        statement_union_take_continue(statementUnion);
+    if (continuePattern) {
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =

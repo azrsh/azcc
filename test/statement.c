@@ -179,6 +179,24 @@ int test12() {
   return 0;
 }
 
+int test13sub() {
+  int x = 0;
+  for (int i = 0; i < 10; i = i + 1)
+    for (int j = 0; j < 10; j = j + 1) {
+      x = x + 1;
+      if (i * 10 + j < 50)
+        continue;
+      break;
+    }
+  return x;
+}
+int test13() {
+  assert(
+      55, test13sub(),
+      "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <...");
+  return 0;
+}
+
 int main() {
   test1();
   test2();
@@ -192,6 +210,7 @@ int main() {
   test10();
   test11();
   test12();
+  test13();
   printf("OK\n");
   return 0;
 }

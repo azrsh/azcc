@@ -228,6 +228,7 @@ WhileStatement *while_statement(VariableContainer *variableContainer);
 ForStatement *for_statement(VariableContainer *variableContainer);
 CompoundStatement *compound_statement(VariableContainer *variableContainer);
 BreakStatement *break_statement(VariableContainer *variableContainer);
+ContinueStatement *continue_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
 Node *variable_definition(VariableContainer *variableContainer);
@@ -249,13 +250,16 @@ Node *literal();
 // identity)*
 // global_variable_definition = variable_definition ";"
 // statement = expression_statement | return_statement | if_statement
-// | while_statement expression_statement = " expression ";"
+// | while_statementa | break_statement | continue_statement
+// expression_statement = " expression ";"
 // return_statement = "return" expression ";"
 // if_statement = "if" "(" expression ")" statement ("else" statement)?
 // while_statement = "while" "(" expression ")" statement
 // for_statement = "for" "(" expression ";" expression ";" expression ")"
 // statement
 // compound_statement = "{" statement* "}"
+// break_statement = "break" ";"
+// continue_statement = "continue" ";"
 
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
@@ -463,6 +467,11 @@ StatementUnion *statement(VariableContainer *variableContainer) {
     return new_statement_union_break(breakPattern);
   }
 
+  ContinueStatement *continuePattern = continue_statement(variableContainer);
+  if (continuePattern) {
+    return new_statement_union_continue(continuePattern);
+  }
+
   ExpressionStatement *expressionPattern =
       expression_statement(variableContainer);
   return new_statement_union_expression(expressionPattern);
@@ -576,6 +585,16 @@ BreakStatement *break_statement(VariableContainer *variableContainer) {
   }
   expect(";");
   BreakStatement *result = calloc(1, sizeof(BreakStatement));
+  return result;
+}
+
+// continue文をパースする
+ContinueStatement *continue_statement(VariableContainer *variableContainer) {
+  if (!consume("continue")) {
+    return NULL;
+  }
+  expect(";");
+  ContinueStatement *result = calloc(1, sizeof(ContinueStatement));
   return result;
 }
 

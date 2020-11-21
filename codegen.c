@@ -370,6 +370,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       printf("  je .Lendloop%d\n", loopLabel);
 
       generate_statement(whilePattern->statement, labelCount, loopLabel);
+
+      printf(".Lcontinueloop%d:\n", loopLabel);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
       printf(".Lendloop%d:\n", loopLabel);
@@ -394,6 +396,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       printf("  je .Lendloop%d\n", loopLabel);
 
       generate_statement(forPattern->statement, labelCount, loopLabel);
+
+      printf(".Lcontinueloop%d:\n", loopLabel);
       generate_expression(forPattern->afterthought, labelCount);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
@@ -438,6 +442,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     if (breakPattern) {
       printf("  jmp .Lendloop%d    ", loopNest);
       insert_comment("break statement");
+      return;
+    }
+  }
+
+  // match continue
+  {
+    ContinueStatement *continuePattern =
+        statement_union_take_continue(statementUnion);
+    if (continuePattern) {
+      printf("  jmp .Lcontinueloop%d    ", loopNest);
+      insert_comment("continue statement");
       return;
     }
   }

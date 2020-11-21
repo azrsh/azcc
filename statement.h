@@ -46,6 +46,11 @@ struct BreakStatement {
   int dummy;
 };
 
+typedef struct ContinueStatement ContinueStatement;
+struct ContinueStatement {
+  int dummy;
+};
+
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement);
 StatementUnion *new_statement_union_return(ReturnStatement *statement);
 StatementUnion *new_statement_union_if(IfStatement *statement);
@@ -53,6 +58,7 @@ StatementUnion *new_statement_union_while(WhileStatement *statement);
 StatementUnion *new_statement_union_for(ForStatement *statement);
 StatementUnion *new_statement_union_compound(CompoundStatement *statement);
 StatementUnion *new_statement_union_break(BreakStatement *statement);
+StatementUnion *new_statement_union_continue(ContinueStatement *statement);
 
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
@@ -63,5 +69,7 @@ ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 CompoundStatement *
 statement_union_take_compound(StatementUnion *statementUnion);
 BreakStatement *statement_union_take_break(StatementUnion *statementUnion);
+ContinueStatement *
+statement_union_take_continue(StatementUnion *statementUnion);
 
 #endif

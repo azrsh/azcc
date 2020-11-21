@@ -12,6 +12,7 @@ typedef enum {
   STATEMENT_COMPOUND,
   STATEMENT_RETURN,
   STATEMENT_BREAK,
+  STATEMENT_CONTINUE,
 } StatementKind;
 
 struct StatementUnion {
@@ -24,6 +25,7 @@ struct StatementUnion {
     ForStatement *forStatement;
     CompoundStatement *compoundStatement;
     BreakStatement *breakStatement;
+    ContinueStatement *continueStatement;
   };
 };
 
@@ -76,6 +78,13 @@ StatementUnion *new_statement_union_break(BreakStatement *statement) {
   return result;
 }
 
+StatementUnion *new_statement_union_continue(ContinueStatement *statement) {
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->continueStatement = statement;
+  result->tag = STATEMENT_CONTINUE;
+  return result;
+}
+
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion) {
   if (statementUnion->tag == STATEMENT_EXPRESSION)
@@ -117,5 +126,12 @@ statement_union_take_compound(StatementUnion *statementUnion) {
 BreakStatement *statement_union_take_break(StatementUnion *statementUnion) {
   if (statementUnion->tag == STATEMENT_BREAK)
     return statementUnion->breakStatement;
+  return NULL;
+}
+
+ContinueStatement *
+statement_union_take_continue(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_CONTINUE)
+    return statementUnion->continueStatement;
   return NULL;
 }
