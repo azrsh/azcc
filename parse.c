@@ -179,7 +179,6 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
   if (!variable_container_push(variableContainer, localVariable))
     error_at(variableName.head, "同名の変数が既に定義されています");
 
-  node->type = type; //本当は消したい
   node->variable = localVariable;
   return node;
 }
@@ -388,8 +387,7 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
-    // 関数の引数に対する型検査ができていないが、変数ノードはノード生成の時点で型付けを行うので問題ない
-    // tag_type_to_node(type);
+    node->type = node->variable->type; // tag_type_to_node(type)できないので手動型付け
 
     vector_push_back(arguments, node);
   } while (consume(","));
