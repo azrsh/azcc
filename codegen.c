@@ -30,10 +30,10 @@ void insert_comment(char *fmt, ...) {
 }
 
 void generate_expression(Node *node, int *labelCount);
-void generate_variable(Node *node, int *labelCount);
+void generate_variable(Node *node);
 void generate_fuction_call(Node *node, int *labelCount);
 
-void generate_variable(Node *node, int *labelCount) {
+void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
     error("変数ではありません");
 
@@ -54,7 +54,7 @@ void generate_variable(Node *node, int *labelCount) {
 
 void generate_assign_lhs(Node *node, int *labelCount) {
   if (node->kind == NODE_VAR) {
-    generate_variable(node, labelCount);
+    generate_variable(node);
     return;
   }
 
@@ -137,21 +137,21 @@ void generate_cast(Node *node, int *labelCount) {
     // printf("  shl rax, %d\n", 64 - 8);
     // printf("  shr rax, %d\n", 64 - 8);
   } else if (source->kind == ARRAY && dest->kind == PTR) {
-    generate_variable(node, labelCount);
+    generate_variable(node);
   }
   printf("  push rax\n");
 
   insert_comment("cast end");
 }
 
-void generate_assign_i64(Node *node, int *labelCount) {
+void generate_assign_i64(Node *node) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov [rax], rdi\n");
   printf("  push rdi\n");
 }
 
-void generate_assign_i8(Node *node, int *labelCount) {
+void generate_assign_i8(Node *node) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov BYTE PTR [rax], dil\n");
@@ -169,7 +169,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     return;
   case NODE_REF:
-    generate_variable(node->lhs, labelCount);
+    generate_variable(node->lhs);
     return;
   case NODE_DEREF:
     generate_expression(node->lhs, labelCount);
@@ -178,7 +178,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     return;
   case NODE_VAR:
-    generate_variable(node, labelCount);
+    generate_variable(node);
 
     //配列の暗黙的なキャスト
     if (node->type->kind != ARRAY) {
@@ -206,11 +206,11 @@ void generate_expression(Node *node, int *labelCount) {
       error("右辺を左辺と同じ型にキャストできない不正な代入です");
 
     if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8(node, labelCount);
+      generate_assign_i8(node);
     else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i64(node, labelCount);
+      generate_assign_i64(node);
     else
-      generate_assign_i64(node, labelCount);
+      generate_assign_i64(node);
 
     insert_comment("assign end");
     return;
@@ -324,7 +324,8 @@ void generate_global_variable(const Variable *variable) {
   }
 }
 
-void generate_statement(StatementUnion *statementUnion, int *labelCount) {
+void generate_statement(StatementUnion *statementUnion, int *labelCount,
+                        int loopNest) {
   // match if
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
@@ -339,17 +340,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       if (ifPattern->elseStatement) {
         printf("  je .Lelse%d\n", ifLabel);
       } else {
-        printf("  je .Lend%d\n", ifLabel);
+        printf("  je .Lendif%d\n", ifLabel);
       }
 
-      generate_statement(ifPattern->thenStatement, labelCount);
+      generate_statement(ifPattern->thenStatement, labelCount, loopNest);
 
       if (ifPattern->elseStatement) {
         printf(".Lelse%d:\n", ifLabel);
-        generate_statement(ifPattern->elseStatement, labelCount);
+        generate_statement(ifPattern->elseStatement, labelCount, loopNest);
       }
 
-      printf(".Lend%d:\n", ifLabel);
+      printf(".Lendif%d:\n", ifLabel);
       return;
     }
   }
@@ -361,17 +362,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       int loopLabel = *labelCount;
       *labelCount += 1;
 
-      printf(".Lbegin%d:\n", loopLabel);
+      printf(".Lbeginloop%d:\n", loopLabel);
 
       generate_expression(whilePattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .Lend%d\n", loopLabel);
+      printf("  je .Lendloop%d\n", loopLabel);
 
-      generate_statement(whilePattern->statement, labelCount);
-      printf("  jmp .Lbegin%d\n", loopLabel);
+      generate_statement(whilePattern->statement, labelCount, loopLabel);
+      printf("  jmp .Lbeginloop%d\n", loopLabel);
 
-      printf(".Lend%d:\n", loopLabel);
+      printf(".Lendloop%d:\n", loopLabel);
       return;
     }
   }
@@ -385,18 +386,18 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
 
       generate_expression(forPattern->initialization, labelCount);
 
-      printf(".Lbegin%d:\n", loopLabel);
+      printf(".Lbeginloop%d:\n", loopLabel);
 
       generate_expression(forPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .Lend%d\n", loopLabel);
+      printf("  je .Lendloop%d\n", loopLabel);
 
-      generate_statement(forPattern->statement, labelCount);
+      generate_statement(forPattern->statement, labelCount, loopLabel);
       generate_expression(forPattern->afterthought, labelCount);
-      printf("  jmp .Lbegin%d\n", loopLabel);
+      printf("  jmp .Lbeginloop%d\n", loopLabel);
 
-      printf(".Lend%d:\n", loopLabel);
+      printf(".Lendloop%d:\n", loopLabel);
       return;
     }
   }
@@ -409,7 +410,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       ListNode *node = compoundPattern->statementHead;
 
       while (node) {
-        generate_statement(node->body, labelCount);
+        generate_statement(node->body, labelCount, loopNest);
         node = node->next;
       }
 
@@ -427,6 +428,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount) {
       printf("  mov rsp, rbp\n");
       printf("  pop rbp\n");
       printf("  ret\n");
+      return;
+    }
+  }
+
+  // match break
+  {
+    BreakStatement *breakPattern = statement_union_take_break(statementUnion);
+    if (breakPattern) {
+      printf("  jmp .Lendloop%d    ", loopNest);
+      insert_comment("break statement");
       return;
     }
   }
@@ -470,7 +481,7 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   int argumentStackOffset = 0;
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
-    generate_variable(node, labelCount);
+    generate_variable(node);
     printf("  pop rax\n");
 
     if (i < 6) {
@@ -489,7 +500,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     insert_comment("statement start");
 
     //抽象構文木を降りながらコード生成
-    generate_statement(statementList->body, labelCount);
+    // loopNestを無効な値にする(ループ外でbreakしないように)
+    generate_statement(statementList->body, labelCount, -1);
     statementList = statementList->next;
 
     insert_comment("statement end");

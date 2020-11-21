@@ -41,12 +41,18 @@ struct CompoundStatement {
   ListNode *statementHead;
 };
 
+typedef struct BreakStatement BreakStatement;
+struct BreakStatement {
+  int dummy;
+};
+
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement);
 StatementUnion *new_statement_union_return(ReturnStatement *statement);
 StatementUnion *new_statement_union_if(IfStatement *statement);
 StatementUnion *new_statement_union_while(WhileStatement *statement);
 StatementUnion *new_statement_union_for(ForStatement *statement);
 StatementUnion *new_statement_union_compound(CompoundStatement *statement);
+StatementUnion *new_statement_union_break(BreakStatement *statement);
 
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
@@ -56,5 +62,6 @@ WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
 ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 CompoundStatement *
 statement_union_take_compound(StatementUnion *statementUnion);
+BreakStatement *statement_union_take_break(StatementUnion *statementUnion);
 
 #endif

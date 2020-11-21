@@ -303,6 +303,14 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
     }
   }
 
+  // match break
+  {
+    BreakStatement *breakPattern = statement_union_take_break(statementUnion);
+    if (breakPattern) {
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =

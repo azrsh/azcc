@@ -227,6 +227,7 @@ IfStatement *if_statement(VariableContainer *variableContainer);
 WhileStatement *while_statement(VariableContainer *variableContainer);
 ForStatement *for_statement(VariableContainer *variableContainer);
 CompoundStatement *compound_statement(VariableContainer *variableContainer);
+BreakStatement *break_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
 Node *variable_definition(VariableContainer *variableContainer);
@@ -457,6 +458,11 @@ StatementUnion *statement(VariableContainer *variableContainer) {
     return new_statement_union_compound(compoundPattern);
   }
 
+  BreakStatement *breakPattern = break_statement(variableContainer);
+  if (breakPattern) {
+    return new_statement_union_break(breakPattern);
+  }
+
   ExpressionStatement *expressionPattern =
       expression_statement(variableContainer);
   return new_statement_union_expression(expressionPattern);
@@ -560,6 +566,16 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
   }
   result->statementHead = head.next;
 
+  return result;
+}
+
+// break文をパースする
+BreakStatement *break_statement(VariableContainer *variableContainer) {
+  if (!consume("break")) {
+    return NULL;
+  }
+  expect(";");
+  BreakStatement *result = calloc(1, sizeof(BreakStatement));
   return result;
 }
 
