@@ -111,6 +111,37 @@ int test8() {
   return 0;
 }
 
+int test9sub() {
+  int x = 128;
+  for (int i = 0; i < 10; i = i + 1) {
+    x = x + 2;
+  }
+  return x;
+}
+int test9() {
+  assert(148, test9sub(),
+         "int x = 128; for (int i = 0; i < 10; i = i + 1) { x = x + 2; }..."
+         /*"return x;"*/);
+  return 0;
+}
+
+int test10sub() {
+  int x = 0;
+  for (int i = 0; i < 10; i = i + 1) {
+    for (int j = 0; j < 10; j = j + 1) {
+      x = x + i * j;
+    }
+  }
+  return x;
+}
+int test10() {
+  assert(
+      2025, test10sub(),
+      "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <..."
+      /*"10; j = j + 1) { x = x + i * j; } }return x;"*/);
+  return 0;
+}
+
 int main() {
   test1();
   test2();
@@ -120,6 +151,8 @@ int main() {
   test6();
   test7();
   test8();
+  test9();
+  test10();
   printf("OK\n");
   return 0;
 }
