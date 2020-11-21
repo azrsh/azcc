@@ -88,12 +88,13 @@ Variable *new_variable_local(Type *type, String name) {
   return localVariable;
 }
 
-Variable *new_variable_global(Type *type, String name) {
-  Variable *localVariable = calloc(1, sizeof(Variable));
-  localVariable->type = type;
-  localVariable->name = name;
-  localVariable->kind = VARIABLE_GLOBAL;
-  return localVariable;
+Variable *new_variable_global(Type *type, String name, Node *initialization) {
+  Variable *globalVariable = calloc(1, sizeof(Variable));
+  globalVariable->type = type;
+  globalVariable->name = name;
+  globalVariable->kind = VARIABLE_GLOBAL;
+  globalVariable->initialization = initialization;
+  return globalVariable;
 }
 
 FunctionCall *new_function_call(Token *token) {
@@ -238,7 +239,7 @@ Node *multiply(VariableContainer *variableContainer);
 Node *unary(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
-Node *literal(VariableContainer *variableContainer);
+Node *literal();
 
 // program = (function_definition | global_variable_definition)*
 // function_definition = type_specifier identity "("
@@ -410,13 +411,19 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
     expect("]");
   }
 
+  Node *initialization = NULL;
+  if (consume("=")) {
+    initialization = literal();
+  }
+
   if (!consume(";")) {
     token = tokenHead;
     return NULL;
   }
 
   String variableName = identifier->string;
-  Variable *globalVariable = new_variable_global(type, variableName);
+  Variable *globalVariable =
+      new_variable_global(type, variableName, initialization);
   if (!variable_container_push(variableContainer, globalVariable))
     error_at(token->string.head, "同名の変数が既に定義されています");
 
@@ -767,7 +774,7 @@ Node *primary(VariableContainer *variableContainer) {
   }
 
   //そうでなければリテラル
-  return literal(variableContainer);
+  return literal();
 }
 
 // Node Vector
@@ -779,7 +786,7 @@ Vector *function_call_argument(VariableContainer *variableContainer) {
   return arguments;
 }
 
-Node *literal(VariableContainer *variableContainer) {
+Node *literal() {
   Token *string = consume_string();
   if (string) {
     Node *node = new_node(NODE_STRING, NULL, NULL);

@@ -290,16 +290,37 @@ void generate_string_literal(int index, const char *string) {
   printf("  .string \"%s\"\n", string);
 }
 
-void generate_global_variable(const Variable *globalVariable) {
-  if (globalVariable->kind != VARIABLE_GLOBAL)
+void generate_global_variable(const Variable *variable) {
+  if (variable->kind != VARIABLE_GLOBAL)
     error("グローバル変数ではありません");
 
-  const char *name = string_to_char(globalVariable->name);
-  const size_t typeSize = type_to_size(globalVariable->type);
+  const char *name = string_to_char(variable->name);
+  const size_t typeSize = type_to_size(variable->type);
   printf("  .globl %s\n", name);
   printf("  .data\n");
   printf("%s:\n", name);
-  printf("  .zero %zu\n", typeSize);
+  if (variable->initialization) {
+    switch (variable->initialization->kind) {
+    case NODE_STRING:
+      error("グローバル変数の文字列による初期化は未実装です");
+      break;
+    case NODE_NUM:
+      if (variable->type->kind == CHAR) {
+        printf("  .byte %d\n", variable->initialization->val);
+        return;
+      } else if (variable->type->kind == INT) {
+        printf("  .quad %d\n", variable->initialization->val);
+        return;
+      }
+    default:
+      error("グローバル変数の初期化に失敗しました");
+    }
+  } else {
+    if (typeSize == 4)
+      printf("  .zero %d\n", 8); // intを64bit扱いしているので
+    else
+      printf("  .zero %zu\n", typeSize);
+  }
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount) {

@@ -7,6 +7,7 @@ int test1() {
   p = a;
   return p[0] + p[1];
 }
+
 int asdjuwgehij;
 int test2() {
   int a[2];
@@ -16,16 +17,21 @@ int test2() {
   p = a;
   return p[0] + p[1];
 }
+
 int test3() {
   a = 1;
   return a;
 }
+
 int b;
 int test4() {
   a = 1;
   b = 2;
   return a + b;
 }
+
+int c = 12;
+int test5() { return c; }
 
 int main() {
   assert(3, test1(),
@@ -37,6 +43,7 @@ int main() {
       /*"= a; return p[0] + p[1]; }"*/);
   assert(1, test3(), "int a; int main(){ a = 1; return a; }");
   assert(3, test4(), "int a; int b; int main(){ a = 1; b = 2; return a + b; }");
+  assert(12, test5(), "int c = 12; int main(){ return c; }");
   printf("OK\n");
   return 0;
 }

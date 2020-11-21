@@ -4,6 +4,8 @@
 #include "container.h"
 #include "type.h"
 
+typedef struct Node Node;
+
 typedef enum {
   VARIABLE_LOCAL, // ローカル変数
   VARIABLE_GLOBAL // グローバル変数
@@ -15,6 +17,7 @@ struct Variable {
   Type *type;        //型
   VariableKind kind; //変数の種類
   int offset; // RBPからのオフセット、ローカル変数でのみ使用
+  Node *initialization; // 初期化式、グローバル変数でのみ使用
 };
 
 #endif
