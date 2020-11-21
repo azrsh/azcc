@@ -238,6 +238,7 @@ Node *multiply(VariableContainer *variableContainer);
 Node *unary(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
+Node *literal(VariableContainer *variableContainer);
 
 // program = (function_definition | global_variable_definition)*
 // function_definition = type_specifier identity "("
@@ -263,10 +264,11 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "&" | "*")? primary
-// primary = number | "\"" string_literal "\"" | identity ("("
+// primary = literal | identity ("("
 // function_call_argument? ")" | "[" expression "]")? | "("expression")" |
 // "sizeof" "(" (expression | type_specifier) ")"
 // function_call_argument = expression ("," expression)*
+// literal = number | "\"" string"\""
 
 //プログラムをパースする
 Program *program() {
@@ -585,7 +587,18 @@ Node *variable_definition(VariableContainer *variableContainer) {
     expect("]");
   }
 
-  return new_node_variable_definition(type, identifier, variableContainer);
+  Node *node =
+      new_node_variable_definition(type, identifier, variableContainer);
+
+  for (;;) {
+    if (consume("=")) {
+      node = new_node(NODE_ASSIGN, node, equality(variableContainer));
+    } else {
+      return node;
+    }
+  }
+
+  return node;
 }
 
 //型指定子をパースする
@@ -753,6 +766,20 @@ Node *primary(VariableContainer *variableContainer) {
     }
   }
 
+  //そうでなければリテラル
+  return literal(variableContainer);
+}
+
+// Node Vector
+Vector *function_call_argument(VariableContainer *variableContainer) {
+  Vector *arguments = new_vector(32);
+  do {
+    vector_push_back(arguments, expression(variableContainer));
+  } while (consume(","));
+  return arguments;
+}
+
+Node *literal(VariableContainer *variableContainer) {
   Token *string = consume_string();
   if (string) {
     Node *node = new_node(NODE_STRING, NULL, NULL);
@@ -764,15 +791,6 @@ Node *primary(VariableContainer *variableContainer) {
 
   //そうでなければ整数
   return new_node_num(expect_number());
-}
-
-// Node Vector
-Vector *function_call_argument(VariableContainer *variableContainer) {
-  Vector *arguments = new_vector(32);
-  do {
-    vector_push_back(arguments, expression(variableContainer));
-  } while (consume(","));
-  return arguments;
 }
 
 Program *parse(Token *head) {

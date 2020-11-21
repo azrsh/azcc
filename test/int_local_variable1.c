@@ -137,11 +137,23 @@ int test13() {
     b = b + 1;
     c = c + 2;
   }
-  return c;
   assert(
-      20, test13(),
+      20, c,
       "int a; int b; int c; b = 0;c = 0;for(a = 0;a < 10;a = a + 1){b = b ..."
       /*"+ 1;c = c + 2;} return c;}"*/);
+  return 0;
+}
+
+int test14() {
+  int a = 1;
+  assert(1, a, "int a = 1;");
+  int b = a;
+  assert(1, b, "int b = a;");
+  int c = a + b;
+  assert(2, c, "int c = a + b;");
+  int d = a * b + c;
+  assert(3, d, "int d = a * b + c;");
+  return 0;
 }
 
 int main() {
@@ -158,6 +170,7 @@ int main() {
   test11();
   test12();
   test13();
+  test14();
   printf("OK\n");
   return 0;
 }
