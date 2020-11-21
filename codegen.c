@@ -144,14 +144,14 @@ void generate_cast(Node *node, int *labelCount) {
   insert_comment("cast end");
 }
 
-void generate_assign_i64_to_i64(Node *node, int *labelCount) {
+void generate_assign_i64(Node *node, int *labelCount) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov [rax], rdi\n");
   printf("  push rdi\n");
 }
 
-void generate_assign_i8_to_i8(Node *node, int *labelCount) {
+void generate_assign_i8(Node *node, int *labelCount) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov BYTE PTR [rax], dil\n");
@@ -206,9 +206,11 @@ void generate_expression(Node *node, int *labelCount) {
       error("右辺を左辺と同じ型にキャストできない不正な代入です");
 
     if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8_to_i8(node, labelCount);
+      generate_assign_i8(node, labelCount);
+    else if (lhsSize == 4 && rhsSize == 4)
+      generate_assign_i64(node, labelCount);
     else
-      generate_assign_i64_to_i64(node, labelCount);
+      generate_assign_i64(node, labelCount);
 
     insert_comment("assign end");
     return;
@@ -295,7 +297,9 @@ void generate_global_variable(const Variable *variable) {
     error("グローバル変数ではありません");
 
   const char *name = string_to_char(variable->name);
-  const size_t typeSize = type_to_size(variable->type);
+  const size_t typeSize = type_to_stack_size(
+      variable
+          ->type); //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる
   printf("  .globl %s\n", name);
   printf("  .data\n");
   printf("%s:\n", name);
@@ -316,10 +320,7 @@ void generate_global_variable(const Variable *variable) {
       error("グローバル変数の初期化に失敗しました");
     }
   } else {
-    if (typeSize == 4)
-      printf("  .zero %d\n", 8); // intを64bit扱いしているので
-    else
-      printf("  .zero %zu\n", typeSize);
+    printf("  .zero %zu\n", typeSize);
   }
 }
 
