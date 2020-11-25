@@ -134,8 +134,7 @@ void generate_cast(Node *node, int *labelCount) {
   if (source->kind == TYPE_CHAR && dest->kind == TYPE_INT) {
     printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
-    // printf("  shl rax, %d\n", 64 - 8);
-    // printf("  shr rax, %d\n", 64 - 8);
+    // 上位56bitを破棄すればよいのでなにもしない
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
     generate_variable(node);
   }
@@ -148,6 +147,13 @@ void generate_assign_i64(Node *node) {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov [rax], rdi\n");
+  printf("  push rdi\n");
+}
+
+void generate_assign_i32(Node *node) {
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  printf("  mov DWORD PTR [rax], edi\n");
   printf("  push rdi\n");
 }
 
@@ -180,12 +186,24 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_VAR:
     generate_variable(node);
 
-    //配列の暗黙的なキャスト
-    if (node->type->kind != TYPE_ARRAY) {
-      printf("  pop rax\n");
+    //暗黙的なキャスト
+    //配列はポインタに
+    //それ以外の値は64bitに符号拡張
+    printf("  pop rax\n");
+    switch (node->type->kind) {
+    case TYPE_CHAR:
+      printf("  movsx rax, BYTE PTR [rax]\n");
+      break;
+    case TYPE_INT:
+      printf("  movsx rax, DWORD PTR [rax]\n");
+      break;
+    case TYPE_PTR:
       printf("  mov rax, [rax]\n");
-      printf("  push rax\n");
+      break;
+    case TYPE_ARRAY:
+      break; //配列はポインタのままにする
     }
+    printf("  push rax\n");
     return;
   case NODE_FUNC:
     generate_fuction_call(node, labelCount);
@@ -208,7 +226,7 @@ void generate_expression(Node *node, int *labelCount) {
     if (lhsSize == 1 && rhsSize == 1)
       generate_assign_i8(node);
     else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i64(node);
+      generate_assign_i32(node);
     else
       generate_assign_i64(node);
 
