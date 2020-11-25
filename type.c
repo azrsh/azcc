@@ -30,7 +30,7 @@ int type_to_size(Type *type) {
 
 int type_to_stack_size(Type *type) {
   int size = type_to_size(type);
-  size += 8 - size % 8;
+  size += (8 - size % 8) % 8;
   return size;
 }
 
