@@ -7,12 +7,6 @@
 #include "util.h"
 #include <stdlib.h>
 
-Type *new_type(TypeKind kind) {
-  Type *type = calloc(1, sizeof(Type));
-  type->kind = kind;
-  return type;
-}
-
 bool type_compare_deep(const Type *type1, const Type *type2) {
   return (!type1 && !type2) || (type1 && type2 && type1->kind == type2->kind &&
                                 type1->length == type2->length &&
@@ -79,15 +73,15 @@ void tag_type_to_node(Node *node) {
 
   switch (node->kind) {
   case NODE_NUM:
-    node->type = new_type(INT);
+    node->type = new_type(TYPE_INT);
     return;
   case NODE_STRING:
-    node->type = new_type(PTR);
-    node->type->base = new_type(CHAR);
+    node->type = new_type(TYPE_PTR);
+    node->type->base = new_type(TYPE_CHAR);
     return;
   case NODE_REF:
     tag_type_to_node(node->lhs);
-    node->type = new_type(PTR);
+    node->type = new_type(TYPE_PTR);
     node->type->base = node->lhs->type;
     return;
   case NODE_DEREF:
@@ -110,8 +104,8 @@ void tag_type_to_node(Node *node) {
 
       //引数のchar型は暗黙的にint型に拡張する
       //前方宣言実装までの暫定的な実装
-      if (arg->type->kind == CHAR) {
-        vector_set(arguments, i, new_node_cast(new_type(INT), arg));
+      if (arg->type->kind == TYPE_CHAR) {
+        vector_set(arguments, i, new_node_cast(new_type(TYPE_INT), arg));
       }
     }
     return;
@@ -143,11 +137,11 @@ void tag_type_to_node(Node *node) {
 
   switch (node->kind) {
   case NODE_ADD:
-    if (lhs->base != NULL && rhs->kind == INT) {
+    if (lhs->base != NULL && rhs->kind == TYPE_INT) {
       node->type = lhs;
       return;
     }
-    if (lhs->kind == INT && rhs->base != NULL) {
+    if (lhs->kind == TYPE_INT && rhs->base != NULL) {
       error("未実装の演算です");
     }
     {
@@ -160,11 +154,11 @@ void tag_type_to_node(Node *node) {
     }
     error("演算子+のオペランド型が不正です");
   case NODE_SUB:
-    if (lhs->base != NULL && rhs->kind == INT) {
+    if (lhs->base != NULL && rhs->kind == TYPE_INT) {
       node->type = lhs;
       return;
     }
-    if (lhs->kind == PTR && rhs->base != NULL) {
+    if (lhs->kind == TYPE_PTR && rhs->base != NULL) {
       error("未実装の演算です");
     }
     {

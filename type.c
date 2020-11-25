@@ -3,16 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+Type *new_type(TypeKind kind) {
+  Type *type = calloc(1, sizeof(Type));
+  type->kind = kind;
+  return type;
+}
+
 int type_to_size(Type *type) {
   switch (type->kind) {
-  case CHAR:
+  case TYPE_CHAR:
     return 1;
-  case INT:
+  case TYPE_INT:
     return 4;
-  case PTR:
+  case TYPE_PTR:
     return 8;
-  case ARRAY:
+  case TYPE_ARRAY:
     return type_to_size(type->base) * type->length;
+  case TYPE_STRUCT:
+    return member_container_aligned_size(type->members);
   }
 
   error("予期しない型が指定されました");
@@ -27,13 +35,13 @@ int type_to_stack_size(Type *type) {
 
 char *type_kind_to_char(TypeKind kind) {
   switch (kind) {
-  case CHAR:
+  case TYPE_CHAR:
     return "char";
-  case INT:
+  case TYPE_INT:
     return "int";
-  case PTR:
+  case TYPE_PTR:
     return "Pointer";
-  case ARRAY:
+  case TYPE_ARRAY:
     return "Array";
   }
 }

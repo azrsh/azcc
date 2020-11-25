@@ -131,12 +131,12 @@ void generate_cast(Node *node, int *labelCount) {
   Type *dest = node->type;
   printf("  pop rax\n");
 
-  if (source->kind == CHAR && dest->kind == INT) {
+  if (source->kind == TYPE_CHAR && dest->kind == TYPE_INT) {
     printf("  movsx rax, al\n");
-  } else if (source->kind == INT && dest->kind == CHAR) {
+  } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
     // printf("  shl rax, %d\n", 64 - 8);
     // printf("  shr rax, %d\n", 64 - 8);
-  } else if (source->kind == ARRAY && dest->kind == PTR) {
+  } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
     generate_variable(node);
   }
   printf("  push rax\n");
@@ -181,7 +181,7 @@ void generate_expression(Node *node, int *labelCount) {
     generate_variable(node);
 
     //配列の暗黙的なキャスト
-    if (node->type->kind != ARRAY) {
+    if (node->type->kind != TYPE_ARRAY) {
       printf("  pop rax\n");
       printf("  mov rax, [rax]\n");
       printf("  push rax\n");
@@ -309,10 +309,10 @@ void generate_global_variable(const Variable *variable) {
       error("グローバル変数の文字列による初期化は未実装です");
       break;
     case NODE_NUM:
-      if (variable->type->kind == CHAR) {
+      if (variable->type->kind == TYPE_CHAR) {
         printf("  .byte %d\n", variable->initialization->val);
         return;
-      } else if (variable->type->kind == INT) {
+      } else if (variable->type->kind == TYPE_INT) {
         printf("  .quad %d\n", variable->initialization->val);
         return;
       }

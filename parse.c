@@ -102,8 +102,7 @@ FunctionCall *new_function_call(Token *token) {
   functionCall->name = token->string;
 
   //関数呼び出しの戻り値は常にintであるト仮定する
-  functionCall->type = calloc(1, sizeof(Type));
-  functionCall->type->kind = INT;
+  functionCall->type = new_type(TYPE_INT);
 
   return functionCall;
 }
@@ -113,26 +112,24 @@ TypeKind map_token_to_kind(Token *token) {
     error_at(token->string.head, "組み込み型ではありません");
 
   if (string_compare(token->string, new_string("int", 3)))
-    return INT;
+    return TYPE_INT;
 
   if (string_compare(token->string, new_string("char", 4)))
-    return CHAR;
+    return TYPE_CHAR;
 
   error_at(token->string.head, "組み込み型ではありません");
   return 0;
 }
 
 Type *new_type_from_token(Token *typeToken) {
-  Type *base = calloc(1, sizeof(Type));
-  base->kind = map_token_to_kind(typeToken);
+  Type *base = new_type(map_token_to_kind(typeToken));
   base->base = NULL;
   typeToken = typeToken->next;
 
   Type *current = base;
   const String star = new_string("*", 1);
   while (typeToken && string_compare(typeToken->string, star)) {
-    Type *pointer = calloc(1, sizeof(Type));
-    pointer->kind = PTR;
+    Type *pointer = new_type(TYPE_PTR);
     pointer->base = current;
     current = pointer;
 
@@ -143,8 +140,7 @@ Type *new_type_from_token(Token *typeToken) {
 }
 
 Type *new_type_array(Type *base, size_t size) {
-  Type *array = calloc(1, sizeof(Type));
-  array->kind = ARRAY;
+  Type *array = new_type(TYPE_ARRAY);
   array->base = base;
   array->length = size;
   return array;
@@ -387,7 +383,8 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Token *identifier = expect_identifier();
     Node *node =
         new_node_variable_definition(type, identifier, variableContainer);
-    node->type = node->variable->type; // tag_type_to_node(type)できないので手動型付け
+    node->type =
+        node->variable->type; // tag_type_to_node(type)できないので手動型付け
 
     vector_push_back(arguments, node);
   } while (consume(","));
