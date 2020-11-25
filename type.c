@@ -1,4 +1,5 @@
 #include "type.h"
+#include "membercontainer.h"
 #include "util.h"
 #include <stdlib.h>
 #include <string.h>

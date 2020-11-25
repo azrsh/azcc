@@ -1,5 +1,7 @@
 #include "parse.h"
 #include "container.h"
+#include "membercontainer.h"
+#include "node.h"
 #include "statement.h"
 #include "tokenize.h"
 #include "type.h"
@@ -17,7 +19,8 @@
 
 Token *token;
 int currentOffset;
-Vector *stringLiterals;
+Vector *stringLiterals;   // String vector
+Vector *userDefinedTypes; // Type vector
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -179,20 +182,36 @@ Node *new_node_variable_definition(Type *type, Token *identifier,
   return node;
 }
 
-//抽象構文木のローカル変数のノードを新しく生成する
-Node *new_node_lvar(Token *token, VariableContainer *container) {
+//抽象構文木の変数のノードを新しく生成する
+Node *new_node_variable(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
   String variableName = token->string;
-  Variable *localVariable = variable_container_get(container, variableName);
-  if (!localVariable) {
+  Variable *variable = variable_container_get(container, variableName);
+  if (!variable) {
     error_at(variableName.head, "変数%sは定義されていません",
              string_to_char(variableName));
   }
 
-  node->type = localVariable->type; //本当は消したい
-  node->variable = localVariable;
+  node->type = variable->type; //本当は消したい
+  node->variable = variable;
+  return node;
+}
+
+//抽象構文木のメンバ変数のノードを新しく生成する
+Node *new_node_member(Token *token, MemberContainer *container) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = NODE_VAR;
+
+  String variableName = token->string;
+  Variable *variable = member_container_get(container, variableName);
+  if (!variable) {
+    error_at(variableName.head, "メンバ変数%sは定義されていません",
+             string_to_char(variableName));
+  }
+
+  node->variable = variable;
   return node;
 }
 
@@ -215,6 +234,7 @@ Program *program();
 FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
 Variable *global_variable_definition(VariableContainer *variableContainer);
+Type *struct_definition(VariableContainer *variableContainer);
 StatementUnion *statement(VariableContainer *variableContainer);
 ExpressionStatement *expression_statement(VariableContainer *variableContainer);
 ReturnStatement *return_statement(VariableContainer *variableContainer);
@@ -238,7 +258,8 @@ Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
 Node *literal();
 
-// program = (function_definition | global_variable_definition)*
+// program = (function_definition | global_variable_definition |
+// struct_definition)*
 // function_definition = type_specifier identity "("
 // function_definition_argument? ")" compound_statement
 // function_definition_argument = type_specifier identity ("," type_specifier
@@ -267,9 +288,10 @@ Node *literal();
 // unary = ("+" | "-" | "&" | "*")? primary
 // primary = literal | identity ("("
 // function_call_argument? ")" | "[" expression "]")? | "("expression")" |
-// "sizeof" "(" (expression | type_specifier) ")"
-// function_call_argument = expression ("," expression)*
-// literal = number | "\"" string"\""
+// "sizeof" "(" (expression | type_specifier) ")" | alignof "(" type_specifier
+// ")"
+// function_call_argument = expression ("," expression)* literal = number |
+// "\"" string"\""
 
 //プログラムをパースする
 Program *program() {
@@ -278,9 +300,11 @@ Program *program() {
   VariableContainer *variableContainer = new_variable_container(listHead);
 
   Program *result = calloc(1, sizeof(Program));
+  result->structs = new_vector(16);
   result->functions = new_vector(16);
   result->globalVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
+  userDefinedTypes = result->structs;
   stringLiterals = result->stringLiterals;
 
   while (!at_eof()) {
@@ -295,6 +319,12 @@ Program *program() {
         global_variable_definition(variableContainer);
     if (globalVariableDefinition) {
       vector_push_back(result->globalVariables, globalVariableDefinition);
+      continue;
+    }
+
+    Type *structDefinition = struct_definition(variableContainer);
+    if (structDefinition) {
+      vector_push_back(result->structs, structDefinition);
       continue;
     }
 
@@ -428,6 +458,55 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
     error_at(token->string.head, "同名の変数が既に定義されています");
 
   return globalVariable;
+}
+
+Type *struct_definition(VariableContainer *variavbelContainer) {
+  Token *tokenHead = token;
+
+  if (!consume("struct")) {
+    return NULL;
+  }
+
+  Token *identifier = consume_identifier();
+  if (!identifier) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  Type *result = new_type(TYPE_STRUCT);
+  result->kind = TYPE_STRUCT;
+  result->name = identifier->string;
+  result->members = new_member_container();
+  int memberOffset = 0;
+  if (consume("{")) {
+    while (!consume("}")) {
+      Variable *member = calloc(1, sizeof(Variable));
+      member->kind = VARIABLE_LOCAL;
+      member->type = type_specifier();
+      if (!member->type) {
+        error_at(token->string.head, "構造体のメンバの型を指定して下さい");
+      }
+      Token *memberName = consume_identifier();
+      if (!memberName) {
+        error_at(token->string.head, "構造体のメンバの名前を指定して下さい");
+      }
+      member->name = memberName->string;
+      size_t memberSize = type_to_size(member->type);
+      memberOffset += (memberSize - memberOffset % memberSize) % memberSize;
+      member->offset = memberOffset;
+      memberOffset += type_to_size(member->type);
+
+      if (!member_container_push(result->members, member))
+        error(memberName->string.head, "同名のメンバが既に定義されています");
+      expect(";");
+    }
+  }
+
+  vector_push_back(userDefinedTypes, result);
+
+  expect(";");
+
+  return result;
 }
 
 //文をパースする
@@ -640,8 +719,10 @@ Node *variable_definition(VariableContainer *variableContainer) {
 
 //型指定子をパースする
 Type *type_specifier() {
-  const char *types[] = {"int", "char"};
   Token *current = token;
+
+  //プリミティブ
+  const char *types[] = {"int", "char"};
 
   for (int i = 0; i < 2; i++) {
     if (!consume(types[i]))
@@ -653,6 +734,22 @@ Type *type_specifier() {
     return new_type_from_token(current);
   }
 
+  if (consume("struct")) {
+    Token *identifier = consume_identifier();
+    if (!identifier) {
+      token = current;
+      return NULL;
+    }
+
+    for (int i = 0; i < vector_length(userDefinedTypes); i++) {
+      Type *type = vector_get(userDefinedTypes, i);
+      if (string_compare(identifier->string, type->name)) {
+        return type;
+      }
+    }
+  }
+
+  token = current;
   return NULL;
 }
 
@@ -758,19 +855,29 @@ Node *primary(VariableContainer *variableContainer) {
       //識別子に対するsizeofのみを特別に許可する
       Token *identifier = consume_identifier();
       if (identifier) {
-        type = new_node_lvar(identifier, variableContainer)->variable->type;
+        type = new_node_variable(identifier, variableContainer)->variable->type;
       } else {
         // expression(variableContainer);
         error("式に対するsizeof演算は未実装です");
       }
     }
+    if (!type)
+      error_at(token->string.head, "sizeof演算子のオペランドが不正です");
 
     expect(")");
-    Node *node = new_node(NODE_NUM, NULL, NULL);
+    return new_node_num(type_to_size(type));
+  }
+
+  // alignof演算子
+  if (consume("alignof")) {
+    expect("(");
+
+    Type *type = type_specifier();
     if (!type)
-      error("undefind");
-    node->val = type_to_size(type);
-    return node;
+      error_at(token->string.head, "型指定子ではありません");
+
+    expect(")");
+    return new_node_num(type_to_size(type));
   }
 
   //変数、関数呼び出し、添字付の配列
@@ -789,7 +896,7 @@ Node *primary(VariableContainer *variableContainer) {
     } else if (consume("[")) {
       //配列の添字をポインタ演算に置き換え
       //ポインタ演算の構文木を生成
-      Node *variableNode = new_node_lvar(identifier, variableContainer);
+      Node *variableNode = new_node_variable(identifier, variableContainer);
       Node *addNode =
           new_node(NODE_ADD, variableNode, expression(variableContainer));
       Node *result = new_node(NODE_DEREF, addNode, NULL);
@@ -797,8 +904,18 @@ Node *primary(VariableContainer *variableContainer) {
       expect("]");
 
       return result;
+    } else if (consume(".")) {
+      Node *structVariable = new_node_variable(identifier, variableContainer);
+      if (structVariable->type->kind != TYPE_STRUCT) {
+        error(identifier->string.head, "構造体ではありません");
+      }
+
+      Token *memberToken = expect_identifier();
+      Node *memberNode =
+          new_node_member(memberToken, structVariable->type->members);
+      return new_node(NODE_DOT, structVariable, memberNode);
     } else {
-      Node *node = new_node_lvar(identifier, variableContainer);
+      Node *node = new_node_variable(identifier, variableContainer);
       return node;
     }
   }

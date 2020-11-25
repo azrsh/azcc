@@ -70,7 +70,7 @@ Token *tokenize(const char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=;{},&[]", *p)) {
+    if (strchr("+-*/()<>=;{},&[].", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }
@@ -88,6 +88,8 @@ Token *tokenize(const char *p) {
     length += is_reserved(p, "int");
     length += is_reserved(p, "char");
     length += is_reserved(p, "sizeof");
+    length += is_reserved(p, "alignof");
+    length += is_reserved(p, "struct");
     if (length > 0) {
       current = new_token(TOKEN_RESERVED, current, p, length);
       p += length;

@@ -1,7 +1,10 @@
 #ifndef TYPE_H
 #define TYPE_H
 
+#include "container.h"
 #include <stdlib.h>
+
+typedef struct MemberContainer MemberContainer;
 
 typedef enum {
   TYPE_INT,
@@ -13,9 +16,11 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
+  String name; //とりあえずはTYPE_STRUCTのときのみ使用
   TypeKind kind;
   Type *base;
-  size_t length; // TypeKindがARRAYのときのみ使用する
+  size_t length;            // TypeKindがTYPE_ARRAYのときのみ使用する
+  MemberContainer *members; // TypeKindがTYPE_STRUCTのときのみ使用する
 };
 
 Type *new_type(TypeKind kind);

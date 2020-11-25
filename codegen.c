@@ -52,6 +52,21 @@ void generate_variable(Node *node) {
   }
 }
 
+void generate_dot_operator(Node *node) {
+
+  if (node->kind != NODE_DOT)
+    error("ドット演算子ではありません");
+
+  insert_comment("dot operator start");
+  if (node->lhs->kind != NODE_VAR || node->rhs->kind != NODE_VAR)
+    error("ドット演算子のオペランドが不正です");
+  generate_variable(node->lhs);
+  printf("  pop rax\n");
+  printf("  add rax, %d\n", node->rhs->variable->offset);
+  printf("  push rax\n");
+  insert_comment("dot operator end");
+}
+
 void generate_assign_lhs(Node *node, int *labelCount) {
   if (node->kind == NODE_VAR) {
     generate_variable(node);
@@ -60,6 +75,11 @@ void generate_assign_lhs(Node *node, int *labelCount) {
 
   if (node->kind == NODE_DEREF) {
     generate_expression(node->lhs, labelCount);
+    return;
+  }
+
+  if (node->kind == NODE_DOT) {
+    generate_dot_operator(node);
     return;
   }
 
@@ -235,6 +255,12 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_CAST:
     generate_expression(node->lhs, labelCount);
     generate_cast(node, labelCount);
+    return;
+  case NODE_DOT:
+    generate_dot_operator(node);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
     return;
   }
 

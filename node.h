@@ -23,7 +23,8 @@ typedef enum {
   NODE_ARG,    // 関数の引数
   NODE_NUM,    // 整数
   NODE_STRING, // 文字列
-  NODE_CAST    // キャスト
+  NODE_CAST,   // キャスト
+  NODE_DOT     // ドット演算子
 } NodeKind;
 
 typedef struct Node Node;

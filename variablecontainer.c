@@ -3,6 +3,7 @@
 
 struct VariableContainer {
   ListNode *tableHead;
+  size_t stackSize;
 };
 
 VariableContainer *new_variable_container(ListNode *tableHead) {
@@ -31,22 +32,16 @@ bool variable_container_push(VariableContainer *container, Variable *variable) {
     return false;
 
   hash_table_store(localTable, variable->name, variable);
+  container->stackSize += type_to_stack_size(variable->type);
   return true;
-}
-
-bool variable_container_update(VariableContainer *container,
-                               Variable *variable) {
-  if (variable_container_get(container, variable->name)) {
-    HashTable *localTable = container->tableHead->body;
-    hash_table_store(localTable, variable->name, variable);
-    return true;
-  }
-
-  return false;
 }
 
 VariableContainer *variable_container_push_table(VariableContainer *container,
                                                  HashTable *table) {
   ListNode *newHead = list_push_front(container->tableHead, table);
   return new_variable_container(newHead);
+}
+
+size_t variable_container_stack_size(VariableContainer *variableContainer) {
+  return variableContainer->stackSize;
 }

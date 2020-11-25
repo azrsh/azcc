@@ -136,6 +136,9 @@ void tag_type_to_node(Node *node) {
   Type *rhs = node->rhs->type;
 
   switch (node->kind) {
+  case NODE_DOT:
+    node->type = rhs;
+    return;
   case NODE_ADD:
     if (lhs->base != NULL && rhs->kind == TYPE_INT) {
       node->type = lhs;
