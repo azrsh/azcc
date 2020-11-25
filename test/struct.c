@@ -117,27 +117,40 @@ struct TupleCharIntCharIntChar {
 
 int test7() {
   assert(8, sizeof(struct TupleIntInt), "sizeof(struct TupleIntInt)");
-  assert(2, sizeof(struct TupleCharChar), "sizeof(TupleCharChar)");
+  assert(2, sizeof(struct TupleCharChar), "sizeof(struct TupleCharChar)");
   assert(12, sizeof(struct TupleCharCharIntChar),
-         "sizeof(TupleCharCharIntChar)");
+         "sizeof(struct TupleCharCharIntChar)");
   assert(8, sizeof(struct TupleCharCharCharInt),
-         "sizeof(TupleCharCharCharInt)");
+         "sizeof(struct TupleCharCharCharInt)");
   assert(20, sizeof(struct TupleCharIntCharIntChar),
-         "sizeof(TupleCharIntCharIntChar)");
+         "sizeof(struct TupleCharIntCharIntChar)");
   return 0;
 }
 
 int test8() {
-  assert(4, _Alignof(struct TupleIntInt), "alignof(struct TupleIntInt)");
-  assert(1, _Alignof(struct TupleCharChar), "alignof(TupleCharChar)");
+  assert(4, _Alignof(struct TupleIntInt), "_Alignof(struct TupleIntInt)");
+  assert(1, _Alignof(struct TupleCharChar), "_Alignof(struct TupleCharChar)");
   assert(4, _Alignof(struct TupleCharCharIntChar),
-         "_Alignof(TupleCharCharIntChar)");
+         "_Alignof(struct TupleCharCharIntChar)");
   assert(4, _Alignof(struct TupleCharCharCharInt),
-         "_Alignof(TupleCharCharCharInt)");
+         "_Alignof(struct TupleCharCharCharInt)");
   assert(4, _Alignof(struct TupleCharIntCharIntChar),
-         "_Alignof(TupleCharIntCharIntChar)");
+         "_Alignof(struct TupleCharIntCharIntChar)");
   return 0;
 }
+
+struct TupleCompound {
+  struct TupleCharChar a;
+  struct TupleCharCharIntChar b;
+  struct TupleCharIntCharIntChar c;
+};
+
+int test9() {
+  assert(4, _Alignof(struct TupleCompound), "_Alignof(struct TupleCompound)");
+  assert(36, sizeof(struct TupleCompound), "sizeof(struct TupleCompound)");
+  return 0;
+}
+
 int main() {
   test1();
   test2();
@@ -147,6 +160,7 @@ int main() {
   test6();
   test7();
   test8();
+  test9();
   printf("OK\n");
   return 0;
 }

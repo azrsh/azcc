@@ -491,8 +491,9 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
         error_at(token->string.head, "構造体のメンバの名前を指定して下さい");
       }
       member->name = memberName->string;
-      size_t memberSize = type_to_size(member->type);
-      memberOffset += (memberSize - memberOffset % memberSize) % memberSize;
+      size_t memberAlignment = type_to_align(member->type);
+      memberOffset +=
+          (memberAlignment - memberOffset % memberAlignment) % memberAlignment;
       member->offset = memberOffset;
       memberOffset += type_to_size(member->type);
 
