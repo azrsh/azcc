@@ -28,6 +28,24 @@ int type_to_size(Type *type) {
   return 0;
 }
 
+int type_to_align(Type *type) {
+  switch (type->kind) {
+  case TYPE_CHAR:
+    return 1;
+  case TYPE_INT:
+    return 4;
+  case TYPE_PTR:
+    return 8;
+  case TYPE_ARRAY:
+    return type_to_size(type->base);
+  case TYPE_STRUCT:
+    return member_container_align(type->members);
+  }
+
+  error("予期しない型が指定されました");
+  return 0;
+}
+
 int type_to_stack_size(Type *type) {
   int size = type_to_size(type);
   size += (8 - size % 8) % 8;

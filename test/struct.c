@@ -126,6 +126,18 @@ int test7() {
          "sizeof(TupleCharIntCharIntChar)");
   return 0;
 }
+
+int test8() {
+  assert(4, _Alignof(struct TupleIntInt), "alignof(struct TupleIntInt)");
+  assert(1, _Alignof(struct TupleCharChar), "alignof(TupleCharChar)");
+  assert(4, _Alignof(struct TupleCharCharIntChar),
+         "_Alignof(TupleCharCharIntChar)");
+  assert(4, _Alignof(struct TupleCharCharCharInt),
+         "_Alignof(TupleCharCharCharInt)");
+  assert(4, _Alignof(struct TupleCharIntCharIntChar),
+         "_Alignof(TupleCharIntCharIntChar)");
+  return 0;
+}
 int main() {
   test1();
   test2();
@@ -134,6 +146,7 @@ int main() {
   test5();
   test6();
   test7();
+  test8();
   printf("OK\n");
   return 0;
 }

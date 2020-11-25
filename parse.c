@@ -288,8 +288,8 @@ Node *literal();
 // unary = ("+" | "-" | "&" | "*")? primary
 // primary = literal | identity ("("
 // function_call_argument? ")" | "[" expression "]")? | "("expression")" |
-// "sizeof" "(" (expression | type_specifier) ")" | alignof "(" type_specifier
-// ")"
+// "sizeof" "(" (expression | type_specifier) ")" | "_Alignof" "("
+// type_specifier ")"
 // function_call_argument = expression ("," expression)* literal = number |
 // "\"" string"\""
 
@@ -868,8 +868,8 @@ Node *primary(VariableContainer *variableContainer) {
     return new_node_num(type_to_size(type));
   }
 
-  // alignof演算子
-  if (consume("alignof")) {
+  // _Alignof演算子
+  if (consume("_Alignof")) {
     expect("(");
 
     Type *type = type_specifier();
@@ -877,7 +877,7 @@ Node *primary(VariableContainer *variableContainer) {
       error_at(token->string.head, "型指定子ではありません");
 
     expect(")");
-    return new_node_num(type_to_size(type));
+    return new_node_num(type_to_align(type));
   }
 
   //変数、関数呼び出し、添字付の配列
