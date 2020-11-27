@@ -1,6 +1,7 @@
 #include "typecheck.h"
 #include "container.h"
 #include "functioncall.h"
+#include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
 #include "type.h"
@@ -127,6 +128,17 @@ void tag_type_to_node(Node *node) {
 
     error("演算子=のオペランド型が不正です");
   }
+  case NODE_DOT:
+    tag_type_to_node(node->lhs);
+    if (node->lhs->type->kind != TYPE_STRUCT)
+      error("ドット演算子のオペランド型が不正です");
+    if (node->rhs->kind != NODE_VAR)
+      error("ドット演算子のオペランド型が不正です");
+    node->rhs->variable = member_container_get(node->lhs->type->members,
+                                               node->rhs->variable->name);
+    tag_type_to_node(node->rhs);
+    node->type = node->rhs->type;
+    return;
   }
 
   //二項演算子の型検査
@@ -136,9 +148,6 @@ void tag_type_to_node(Node *node) {
   Type *rhs = node->rhs->type;
 
   switch (node->kind) {
-  case NODE_DOT:
-    node->type = rhs;
-    return;
   case NODE_ADD:
     if (lhs->base != NULL && rhs->kind == TYPE_INT) {
       node->type = lhs;

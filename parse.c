@@ -100,6 +100,13 @@ Variable *new_variable_global(Type *type, String name, Node *initialization) {
   return globalVariable;
 }
 
+Variable *new_variable_member(String name) {
+  Variable *variable = calloc(1, sizeof(Variable));
+  variable->name = name;
+  variable->kind = VARIABLE_LOCAL;
+  return variable;
+}
+
 FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   functionCall->name = token->string;
@@ -124,22 +131,25 @@ TypeKind map_token_to_kind(Token *token) {
   return 0;
 }
 
-Type *new_type_from_token(Token *typeToken) {
-  Type *base = new_type(map_token_to_kind(typeToken));
-  base->base = NULL;
-  typeToken = typeToken->next;
-
+Type *wrap_by_pointer(Type *base, Token *token) {
   Type *current = base;
   const String star = new_string("*", 1);
-  while (typeToken && string_compare(typeToken->string, star)) {
+  while (token && string_compare(token->string, star)) {
     Type *pointer = new_type(TYPE_PTR);
     pointer->base = current;
     current = pointer;
 
-    typeToken = typeToken->next;
+    token = token->next;
   }
 
   return current;
+}
+
+Type *new_type_from_token(Token *typeToken) {
+  Type *base = new_type(map_token_to_kind(typeToken));
+  base->base = NULL;
+  typeToken = typeToken->next;
+  return wrap_by_pointer(base, typeToken);
 }
 
 Type *new_type_array(Type *base, size_t size) {
@@ -194,24 +204,19 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
              string_to_char(variableName));
   }
 
-  node->type = variable->type; //本当は消したい
   node->variable = variable;
   return node;
 }
 
 //抽象構文木のメンバ変数のノードを新しく生成する
-Node *new_node_member(Token *token, MemberContainer *container) {
+Node *new_node_member(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  String variableName = token->string;
-  Variable *variable = member_container_get(container, variableName);
-  if (!variable) {
-    error_at(variableName.head, "メンバ変数%sは定義されていません",
-             string_to_char(variableName));
-  }
-
+  String name = token->string;
+  Variable *variable = new_variable_member(name);
   node->variable = variable;
+
   return node;
 }
 
@@ -254,6 +259,7 @@ Node *relational(VariableContainer *variableContainer);
 Node *add(VariableContainer *variableContainer);
 Node *multiply(VariableContainer *variableContainer);
 Node *unary(VariableContainer *variableContainer);
+Node *postfix(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
 Vector *function_call_argument(VariableContainer *variableContainer);
 Node *literal();
@@ -285,13 +291,14 @@ Node *literal();
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
-// unary = ("+" | "-" | "&" | "*")? primary
-// primary = literal | identity ("("
-// function_call_argument? ")" | "[" expression "]")? | "("expression")" |
-// "sizeof" "(" (expression | type_specifier) ")" | "_Alignof" "("
-// type_specifier ")"
-// function_call_argument = expression ("," expression)* literal = number |
-// "\"" string"\""
+// unary = ("+" | "-" | "&" | "*" | "sizeof" | "_Alignof")? (primary | "("
+// type_specifier ")" )
+// postfix = primary ("(" function_call_argument? ")" | "[" expression "]" | "."
+// identifier)*
+// primary = literal | identity ("(" function_call_argument? ")" |
+// "[" expression "]")? | "("expression")"
+// function_call_argument = expression ("," expression)*
+// literal = number | "\"" string"\""
 
 //プログラムをパースする
 Program *program() {
@@ -745,6 +752,11 @@ Type *type_specifier() {
     for (int i = 0; i < vector_length(userDefinedTypes); i++) {
       Type *type = vector_get(userDefinedTypes, i);
       if (string_compare(identifier->string, type->name)) {
+        while (consume("*")) {
+          Type *pointer = new_type(TYPE_PTR);
+          pointer->base = type;
+          type = pointer;
+        }
         return type;
       }
     }
@@ -829,47 +841,40 @@ Node *multiply(VariableContainer *variableContainer) {
 //単項演算子をパースする
 Node *unary(VariableContainer *variableContainer) {
   if (consume("+"))
-    return primary(variableContainer);
+    return postfix(variableContainer);
   if (consume("-"))
-    return new_node(NODE_SUB, new_node_num(0), primary(variableContainer));
+    return new_node(NODE_SUB, new_node_num(0), postfix(variableContainer));
   if (consume("&"))
-    return new_node(NODE_REF, primary(variableContainer), NULL);
+    return new_node(NODE_REF, postfix(variableContainer), NULL);
   if (consume("*"))
-    return new_node(NODE_DEREF, primary(variableContainer), NULL);
-  return primary(variableContainer);
-}
-
-Node *primary(VariableContainer *variableContainer) {
-  //次のトークンが(なら入れ子になった式
-  if (consume("(")) {
-    Node *node = expression(variableContainer);
-    expect(")");
-    return node;
-  }
-
-  // sizeof演算子
+    return new_node(NODE_DEREF, postfix(variableContainer), NULL);
   if (consume("sizeof")) {
-    expect("(");
-
-    Type *type = type_specifier();
-    if (!type) {
-      //識別子に対するsizeofのみを特別に許可する
-      Token *identifier = consume_identifier();
-      if (identifier) {
-        type = new_node_variable(identifier, variableContainer)->variable->type;
-      } else {
-        // expression(variableContainer);
-        error("式に対するsizeof演算は未実装です");
+    Token *head = token;
+    if (consume("(")) {
+      Type *type = type_specifier();
+      if (type) {
+        expect(")");
+        return new_node_num(type_to_size(type));
       }
     }
+    token = head;
+
+    bool parentheses = consume("(");
+    //識別子に対するsizeofのみを特別に許可する
+    Token *identifier = consume_identifier();
+    // postfix(variableContainer);
+    if (!identifier) {
+      error("式に対するsizeof演算は未実装です");
+    }
+    if (parentheses)
+      expect(")");
+
+    Type *type =
+        new_node_variable(identifier, variableContainer)->variable->type;
     if (!type)
       error_at(token->string.head, "sizeof演算子のオペランドが不正です");
-
-    expect(")");
     return new_node_num(type_to_size(type));
   }
-
-  // _Alignof演算子
   if (consume("_Alignof")) {
     expect("(");
 
@@ -880,8 +885,12 @@ Node *primary(VariableContainer *variableContainer) {
     expect(")");
     return new_node_num(type_to_align(type));
   }
+  return postfix(variableContainer);
+}
 
-  //変数、関数呼び出し、添字付の配列
+//変数、関数呼び出し、添字付の配列
+Node *postfix(VariableContainer *variableContainer) {
+  Token *head = token;
   Token *identifier = consume_identifier();
   if (identifier) {
     if (consume("(")) {
@@ -894,31 +903,39 @@ Node *primary(VariableContainer *variableContainer) {
         expect(")");
       }
       return function;
-    } else if (consume("[")) {
+    }
+  }
+  token = head;
+
+  Node *node = primary(variableContainer);
+  for (;;) {
+    if (consume("[")) {
       //配列の添字をポインタ演算に置き換え
       //ポインタ演算の構文木を生成
-      Node *variableNode = new_node_variable(identifier, variableContainer);
-      Node *addNode =
-          new_node(NODE_ADD, variableNode, expression(variableContainer));
-      Node *result = new_node(NODE_DEREF, addNode, NULL);
-
+      Node *addNode = new_node(NODE_ADD, node, expression(variableContainer));
+      node = new_node(NODE_DEREF, addNode, NULL);
       expect("]");
-
-      return result;
     } else if (consume(".")) {
-      Node *structVariable = new_node_variable(identifier, variableContainer);
-      if (structVariable->type->kind != TYPE_STRUCT) {
-        error(identifier->string.head, "構造体ではありません");
-      }
-
       Token *memberToken = expect_identifier();
-      Node *memberNode =
-          new_node_member(memberToken, structVariable->type->members);
-      return new_node(NODE_DOT, structVariable, memberNode);
+      Node *memberNode = new_node_member(memberToken);
+      node = new_node(NODE_DOT, node, memberNode);
     } else {
-      Node *node = new_node_variable(identifier, variableContainer);
       return node;
     }
+  }
+}
+
+Node *primary(VariableContainer *variableContainer) {
+  //次のトークンが(なら入れ子になった式
+  if (consume("(")) {
+    Node *node = expression(variableContainer);
+    expect(")");
+    return node;
+  }
+
+  Token *identifier = consume_identifier();
+  if (identifier) {
+    return new_node_variable(identifier, variableContainer);
   }
 
   //そうでなければリテラル
