@@ -919,6 +919,11 @@ Node *postfix(VariableContainer *variableContainer) {
       Token *memberToken = expect_identifier();
       Node *memberNode = new_node_member(memberToken);
       node = new_node(NODE_DOT, node, memberNode);
+    } else if (consume("->")) {
+      Token *memberToken = expect_identifier();
+      Node *memberNode = new_node_member(memberToken);
+      node = new_node(NODE_DEREF, node, NULL);
+      node = new_node(NODE_DOT, node, memberNode);
     } else {
       return node;
     }
