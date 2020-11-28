@@ -9,6 +9,11 @@ struct TupleCharChar {
   char b;
 };
 
+struct TestCompound {
+  struct TupleIntInt *a;
+  struct TupleCharChar *b;
+};
+
 int test1() {
   struct TupleIntInt instance;
   struct TupleIntInt *ptr = &instance;
@@ -201,6 +206,24 @@ int test12() {
   return 0;
 }
 
+int test13() {
+  struct TestCompound instance1;
+  struct TupleIntInt instance2;
+  struct TupleCharChar instance3;
+  struct TestCompound *ptr = &instance1;
+  ptr->a = &instance2;
+  ptr->b = &instance3;
+  ptr->a->a = 34;
+  ptr->a->b = 2184;
+  ptr->b->a = 134;
+  ptr->b->b = 3809;
+  assert(34, instance2.a, "instance2.a");
+  assert(2184, instance2.b, "instance2.a");
+  assert(-122, instance3.a, "instance3.a");
+  assert(-31, instance3.b, "instance3.b");
+  return 0;
+}
+
 int main() {
   test1();
   test2();
@@ -214,6 +237,7 @@ int main() {
   test10();
   test11();
   test12();
+  test13();
   printf("OK\n");
   return 0;
 }
