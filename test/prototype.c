@@ -1,6 +1,6 @@
 int foo();
-int foo1(int a);
-int foo2(int a, int b);
+int foo1(int);
+int foo2(int, int);
 
 int test1(int a) { return a; }
 int test2(int a, int b) { return a + b; }
