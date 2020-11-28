@@ -17,7 +17,7 @@ struct FunctionDefinition {
 typedef struct Typedef Typedef;
 struct Typedef {
   String name;
-  Type type;
+  Type *type;
 };
 
 typedef struct Program Program;

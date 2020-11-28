@@ -332,6 +332,22 @@ Program *program() {
 
     Type *structDefinition = struct_definition(variableContainer);
     if (structDefinition) {
+      // typedefの解決
+      for (int i = 0; i < vector_length(typedefs); i++) {
+        Typedef *typeDefinition = vector_get(typedefs, i);
+        // Type parent;
+        // parent.base = typeDefinition->type;
+        // Type *type = &parent;
+        // while (type->base->base)
+        //  type = type->base;
+        Type *type = typeDefinition->type;
+        if (type->kind == TYPE_STRUCT &&
+            string_compare(structDefinition->name, type->name)) {
+          typeDefinition->type = structDefinition;
+          break;
+        }
+      }
+
       vector_push_back(structs, structDefinition);
       continue;
     }
@@ -768,6 +784,25 @@ Type *type_specifier() {
     return new_type_from_token(current);
   }
 
+  // typedefされた型指定子の探索
+  Token *identifier = consume_identifier();
+  if (identifier) {
+    for (int i = 0; i < vector_length(typedefs); i++) {
+      Typedef *typeDefinition = vector_get(typedefs, i);
+      Type *type = typeDefinition->type;
+      if (string_compare(identifier->string, typeDefinition->name)) {
+        while (consume("*")) {
+          Type *pointer = new_type(TYPE_PTR);
+          pointer->base = type;
+          type = pointer;
+        }
+        return type;
+      }
+    }
+    token = current;
+    return NULL;
+  }
+
   if (consume("struct")) {
     Token *identifier = consume_identifier();
     if (!identifier) {
@@ -786,6 +821,16 @@ Type *type_specifier() {
         return type;
       }
     }
+
+    //未定義の構造体
+    Type *type = new_type(TYPE_STRUCT);
+    type->name = identifier->string;
+    while (consume("*")) {
+      Type *pointer = new_type(TYPE_PTR);
+      pointer->base = type;
+      type = pointer;
+    }
+    return type;
   }
 
   token = current;
