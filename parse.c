@@ -939,24 +939,20 @@ Type *type_specifier() {
     for (int i = 0; i < vector_length(structs); i++) {
       Type *type = vector_get(structs, i);
       if (string_compare(identifier->string, type->name)) {
-        while (consume("*")) {
-          Type *pointer = new_type(TYPE_PTR);
-          pointer->base = type;
-          type = pointer;
-        }
-        return type;
+        Token *head = token;
+        while (consume("*"))
+          ;
+        return wrap_by_pointer(type, head);
       }
     }
 
     //未定義の構造体
     Type *type = new_type(TYPE_STRUCT);
     type->name = identifier->string;
-    while (consume("*")) {
-      Type *pointer = new_type(TYPE_PTR);
-      pointer->base = type;
-      type = pointer;
-    }
-    return type;
+    Token *head = token;
+    while (consume("*"))
+      ;
+    return wrap_by_pointer(type, head);
   }
 
   token = current;
