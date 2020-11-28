@@ -194,6 +194,16 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  lea rax, .LC%d[rip]\n", node->val);
     printf("  push rax\n");
     return;
+  case NODE_LNOT:
+    insert_comment("logic not start");
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    printf("  push rax\n");
+    insert_comment("logic not end");
+    return;
   case NODE_REF:
     generate_variable(node->lhs);
     return;
@@ -324,6 +334,22 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  cmp rax, rdi\n");
     printf("  setle al\n");
     printf("  movzb rax, al\n");
+    break;
+  case NODE_LAND:
+    insert_comment("logic and start");
+    printf("  and rax, rdi\n");
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    insert_comment("logic and end");
+    break;
+  case NODE_LOR:
+    insert_comment("logic or start");
+    printf("  or rax, rdi\n");
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    insert_comment("logic or end");
     break;
   }
 

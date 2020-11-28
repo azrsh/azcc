@@ -256,6 +256,8 @@ Node *expression(VariableContainer *variableContainer);
 Node *variable_definition(VariableContainer *variableContainer);
 Type *type_specifier();
 Node *assign(VariableContainer *variableContainer);
+Node *logic_or(VariableContainer *variableContainer);
+Node *logic_and(VariableContainer *variableContainer);
 Node *equality(VariableContainer *variableContainer);
 Node *relational(VariableContainer *variableContainer);
 Node *add(VariableContainer *variableContainer);
@@ -287,12 +289,14 @@ Node *literal();
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
 // type_specifier = ("int" | "char") "*"*
-// assign = equality ("=" assign)?
+// assign = logic_or ("=" assign)?
+// logic_or = logic_and ("||" logic_and)*
+// logic_and = equality ("&&" equality)*
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
-// unary = ("+" | "-" | "&" | "*" | "sizeof" | "_Alignof")? (primary | "("
+// unary = ("+" | "-" | "&" | "*" | "!" | "sizeof" | "_Alignof")? (primary | "("
 // type_specifier ")" )
 // postfix = primary ("(" function_call_argument? ")" | "[" expression "]" | "."
 // identifier)*
@@ -758,7 +762,7 @@ Node *variable_definition(VariableContainer *variableContainer) {
 
   for (;;) {
     if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, equality(variableContainer));
+      node = new_node(NODE_ASSIGN, node, logic_or(variableContainer));
     } else {
       return node;
     }
@@ -839,14 +843,35 @@ Type *type_specifier() {
 
 //代入をパースする
 Node *assign(VariableContainer *variableContainer) {
-  Node *node = equality(variableContainer);
+  Node *node = logic_or(variableContainer);
 
   for (;;) {
     if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, equality(variableContainer));
+      node = new_node(NODE_ASSIGN, node, logic_or(variableContainer));
     } else {
       return node;
     }
+  }
+}
+
+Node *logic_or(VariableContainer *variableContainer) {
+  Node *node = logic_and(variableContainer);
+
+  for (;;) {
+    if (consume("||"))
+      node = new_node(NODE_LOR, node, logic_and(variableContainer));
+    else
+      return node;
+  }
+}
+Node *logic_and(VariableContainer *variableContainer) {
+  Node *node = equality(variableContainer);
+
+  for (;;) {
+    if (consume("&&"))
+      node = new_node(NODE_LAND, node, equality(variableContainer));
+    else
+      return node;
   }
 }
 
@@ -915,6 +940,8 @@ Node *unary(VariableContainer *variableContainer) {
     return postfix(variableContainer);
   if (consume("-"))
     return new_node(NODE_SUB, new_node_num(0), postfix(variableContainer));
+  if (consume("!"))
+    return new_node(NODE_LNOT, postfix(variableContainer), NULL);
   if (consume("&"))
     return new_node(NODE_REF, postfix(variableContainer), NULL);
   if (consume("*"))

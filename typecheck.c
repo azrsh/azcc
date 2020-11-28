@@ -80,6 +80,10 @@ void tag_type_to_node(Node *node) {
     node->type = new_type(TYPE_PTR);
     node->type->base = new_type(TYPE_CHAR);
     return;
+  case NODE_LNOT:
+    tag_type_to_node(node->lhs);
+    node->type = node->lhs->type;
+    return;
   case NODE_REF:
     tag_type_to_node(node->lhs);
     node->type = new_type(TYPE_PTR);
@@ -236,6 +240,10 @@ void tag_type_to_node(Node *node) {
     }
     error("演算子<=または>のオペランド型が不正です");
   }
+  case NODE_LAND:
+  case NODE_LOR:
+    node->type = new_type(TYPE_INT);
+    return;
   }
 
   error("予期しないノードが指定されました");

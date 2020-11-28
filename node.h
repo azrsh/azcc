@@ -14,6 +14,9 @@ typedef enum {
   NODE_NE,     // !=
   NODE_LT,     // <
   NODE_LE,     // <=
+  NODE_LAND,   // &&
+  NODE_LOR,    // ||
+  NODE_LNOT,   // !
   NODE_REF,    // &
   NODE_DEREF,  // *
   NODE_IF,     // if文
