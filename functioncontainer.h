@@ -9,6 +9,7 @@ typedef struct FunctionDeclaration FunctionDeclaration;
 struct FunctionDeclaration {
   String name;
   Type *returnType;
+  Vector *arguments; // Type vector
 };
 
 typedef struct FunctionContainer FunctionContainer;

@@ -113,15 +113,6 @@ Variable *new_variable_member(String name) {
 FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   functionCall->name = token->string;
-
-  //関数宣言の探索
-  FunctionDeclaration *declaration =
-      function_container_get(functionContainer, token->string);
-  if (declaration)
-    functionCall->type = declaration->returnType;
-  else
-    error_at(token->string.head, "関数宣言がみつかりません");
-
   return functionCall;
 }
 
@@ -236,10 +227,12 @@ Node *new_node_function_call(Token *token) {
   return node;
 }
 
-FunctionDeclaration *new_function_declaration(Type *type, String name) {
+FunctionDeclaration *new_function_declaration(Type *type, String name,
+                                              Vector *arguments) {
   FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
   result->returnType = type;
   result->name = name;
+  result->arguments = arguments;
   return result;
 }
 
@@ -250,7 +243,15 @@ FunctionDefinition *new_function_definition() {
 
 FunctionDeclaration *
 function_definition_to_declaration(FunctionDefinition *definition) {
-  return new_function_declaration(definition->returnType, definition->name);
+  Vector *arguments = new_vector(16); // Type vector
+  for (int i = 0; i < vector_length(definition->arguments); i++) {
+    Node *node = vector_get(definition->arguments, i);
+    Variable *variable = node->variable;
+    vector_push_back(arguments, variable->type);
+  }
+
+  return new_function_declaration(definition->returnType, definition->name,
+                                  arguments);
 }
 
 // EBNFパーサ
@@ -345,55 +346,85 @@ Program *program() {
   functionContainer = new_function_container();
 
   while (!at_eof()) {
-    FunctionDeclaration *functionDeclaration = function_declaration();
-    if (functionDeclaration) {
-      function_container_push(functionContainer, functionDeclaration);
-      continue;
-    }
-
-    FunctionDefinition *functionDefinition =
-        function_definition(variableContainer);
-    if (functionDefinition) {
-      function_container_push(
-          functionContainer,
-          function_definition_to_declaration(functionDefinition));
-      vector_push_back(result->functionDefinitions, functionDefinition);
-      continue;
-    }
-
-    Variable *globalVariableDefinition =
-        global_variable_definition(variableContainer);
-    if (globalVariableDefinition) {
-      vector_push_back(result->globalVariables, globalVariableDefinition);
-      continue;
-    }
-
-    Type *structDefinition = struct_definition(variableContainer);
-    if (structDefinition) {
-      // typedefの解決
-      for (int i = 0; i < vector_length(typedefs); i++) {
-        Typedef *typeDefinition = vector_get(typedefs, i);
-        // Type parent;
-        // parent.base = typeDefinition->type;
-        // Type *type = &parent;
-        // while (type->base->base)
-        //  type = type->base;
-        Type *type = typeDefinition->type;
-        if (type->kind == TYPE_STRUCT &&
-            string_compare(structDefinition->name, type->name)) {
-          typeDefinition->type = structDefinition;
-          break;
-        }
+    {
+      FunctionDeclaration *functionDeclaration = function_declaration();
+      if (functionDeclaration) {
+        function_container_push(functionContainer, functionDeclaration);
+        continue;
       }
-
-      vector_push_back(structs, structDefinition);
-      continue;
     }
 
-    Typedef *typeDefinition = type_definition();
-    if (typeDefinition) {
-      vector_push_back(typedefs, typeDefinition);
-      continue;
+    {
+      FunctionDefinition *functionDefinition =
+          function_definition(variableContainer);
+      if (functionDefinition) {
+        FunctionDeclaration *declaration =
+            function_container_get(functionContainer, functionDefinition->name);
+        if (declaration) {
+          //宣言に引数がなければ引数チェックをスキップ
+          if (vector_length(declaration->arguments) > 0) {
+            // 関数定義の引数をTypeのvectorに変換
+            Vector *definitionArguments = new_vector(16);
+            for (int i = 0; i < vector_length(functionDefinition->arguments);
+                 i++) {
+              Node *node = vector_get(functionDefinition->arguments, i);
+              Variable *variable = node->variable;
+              vector_push_back(definitionArguments, variable->type);
+            }
+
+            if (!type_vector_compare(declaration->arguments,
+                                     definitionArguments))
+              error("関数の定義と前方宣言の引数が一致しません");
+          }
+        } else {
+          FunctionDeclaration *declaration =
+              function_definition_to_declaration(functionDefinition);
+          function_container_push(functionContainer, declaration);
+        }
+        vector_push_back(result->functionDefinitions, functionDefinition);
+        continue;
+      }
+    }
+
+    {
+      Variable *globalVariableDefinition =
+          global_variable_definition(variableContainer);
+      if (globalVariableDefinition) {
+        vector_push_back(result->globalVariables, globalVariableDefinition);
+        continue;
+      }
+    }
+
+    {
+      Type *structDefinition = struct_definition(variableContainer);
+      if (structDefinition) {
+        // typedefの解決
+        for (int i = 0; i < vector_length(typedefs); i++) {
+          Typedef *typeDefinition = vector_get(typedefs, i);
+          // Type parent;
+          // parent.base = typeDefinition->type;
+          // Type *type = &parent;
+          // while (type->base->base)
+          //  type = type->base;
+          Type *type = typeDefinition->type;
+          if (type->kind == TYPE_STRUCT &&
+              string_compare(structDefinition->name, type->name)) {
+            typeDefinition->type = structDefinition;
+            break;
+          }
+        }
+
+        vector_push_back(structs, structDefinition);
+        continue;
+      }
+    }
+
+    {
+      Typedef *typeDefinition = type_definition();
+      if (typeDefinition) {
+        vector_push_back(typedefs, typeDefinition);
+        continue;
+      }
     }
 
     error_at(token->string.head, "認識できない構文です");
@@ -434,9 +465,8 @@ FunctionDeclaration *function_declaration() {
     return NULL;
   }
 
-  FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
-  result->returnType = type;
-  result->name = identifier->string;
+  FunctionDeclaration *result =
+      new_function_declaration(type, identifier->string, arguments);
   return result;
 }
 
@@ -505,7 +535,12 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   ListNode *node = &head;
   while (!consume("}")) {
     StatementUnion *statementUnion = statement(mergedContainer);
-    tag_type_to_statement(statementUnion, type);
+
+    TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
+    context->returnType = type;
+    context->functionContainer = functionContainer;
+
+    tag_type_to_statement(statementUnion, context);
     node = list_push_back(node, statementUnion);
   }
   body->statementHead = head.next;
@@ -1079,13 +1114,26 @@ Node *postfix(VariableContainer *variableContainer) {
   Token *identifier = consume_identifier();
   if (identifier) {
     if (consume("(")) {
-      Node *function = new_node_function_call(identifier);
+      Vector *arguments; // Node vector
       if (consume(")")) {
-        function->functionCall->arguments = new_vector(0);
+        arguments = new_vector(0);
       } else {
-        function->functionCall->arguments =
-            function_call_argument(variableContainer);
+        arguments = function_call_argument(variableContainer);
         expect(")");
+      }
+
+      Node *function = new_node_function_call(identifier);
+
+      //関数宣言との整合性の検証
+      {
+        FunctionDeclaration *declaration =
+            function_container_get(functionContainer, identifier->string);
+        if (declaration)
+          function->functionCall->type = declaration->returnType;
+        else
+          error_at(identifier->string.head, "関数宣言がみつかりません");
+
+        function->functionCall->arguments = arguments;
       }
       return function;
     }

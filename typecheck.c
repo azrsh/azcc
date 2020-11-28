@@ -1,18 +1,13 @@
 #include "typecheck.h"
 #include "container.h"
 #include "functioncall.h"
+#include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
 #include <stdlib.h>
-
-bool type_compare_deep(const Type *type1, const Type *type2) {
-  return (!type1 && !type2) || (type1 && type2 && type1->kind == type2->kind &&
-                                type1->length == type2->length &&
-                                type_compare_deep(type1->base, type2->base));
-}
 
 Type *type_compare_deep_with_implicit_cast(Type *advantage,
                                            Type *disadvantage) {
@@ -67,7 +62,7 @@ void add_implicit_cast_node(Node *node) {
   }
 }
 
-void tag_type_to_node(Node *node) {
+void tag_type_to_node(Node *node, TypeCheckContext *context) {
   if (!node) {
     error("指定されたノードが存在しません");
   }
@@ -81,16 +76,16 @@ void tag_type_to_node(Node *node) {
     node->type->base = new_type(TYPE_CHAR);
     return;
   case NODE_LNOT:
-    tag_type_to_node(node->lhs);
+    tag_type_to_node(node->lhs, context);
     node->type = node->lhs->type;
     return;
   case NODE_REF:
-    tag_type_to_node(node->lhs);
+    tag_type_to_node(node->lhs, context);
     node->type = new_type(TYPE_PTR);
     node->type->base = node->lhs->type;
     return;
   case NODE_DEREF:
-    tag_type_to_node(node->lhs);
+    tag_type_to_node(node->lhs, context);
     Type *lhsBase = node->lhs->type->base;
     if (!lhsBase)
       error("単項演算子*のオペランド型が不正です");
@@ -103,21 +98,39 @@ void tag_type_to_node(Node *node) {
     Type *returnType = node->functionCall->type;
     Vector *arguments = node->functionCall->arguments;
     node->type = returnType;
+
+    Vector *argumentTypes = new_vector(16);
     for (int i = 0; i < vector_length(arguments); i++) {
       Node *arg = vector_get(arguments, i);
-      tag_type_to_node(arg);
+      tag_type_to_node(arg, context);
+      vector_push_back(argumentTypes, arg->type);
+    }
+    //存在確認はパーサが行う
+    FunctionDeclaration *declaration = function_container_get(
+        context->functionContainer, node->functionCall->name);
+    if (vector_length(declaration->arguments) == 0)
+      return;
+    if (vector_length(declaration->arguments) != vector_length(argumentTypes))
+      error("関数の呼び出しと前方宣言の引数の数が一致しません");
+    for (int i = 0; i < vector_length(declaration->arguments); i++) {
+      Type *type1 = vector_get(declaration->arguments, i);
+      Type *type2 = vector_get(argumentTypes, i);
+      if (type_compare_deep(type1, type2))
+        continue;
 
-      //引数のchar型は暗黙的にint型に拡張する
-      //前方宣言実装までの暫定的な実装
-      if (arg->type->kind == TYPE_CHAR) {
-        vector_set(arguments, i, new_node_cast(new_type(TYPE_INT), arg));
+      if (type_is_primitive(type1) && type_is_primitive(type2)) {
+        vector_set(arguments, i,
+                   new_node_cast(type1, vector_get(arguments, i)));
+        continue;
       }
+
+      error("関数の呼び出しと前方宣言の引数の型が一致しません");
     }
     return;
   }
   case NODE_ASSIGN: {
-    tag_type_to_node(node->lhs);
-    tag_type_to_node(node->rhs);
+    tag_type_to_node(node->lhs, context);
+    tag_type_to_node(node->rhs, context);
 
     //代入は代入先の型を最優先とする
     Type *result =
@@ -133,21 +146,21 @@ void tag_type_to_node(Node *node) {
     error("演算子=のオペランド型が不正です");
   }
   case NODE_DOT:
-    tag_type_to_node(node->lhs);
+    tag_type_to_node(node->lhs, context);
     if (node->lhs->type->kind != TYPE_STRUCT)
       error("ドット演算子のオペランド型が不正です");
     if (node->rhs->kind != NODE_VAR)
       error("ドット演算子のオペランド型が不正です");
     node->rhs->variable = member_container_get(node->lhs->type->members,
                                                node->rhs->variable->name);
-    tag_type_to_node(node->rhs);
+    tag_type_to_node(node->rhs, context);
     node->type = node->rhs->type;
     return;
   }
 
   //二項演算子の型検査
-  tag_type_to_node(node->lhs);
-  tag_type_to_node(node->rhs);
+  tag_type_to_node(node->lhs, context);
+  tag_type_to_node(node->rhs, context);
   Type *lhs = node->lhs->type;
   Type *rhs = node->rhs->type;
 
@@ -249,19 +262,22 @@ void tag_type_to_node(Node *node) {
   error("予期しないノードが指定されました");
 }
 
-void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
+void tag_type_to_statement(StatementUnion *statementUnion,
+                           TypeCheckContext *context) {
   if (!statementUnion) {
     error("指定された文が存在しません");
   }
+
+  Type *returnType = context->returnType;
 
   // match if
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
     if (ifPattern) {
-      tag_type_to_node(ifPattern->condition);
-      tag_type_to_statement(ifPattern->thenStatement, returnType);
+      tag_type_to_node(ifPattern->condition, context);
+      tag_type_to_statement(ifPattern->thenStatement, context);
       if (ifPattern->elseStatement)
-        tag_type_to_statement(ifPattern->elseStatement, returnType);
+        tag_type_to_statement(ifPattern->elseStatement, context);
       return;
     }
   }
@@ -270,8 +286,8 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
   {
     WhileStatement *whilePattern = statement_union_take_while(statementUnion);
     if (whilePattern) {
-      tag_type_to_node(whilePattern->condition);
-      tag_type_to_statement(whilePattern->statement, returnType);
+      tag_type_to_node(whilePattern->condition, context);
+      tag_type_to_statement(whilePattern->statement, context);
       return;
     }
   }
@@ -280,10 +296,10 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
   {
     ForStatement *forPattern = statement_union_take_for(statementUnion);
     if (forPattern) {
-      tag_type_to_node(forPattern->initialization);
-      tag_type_to_node(forPattern->condition);
-      tag_type_to_node(forPattern->afterthought);
-      tag_type_to_statement(forPattern->statement, returnType);
+      tag_type_to_node(forPattern->initialization, context);
+      tag_type_to_node(forPattern->condition, context);
+      tag_type_to_node(forPattern->afterthought, context);
+      tag_type_to_statement(forPattern->statement, context);
       return;
     }
   }
@@ -295,7 +311,7 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
     if (compoundPattern) {
       ListNode *node = compoundPattern->statementHead;
       while (node) {
-        tag_type_to_statement(node->body, returnType);
+        tag_type_to_statement(node->body, context);
         node = node->next;
       }
       return;
@@ -307,7 +323,7 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
     ReturnStatement *returnPattern =
         statement_union_take_return(statementUnion);
     if (returnPattern) {
-      tag_type_to_node(returnPattern->node);
+      tag_type_to_node(returnPattern->node, context);
       if (!type_compare_deep(returnType, returnPattern->node->type) &&
           type_compare_deep_with_implicit_cast(returnType,
                                                returnPattern->node->type)) {
@@ -339,7 +355,7 @@ void tag_type_to_statement(StatementUnion *statementUnion, Type *returnType) {
     ExpressionStatement *expressionPattern =
         statement_union_take_expression(statementUnion);
     if (expressionPattern) {
-      tag_type_to_node(expressionPattern->node);
+      tag_type_to_node(expressionPattern->node, context);
       return;
     }
   }

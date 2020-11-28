@@ -10,6 +10,16 @@ Type *new_type(TypeKind kind) {
   return type;
 }
 
+bool type_is_primitive(Type *type) {
+  switch (type->kind) {
+  case TYPE_CHAR:
+  case TYPE_INT:
+    return true;
+  }
+
+  return false;
+}
+
 int type_to_size(Type *type) {
   switch (type->kind) {
   case TYPE_CHAR:
@@ -86,4 +96,24 @@ char *type_to_char(Type *type) {
   }
   result[length - 1] = '\0';
   return result;
+}
+
+bool type_compare_deep(const Type *type1, const Type *type2) {
+  return (!type1 && !type2) || (type1 && type2 && type1->kind == type2->kind &&
+                                type1->length == type2->length &&
+                                type_compare_deep(type1->base, type2->base));
+}
+
+bool type_vector_compare(Vector *typeVector1, Vector *typeVector2) {
+  if (vector_length(typeVector1) != vector_length(typeVector2))
+    return false;
+
+  for (int i = 0; i < vector_length(typeVector1); i++) {
+    Type *type1 = vector_get(typeVector1, i);
+    Type *type2 = vector_get(typeVector2, i);
+    if (!type_compare_deep(type1, type2))
+      return false;
+  }
+
+  return true;
 }
