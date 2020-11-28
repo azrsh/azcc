@@ -1,3 +1,5 @@
+int assert(int, int, char *);
+int printf();
 
 int main() {
   assert(0, !(10 == 10), "!(10 == 10)");

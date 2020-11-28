@@ -1,3 +1,15 @@
+int assert(int, int, char *);
+int printf();
+
+int foo();
+int foo1(int);
+int foo2(int, int);
+int foo3(int, int, int);
+int foo7(int, int, int, int, int, int, int);
+int foo8(int, int, int, int, int, int, int, int);
+int foo9(int, int, int, int, int, int, int, int, int);
+int foo10(int, int, int, int, int, int, int, int, int, int);
+
 int test1(int a) { return a; }
 int test2(int a, int b) { return a + b; }
 int test3(int a, int b, int c) { return a + b + c; }

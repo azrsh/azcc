@@ -1,5 +1,6 @@
 #include "parse.h"
 #include "container.h"
+#include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
@@ -22,7 +23,7 @@ int currentOffset;
 Vector *stringLiterals; // String vector
 Vector *structs;        // Type vector
 Vector *typedefs;       // Typedef vector
-Vector *functions;      // FunctionDeclaration vector
+FunctionContainer *functionContainer;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -113,8 +114,13 @@ FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   functionCall->name = token->string;
 
-  //関数呼び出しの戻り値は常にintであるト仮定する
-  functionCall->type = new_type(TYPE_INT);
+  //関数宣言の探索
+  FunctionDeclaration *declaration =
+      function_container_get(functionContainer, token->string);
+  if (declaration)
+    functionCall->type = declaration->returnType;
+  else
+    error_at(token->string.head, "関数宣言がみつかりません");
 
   return functionCall;
 }
@@ -230,10 +236,21 @@ Node *new_node_function_call(Token *token) {
   return node;
 }
 
-FunctionDefinition *new_function_definition(Token *identifier) {
+FunctionDeclaration *new_function_declaration(Type *type, String name) {
+  FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
+  result->returnType = type;
+  result->name = name;
+  return result;
+}
+
+FunctionDefinition *new_function_definition() {
   FunctionDefinition *definition = calloc(1, sizeof(FunctionDefinition));
-  definition->name = identifier->string;
   return definition;
+}
+
+FunctionDeclaration *
+function_definition_to_declaration(FunctionDefinition *definition) {
+  return new_function_declaration(definition->returnType, definition->name);
 }
 
 // EBNFパーサ
@@ -319,25 +336,28 @@ Program *program() {
   VariableContainer *variableContainer = new_variable_container(listHead);
 
   Program *result = calloc(1, sizeof(Program));
-  result->functions = new_vector(16);
+  result->functionDefinitions = new_vector(16);
   result->globalVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
   stringLiterals = result->stringLiterals;
   structs = new_vector(16);
   typedefs = new_vector(16);
-  functions = new_vector(16);
+  functionContainer = new_function_container();
 
   while (!at_eof()) {
     FunctionDeclaration *functionDeclaration = function_declaration();
     if (functionDeclaration) {
-      vector_push_back(functions, functionDeclaration);
+      function_container_push(functionContainer, functionDeclaration);
       continue;
     }
 
     FunctionDefinition *functionDefinition =
         function_definition(variableContainer);
     if (functionDefinition) {
-      vector_push_back(result->functions, functionDefinition);
+      function_container_push(
+          functionContainer,
+          function_definition_to_declaration(functionDefinition));
+      vector_push_back(result->functionDefinitions, functionDefinition);
       continue;
     }
 
@@ -449,23 +469,21 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  FunctionDefinition *definition = new_function_definition(identifier);
-
+  //引数のパース
   //新しいスコープなので先頭に新しい変数テーブルを追加
   currentOffset = 0;
   HashTable *localVariableTable = new_hash_table();
   VariableContainer *mergedContainer =
       variable_container_push_table(variableContainer, localVariableTable);
-
+  Vector *arguments = NULL;
   if (!consume("(")) {
     token = tokenHead;
     return NULL;
   }
-
   if (consume(")")) {
-    definition->arguments = new_vector(0);
+    arguments = new_vector(0);
   } else {
-    definition->arguments = function_definition_argument(mergedContainer);
+    arguments = function_definition_argument(mergedContainer);
     expect(")");
   }
 
@@ -495,9 +513,12 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   //
   //
 
+  FunctionDefinition *definition = new_function_definition();
+  definition->returnType = type;
+  definition->name = identifier->string;
+  definition->arguments = arguments;
   definition->body = body;
   definition->stackSize = currentOffset;
-
   return definition;
 }
 

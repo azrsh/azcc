@@ -1,3 +1,6 @@
+int assert(int, int, char *);
+int printf();
+
 int foo();
 int foo1(int);
 int foo2(int, int);

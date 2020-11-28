@@ -618,8 +618,9 @@ void generate_code(Program *program) {
   }
 
   int labelCount = 0;
-  for (int i = 0; i < vector_length(program->functions); i++) {
-    const FunctionDefinition *function = vector_get(program->functions, i);
+  for (int i = 0; i < vector_length(program->functionDefinitions); i++) {
+    const FunctionDefinition *function =
+        vector_get(program->functionDefinitions, i);
     generate_function_definition(function, &labelCount);
   }
 }

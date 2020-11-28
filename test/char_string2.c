@@ -1,3 +1,6 @@
+int assert(int, int, char *);
+int printf();
+
 int test1() {
   int x[3];
   x[0] = -1;

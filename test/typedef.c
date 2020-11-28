@@ -1,3 +1,5 @@
+int assert(int, int, char *);
+int printf();
 
 typedef struct TupleIntInt TupleIntInt;
 struct TupleIntInt {

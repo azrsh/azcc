@@ -1,3 +1,7 @@
+int assert(int, int, char *);
+int printf();
+char alloc4(int **p, int v1, int v2, int v3, int v4);
+
 int test1() {
   int a;
   int *b;
