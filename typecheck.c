@@ -61,7 +61,18 @@ void add_implicit_cast_node(Node *node) {
   }
 }
 
+void tag_type_to_node_inner(Node *node, TypeCheckContext *context);
+
+//式への型付け後にvoid型を弾く
 void tag_type_to_node(Node *node, TypeCheckContext *context) {
+  tag_type_to_node_inner(node, context);
+
+  if (node->kind != NODE_FUNC && node->type->kind == TYPE_VOID)
+    error("void型を値として操作することは禁止されています");
+}
+
+//式への型付け
+void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   if (!node) {
     error("指定されたノードが存在しません");
   }

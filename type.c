@@ -23,6 +23,7 @@ bool type_is_primitive(Type *type) {
 int type_to_size(Type *type) {
   switch (type->kind) {
   case TYPE_CHAR:
+  case TYPE_VOID:
     return 1;
   case TYPE_INT:
     return 4;
@@ -41,6 +42,7 @@ int type_to_size(Type *type) {
 int type_to_align(Type *type) {
   switch (type->kind) {
   case TYPE_CHAR:
+  case TYPE_VOID:
     return 1;
   case TYPE_INT:
     return 4;
@@ -66,6 +68,8 @@ char *type_kind_to_char(TypeKind kind) {
   switch (kind) {
   case TYPE_CHAR:
     return "char";
+  case TYPE_VOID:
+    return "void";
   case TYPE_INT:
     return "int";
   case TYPE_PTR:

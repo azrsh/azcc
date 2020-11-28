@@ -126,6 +126,9 @@ TypeKind map_token_to_kind(Token *token) {
   if (string_compare(token->string, new_string("char", 4)))
     return TYPE_CHAR;
 
+  if (string_compare(token->string, new_string("void", 4)))
+    return TYPE_VOID;
+
   error_at(token->string.head, "組み込み型ではありません");
   return 0;
 }
@@ -584,6 +587,8 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
   if (!type) {
     return NULL;
   }
+  if (type->kind == TYPE_VOID)
+    error_at(tokenHead->string.head, "void型の変数定義は禁止されています");
 
   Token *identifier = consume_identifier();
   if (!identifier) {
@@ -861,15 +866,17 @@ Node *expression(VariableContainer *variableContainer) {
 
 // 変数定義をパースする
 Node *variable_definition(VariableContainer *variableContainer) {
-  Token *current = token;
+  Token *tokenHead = token;
   Type *type = type_specifier();
   if (!type) {
     return NULL;
   }
+  if (type->kind == TYPE_VOID)
+    error_at(tokenHead->string.head, "void型の変数定義は禁止されています");
 
   Token *identifier = consume_identifier();
   if (!identifier) {
-    token = current;
+    token = tokenHead;
     return NULL;
   }
 
@@ -898,9 +905,9 @@ Type *type_specifier() {
   Token *current = token;
 
   //プリミティブ
-  const char *types[] = {"int", "char"};
+  const char *types[] = {"int", "char", "void"};
 
-  for (int i = 0; i < 2; i++) {
+  for (int i = 0; i < 3; i++) {
     if (!consume(types[i]))
       continue;
 

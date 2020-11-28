@@ -9,6 +9,7 @@ typedef struct MemberContainer MemberContainer;
 typedef enum {
   TYPE_INT,
   TYPE_CHAR,
+  TYPE_VOID,
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_STRUCT,
