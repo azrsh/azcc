@@ -22,6 +22,7 @@ int currentOffset;
 Vector *stringLiterals; // String vector
 Vector *structs;        // Type vector
 Vector *typedefs;       // Typedef vector
+Vector *functions;      // FunctionDeclaration vector
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -237,6 +238,8 @@ FunctionDefinition *new_function_definition(Token *identifier) {
 
 // EBNFパーサ
 Program *program();
+FunctionDeclaration *function_declaration();
+Vector *function_declaration_argument();
 FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
 Variable *global_variable_definition(VariableContainer *variableContainer);
@@ -270,6 +273,10 @@ Node *literal();
 
 // program = (function_definition | global_variable_definition |
 // struct_definition)*
+// function_declaration = type_specifier identity "("
+// function_declaration_argument? ")" ";"
+// function_declaration_argument = function_definition_argument | type_specifier
+// ("," type_specifier)*
 // function_definition = type_specifier identity "("
 // function_definition_argument? ")" compound_statement
 // function_definition_argument = type_specifier identity ("," type_specifier
@@ -318,6 +325,7 @@ Program *program() {
   stringLiterals = result->stringLiterals;
   structs = new_vector(16);
   typedefs = new_vector(16);
+  functions = new_vector(16);
 
   while (!at_eof()) {
     FunctionDefinition *functionDefinition =
@@ -362,10 +370,78 @@ Program *program() {
       continue;
     }
 
+    FunctionDeclaration *functionDeclaration = function_declaration();
+    if (functionDeclaration) {
+      vector_push_back(functions, functionDeclaration);
+      continue;
+    }
+
     error_at(token->string.head, "認識できない構文です");
   }
 
   return result;
+}
+
+FunctionDeclaration *function_declaration() {
+  Token *tokenHead = token;
+
+  Type *type = type_specifier();
+  if (!type) {
+    return NULL;
+  }
+
+  Token *identifier = consume_identifier();
+  if (!identifier) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  Vector *arguments;
+  if (!consume("(")) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  if (consume(")")) {
+    arguments = new_vector(0);
+  } else {
+    arguments = function_declaration_argument();
+    expect(")");
+  }
+
+  expect(";");
+
+  FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
+  result->returnType = type;
+  result->name = identifier->string;
+  return result;
+}
+
+Vector *function_declaration_argument() {
+  Vector *arguments = new_vector(16);
+
+  VariableContainer *variableContainer =
+      new_variable_container(new_list_node(new_hash_table()));
+  Vector *definitionArguments = function_definition_argument(variableContainer);
+  if (definitionArguments) {
+    for (int i = 0; i < vector_length(definitionArguments); i++) {
+      Variable *argument = vector_get(definitionArguments, i);
+      vector_push_back(arguments, argument->type);
+    }
+    return arguments;
+  }
+
+  /*
+  do {
+    Type *type = type_specifier();
+    if (!type)
+      error_at(token->string.head, "型指定子ではありません");
+
+    vector_push_back(arguments, type);
+  } while (consume(","));
+  return arguments;
+  */
+  return NULL;
 }
 
 //関数の定義をパースする

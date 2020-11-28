@@ -6,6 +6,13 @@
 #include "tokenize.h"
 #include "type.h"
 
+typedef struct FunctionDeclaration FunctionDeclaration;
+struct FunctionDeclaration {
+  String name;
+  Type *returnType;
+  // Vector *arguments; // Type Nodes
+};
+
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
   String name;
