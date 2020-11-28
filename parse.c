@@ -19,8 +19,9 @@
 
 Token *token;
 int currentOffset;
-Vector *stringLiterals;   // String vector
-Vector *userDefinedTypes; // Type vector
+Vector *stringLiterals; // String vector
+Vector *structs;        // Type vector
+Vector *typedefs;       // Typedef vector
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -240,6 +241,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
 Variable *global_variable_definition(VariableContainer *variableContainer);
 Type *struct_definition(VariableContainer *variableContainer);
+Typedef *type_definition();
 StatementUnion *statement(VariableContainer *variableContainer);
 ExpressionStatement *expression_statement(VariableContainer *variableContainer);
 ReturnStatement *return_statement(VariableContainer *variableContainer);
@@ -271,17 +273,16 @@ Node *literal();
 // function_definition_argument = type_specifier identity ("," type_specifier
 // identity)*
 // global_variable_definition = variable_definition ";"
-// statement = expression_statement | return_statement | if_statement
-// | while_statementa | break_statement | continue_statement
-// expression_statement = " expression ";"
-// return_statement = "return" expression ";"
-// if_statement = "if" "(" expression ")" statement ("else" statement)?
-// while_statement = "while" "(" expression ")" statement
-// for_statement = "for" "(" expression ";" expression ";" expression ")"
-// statement
-// compound_statement = "{" statement* "}"
-// break_statement = "break" ";"
-// continue_statement = "continue" ";"
+// struct_definition = "struct" identifier "{" (type_specifier identifier ";")*
+// "}" ";"
+// type_definition = "typedef" type_specifier identifier
+// statement = expression_statement | return_statement | if_statement |
+// while_statementa | break_statement | continue_statement expression_statement
+// = " expression ";" return_statement = "return" expression ";" if_statement =
+// "if" "(" expression ")" statement ("else" statement)? while_statement =
+// "while" "(" expression ")" statement for_statement = "for" "(" expression ";"
+// expression ";" expression ")" statement compound_statement = "{" statement*
+// "}" break_statement = "break" ";" continue_statement = "continue" ";"
 
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
@@ -307,12 +308,12 @@ Program *program() {
   VariableContainer *variableContainer = new_variable_container(listHead);
 
   Program *result = calloc(1, sizeof(Program));
-  result->structs = new_vector(16);
   result->functions = new_vector(16);
   result->globalVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
-  userDefinedTypes = result->structs;
   stringLiterals = result->stringLiterals;
+  structs = new_vector(16);
+  typedefs = new_vector(16);
 
   while (!at_eof()) {
     FunctionDefinition *functionDefinition =
@@ -331,7 +332,13 @@ Program *program() {
 
     Type *structDefinition = struct_definition(variableContainer);
     if (structDefinition) {
-      vector_push_back(result->structs, structDefinition);
+      vector_push_back(structs, structDefinition);
+      continue;
+    }
+
+    Typedef *typeDefinition = type_definition();
+    if (typeDefinition) {
+      vector_push_back(typedefs, typeDefinition);
       continue;
     }
 
@@ -510,10 +517,29 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
     }
   }
 
-  vector_push_back(userDefinedTypes, result);
+  expect(";");
+
+  return result;
+}
+
+Typedef *type_definition() {
+  if (!consume("typedef")) {
+    return NULL;
+  }
+
+  Type *type = type_specifier();
+  if (!type) {
+    error_at(token->string.head, "型指定子ではありません");
+  }
+
+  Token *identifier = expect_identifier();
+  String name = identifier->string;
 
   expect(";");
 
+  Typedef *result = calloc(1, sizeof(Typedef));
+  result->name = name;
+  result->type = type;
   return result;
 }
 
@@ -749,8 +775,8 @@ Type *type_specifier() {
       return NULL;
     }
 
-    for (int i = 0; i < vector_length(userDefinedTypes); i++) {
-      Type *type = vector_get(userDefinedTypes, i);
+    for (int i = 0; i < vector_length(structs); i++) {
+      Type *type = vector_get(structs, i);
       if (string_compare(identifier->string, type->name)) {
         while (consume("*")) {
           Type *pointer = new_type(TYPE_PTR);

@@ -14,9 +14,14 @@ struct FunctionDefinition {
   size_t stackSize;
 };
 
+typedef struct Typedef Typedef;
+struct Typedef {
+  String name;
+  Type type;
+};
+
 typedef struct Program Program;
 struct Program {
-  Vector *structs;         // Type vector
   Vector *functions;       // FunctionDefinition vector
   Vector *globalVariables; // Variable vector
   Vector *stringLiterals;  // char* vector

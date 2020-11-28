@@ -90,6 +90,7 @@ Token *tokenize(const char *p) {
     length += is_reserved(p, "sizeof");
     length += is_reserved(p, "_Alignof");
     length += is_reserved(p, "struct");
+    length += is_reserved(p, "typedef");
     if (length > 0) {
       current = new_token(TOKEN_RESERVED, current, p, length);
       p += length;
