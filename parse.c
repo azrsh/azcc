@@ -593,8 +593,6 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
   if (!type) {
     return NULL;
   }
-  if (type->kind == TYPE_VOID)
-    error_at(tokenHead->string.head, "void型の変数定義は禁止されています");
 
   Token *identifier = consume_identifier();
   if (!identifier) {
@@ -892,8 +890,6 @@ Node *variable_definition(VariableContainer *variableContainer) {
   if (!type) {
     return NULL;
   }
-  if (type->kind == TYPE_VOID)
-    error_at(tokenHead->string.head, "void型の変数定義は禁止されています");
 
   Token *identifier = consume_identifier();
   if (!identifier) {

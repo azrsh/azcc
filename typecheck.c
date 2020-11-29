@@ -44,6 +44,10 @@ Node *new_node_cast(Type *target, Node *source) {
   castNode->kind = NODE_CAST;
   castNode->type = target;
   castNode->lhs = source;
+
+  if (source->type->kind == TYPE_VOID)
+    error("void型の値のキャストは禁止されています");
+
   return castNode;
 }
 

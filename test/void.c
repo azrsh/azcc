@@ -18,6 +18,7 @@ int main() {
   test(67);
   test(240);
 
+  // void a = test(240); //ちゃんとエラーになる
   // int a = test(240); //ちゃんとエラーになる
 
   return_test();
