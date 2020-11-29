@@ -64,28 +64,26 @@ int test5() {
 }
 
 int test6sub() {
-  int a;
   int b;
   b = 0;
-  for (a = 0; a < 10; a = a + 1)
-    b = b + 1;
+  for (int a = 0; a < 10; a++)
+    b++;
   return b;
 }
 int test6() {
   assert(10, test6sub(),
-         "int a; int b; b = 0;for(a = 0;a < 10;a = a + 1)b = b + 1; return b;");
+         "int b; b = 0; for(int a = 0;a < 10;a++)b++; return b;");
   return 0;
 }
 
 int test7() {
-  int a;
   int b;
   int c;
   b = 0;
   c = 0;
-  for (a = 0; a < 10; a = a + 1) {
-    b = b + 1;
-    c = c + 2;
+  for (int i = 0; i < 10; i++) {
+    b += 1;
+    c += 2;
   }
   assert(
       20, c,
@@ -95,119 +93,72 @@ int test7() {
 }
 
 int test8sub() {
-  int a;
-  int b;
-  int c;
-  b = 0;
-  c = 0;
-  for (a = 0; a < 10; a = a + 1) {
-    b = b + 1;
-    c = c + 2;
-  }
-  return c;
-}
-int test8() {
-  assert(
-      20, test8sub(),
-      "int a; int b; int c; b = 0;c = 0;for(a = 0;a < 10;a = a + 1){b = b ..."
-      /*"+ 1;c = c + 2;} return c;}"*/);
-  return 0;
-}
-
-int test9sub() {
-  int x = 128;
-  for (int i = 0; i < 10; i = i + 1) {
-    x = x + 2;
-  }
-  return x;
-}
-int test9() {
-  assert(148, test9sub(),
-         "int x = 128; for (int i = 0; i < 10; i = i + 1) { x = x + 2; }..."
-         /*"return x;"*/);
-  return 0;
-}
-
-int test10sub() {
   int x = 0;
-  for (int i = 0; i < 10; i = i + 1) {
-    for (int j = 0; j < 10; j = j + 1) {
-      x = x + i * j;
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      x += i * j;
     }
   }
   return x;
 }
-int test10() {
+int test8() {
   assert(
-      2025, test10sub(),
+      2025, test8sub(),
       "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <..."
       /*"10; j = j + 1) { x = x + i * j; } }return x;"*/);
   return 0;
 }
 
-int test11sub() {
+int test9() {
   int x = 0;
-  for (int i = 0; i < 10; i = i + 1) {
-    for (int j = 0; j < 10; j = j + 1) {
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
       x = x + i + j;
       if (i * 10 + j == 50)
         break;
     }
   }
-  return x;
-}
-int test11() {
+
   assert(
-      810, test11sub(),
+      810, x,
       "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <..."
       /*"10; j = j + 1) { x = x + i * j; if(x == 45) break; } }return x;"*/);
   return 0;
 }
 
-int test12sub() {
+int test10() {
   int x = 0;
-  for (int i = 0; i < 10; i = i + 1) {
-    for (int j = 0; j < 10; j = j + 1) {
-      for (int k = 0; k < 10; k = k + 1) {
+  for (int i = 0; i < 10; i++) {
+    for (int j = 0; j < 10; j++) {
+      for (int k = 0; k < 10; k++) {
         x = x + 1;
       }
     }
   }
-  return x;
-}
-int test12() {
+
   assert(
-      1000, test12sub(),
+      1000, x,
       "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <...");
   return 0;
 }
 
-int test13sub() {
+int test11() {
   int x = 0;
-  for (int i = 0; i < 10; i = i + 1)
-    for (int j = 0; j < 10; j = j + 1) {
+  for (int i = 0; i < 10; i++)
+    for (int j = 0; j < 10; j++) {
       x = x + 1;
       if (i * 10 + j < 50)
         continue;
       break;
     }
-  return x;
-}
-int test13() {
+
   assert(
-      55, test13sub(),
+      55, x,
       "int x = 0; for (int i = 0; i < 10; i = i + 1) { for (int j = 0; j <...");
   return 0;
 }
 
-int test14() {
-  for (int i = 0; i < 10; i = i + 1)
-    ;
-
-  return 0;
-}
-
-int test15sub(int x) {
+int test12sub(int x) {
   switch (x) {
   case 1:
     return x;
@@ -223,18 +174,19 @@ int test15sub(int x) {
 
   return x;
 }
-void test15() {
-  for (int i = 0; i < 10; i = i + 1) {
+void test12() {
+  for (int i = 0; i < 10; i++) {
     int x = 0;
     if (i < 5)
       x = i;
-    assert(x, test15sub(i), "test15sub(i)");
+    assert(x, test12sub(i), "test12sub(i)");
   }
 }
-void test16() {
+
+void test13() {
   int i = 1;
   do {
-    i = i + 1;
+    i++;
   } while (i < 0);
   assert(2, i, "do-while");
 }
@@ -253,9 +205,6 @@ int main() {
   test11();
   test12();
   test13();
-  test14();
-  test15();
-  test16();
   printf("OK\n");
   return 0;
 }

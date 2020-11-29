@@ -330,7 +330,7 @@ Node *literal();
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
 // type_specifier = ("int" | "char") "*"*
-// assign = logic_or ("=" assign)?
+// assign = logic_or (("=" | "+=" | "-=" | "*=" | "/=") assign)?
 // logic_or = logic_and ("||" logic_and)*
 // logic_and = equality ("&&" equality)*
 // equality = relational ("==" relational | "!=" relational)*
@@ -1092,6 +1092,18 @@ Node *assign(VariableContainer *variableContainer) {
   for (;;) {
     if (consume("=")) {
       node = new_node(NODE_ASSIGN, node, logic_or(variableContainer));
+    } else if (consume("+=")) {
+      Node *addNode = new_node(NODE_ADD, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, addNode);
+    } else if (consume("-=")) {
+      Node *subNode = new_node(NODE_SUB, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, subNode);
+    } else if (consume("*=")) {
+      Node *mulNode = new_node(NODE_MUL, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, mulNode);
+    } else if (consume("/=")) {
+      Node *divNode = new_node(NODE_DIV, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, divNode);
     } else {
       return node;
     }
@@ -1190,6 +1202,16 @@ Node *unary(VariableContainer *variableContainer) {
     return new_node(NODE_REF, postfix(variableContainer), NULL);
   if (consume("*"))
     return new_node(NODE_DEREF, postfix(variableContainer), NULL);
+  if (consume("++")) {
+    Node *source = postfix(variableContainer);
+    Node *addNode = new_node(NODE_ADD, source, new_node_num(1));
+    return new_node(NODE_ASSIGN, source, addNode);
+  }
+  if (consume("--")) {
+    Node *source = postfix(variableContainer);
+    Node *addNode = new_node(NODE_SUB, source, new_node_num(1));
+    return new_node(NODE_ASSIGN, source, addNode);
+  }
   if (consume("sizeof")) {
     Token *head = token;
     if (consume("(")) {
@@ -1279,6 +1301,16 @@ Node *postfix(VariableContainer *variableContainer) {
       Node *memberNode = new_node_member(memberToken);
       node = new_node(NODE_DEREF, node, NULL);
       node = new_node(NODE_DOT, node, memberNode);
+    } else if (consume("++")) {
+      Node *addNode = new_node(NODE_ADD, node, new_node_num(1));
+      Node *assignNode = new_node(NODE_ASSIGN, node, addNode);
+      return new_node(NODE_SUB, assignNode,
+                      new_node_num(1)); //戻り値を変えるためにやっているが、最悪
+    } else if (consume("--")) {
+      Node *addNode = new_node(NODE_SUB, node, new_node_num(1));
+      Node *assignNode = new_node(NODE_ASSIGN, node, addNode);
+      return new_node(NODE_ADD, assignNode,
+                      new_node_num(1)); //戻り値を変えるためにやっているが、最悪
     } else {
       return node;
     }
