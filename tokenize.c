@@ -85,6 +85,7 @@ Token *tokenize(const char *p) {
     length += is_reserved(p, "case");
     length += is_reserved(p, "default");
     length += is_reserved(p, "while");
+    length += is_reserved(p, "do");
     length += is_reserved(p, "for");
     length += is_reserved(p, "return");
     length += is_reserved(p, "break");

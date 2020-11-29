@@ -11,6 +11,7 @@ typedef enum {
   STATEMENT_SWITCH,
   STATEMENT_LABELED,
   STATEMENT_WHILE,
+  STATEMENT_DOWHILE,
   STATEMENT_FOR,
   STATEMENT_COMPOUND,
   STATEMENT_RETURN,
@@ -28,6 +29,7 @@ struct StatementUnion {
     SwitchStatement *switchStatement;
     LabeledStatement *labeledStatement;
     WhileStatement *whileStatement;
+    DoWhileStatement *doWhileStatement;
     ForStatement *forStatement;
     CompoundStatement *compoundStatement;
     BreakStatement *breakStatement;
@@ -81,6 +83,13 @@ StatementUnion *new_statement_union_while(WhileStatement *statement) {
   StatementUnion *result = calloc(1, sizeof(StatementUnion));
   result->whileStatement = statement;
   result->tag = STATEMENT_WHILE;
+  return result;
+}
+
+StatementUnion *new_statement_union_do_while(DoWhileStatement *statement) {
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->doWhileStatement = statement;
+  result->tag = STATEMENT_DOWHILE;
   return result;
 }
 
@@ -152,6 +161,13 @@ LabeledStatement *statement_union_take_labeled(StatementUnion *statementUnion) {
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion) {
   if (statementUnion->tag == STATEMENT_WHILE)
     return statementUnion->whileStatement;
+  return NULL;
+}
+
+DoWhileStatement *
+statement_union_take_do_while(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_DOWHILE)
+    return statementUnion->doWhileStatement;
   return NULL;
 }
 

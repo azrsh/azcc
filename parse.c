@@ -274,6 +274,7 @@ IfStatement *if_statement(VariableContainer *variableContainer);
 SwitchStatement *switch_statement(VariableContainer *variableContainer);
 LabeledStatement *labeled_statement(VariableContainer *variableContainer);
 WhileStatement *while_statement(VariableContainer *variableContainer);
+DoWhileStatement *do_while_statement(VariableContainer *variableContainer);
 ForStatement *for_statement(VariableContainer *variableContainer);
 CompoundStatement *compound_statement(VariableContainer *variableContainer);
 BreakStatement *break_statement(VariableContainer *variableContainer);
@@ -311,7 +312,7 @@ Node *literal();
 // type_definition = "typedef" type_specifier identifier
 // statement = null_statement | expression_statement | return_statement |
 // if_statement | switch_statement | labeled_statement | while_statementa |
-// break_statement | continue_statement
+// do_while_statement | break_statement | continue_statement
 // null_statement = ";"
 // expression_statement = expression ";"
 // return_statement = "return" expression ";"
@@ -319,6 +320,7 @@ Node *literal();
 // switch_statement = "switch" "(" expression ")" statement
 // labeled_statement = (("case"? constant-expression) | "default") ":" statement
 // while_statement = "while" "(" expression ")" statement
+// do_while_statement = do statement "while" "(" expression ")" ";"
 // for_statement = "for" "(" expression ";" expression ";" expression ")"
 // statement
 // compound_statement = "{" statement* "}"
@@ -731,6 +733,11 @@ StatementUnion *statement(VariableContainer *variableContainer) {
     return new_statement_union_while(whilePattern);
   }
 
+  DoWhileStatement *doWhilePattern = do_while_statement(variableContainer);
+  if (doWhilePattern) {
+    return new_statement_union_do_while(doWhilePattern);
+  }
+
   ForStatement *forPattern = for_statement(variableContainer);
   if (forPattern) {
     return new_statement_union_for(forPattern);
@@ -877,6 +884,28 @@ WhileStatement *while_statement(VariableContainer *variableContainer) {
 
   result->statement = statement(variableContainer);
 
+  return result;
+}
+
+// do-while文をパースする
+DoWhileStatement *do_while_statement(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
+  if (!consume("do"))
+    return NULL;
+
+  DoWhileStatement *result = calloc(1, sizeof(DoWhileStatement));
+  result->statement = statement(variableContainer);
+
+  if (!consume("while") || !consume("(")) {
+    token = tokenHead;
+    return NULL;
+  }
+
+  result->condition = expression(variableContainer);
+
+  expect(")");
+  expect(";");
   return result;
 }
 

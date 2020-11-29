@@ -231,6 +231,13 @@ void test15() {
     assert(x, test15sub(i), "test15sub(i)");
   }
 }
+void test16() {
+  int i = 1;
+  do {
+    i = i + 1;
+  } while (i < 0);
+  assert(2, i, "do-while");
+}
 
 int main() {
   test1();
@@ -248,6 +255,7 @@ int main() {
   test13();
   test14();
   test15();
+  test16();
   printf("OK\n");
   return 0;
 }

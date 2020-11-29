@@ -329,6 +329,17 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     }
   }
 
+  // match do-while
+  {
+    DoWhileStatement *doWhilePattern =
+        statement_union_take_do_while(statementUnion);
+    if (doWhilePattern) {
+      tag_type_to_node(doWhilePattern->condition, context);
+      tag_type_to_statement(doWhilePattern->statement, context);
+      return;
+    }
+  }
+
   // match for
   {
     ForStatement *forPattern = statement_union_take_for(statementUnion);

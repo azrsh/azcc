@@ -502,6 +502,32 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     }
   }
 
+  // match do-while
+  {
+    DoWhileStatement *doWhilePattern =
+        statement_union_take_do_while(statementUnion);
+    if (doWhilePattern) {
+      int loopLabel = *labelCount;
+      *labelCount += 1;
+
+      printf(".Lbeginloop%d:\n", loopLabel);
+
+      generate_statement(doWhilePattern->statement, labelCount, loopLabel,
+                         latestSwitch);
+
+      generate_expression(doWhilePattern->condition, labelCount);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .Lend%d\n", loopLabel);
+
+      printf(".Lcontinueloop%d:\n", loopLabel);
+      printf("  jmp .Lbeginloop%d\n", loopLabel);
+
+      printf(".Lend%d:\n", loopLabel);
+      return;
+    }
+  }
+
   // match for
   {
     ForStatement *forPattern = statement_union_take_for(statementUnion);

@@ -46,6 +46,12 @@ struct WhileStatement {
   StatementUnion *statement;
 };
 
+typedef struct DoWhileStatement DoWhileStatement;
+struct DoWhileStatement {
+  Node *condition;
+  StatementUnion *statement;
+};
+
 typedef struct ForStatement ForStatement;
 struct ForStatement {
   Node *initialization;
@@ -76,6 +82,7 @@ StatementUnion *new_statement_union_if(IfStatement *statement);
 StatementUnion *new_statement_union_switch(SwitchStatement *statement);
 StatementUnion *new_statement_union_labeled(LabeledStatement *statement);
 StatementUnion *new_statement_union_while(WhileStatement *statement);
+StatementUnion *new_statement_union_do_while(DoWhileStatement *statement);
 StatementUnion *new_statement_union_for(ForStatement *statement);
 StatementUnion *new_statement_union_compound(CompoundStatement *statement);
 StatementUnion *new_statement_union_break(BreakStatement *statement);
@@ -89,6 +96,7 @@ IfStatement *statement_union_take_if(StatementUnion *statementUnion);
 SwitchStatement *statement_union_take_switch(StatementUnion *statementUnion);
 LabeledStatement *statement_union_take_labeled(StatementUnion *statementUnion);
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
+DoWhileStatement *statement_union_take_do_while(StatementUnion *statementUnion);
 ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 CompoundStatement *
 statement_union_take_compound(StatementUnion *statementUnion);
