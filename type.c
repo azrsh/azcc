@@ -1,4 +1,5 @@
 #include "type.h"
+#include "container.h"
 #include "membercontainer.h"
 #include "util.h"
 #include <stdlib.h>
@@ -12,6 +13,7 @@ Type *new_type(TypeKind kind) {
 
 bool type_is_primitive(Type *type) {
   switch (type->kind) {
+  case TYPE_VOID:
   case TYPE_CHAR:
   case TYPE_INT:
     return true;
@@ -103,9 +105,16 @@ char *type_to_char(Type *type) {
 }
 
 bool type_compare_deep(const Type *type1, const Type *type2) {
-  return (!type1 && !type2) || (type1 && type2 && type1->kind == type2->kind &&
-                                type1->length == type2->length &&
-                                type_compare_deep(type1->base, type2->base));
+  if (!type1 && !type2)
+    return true;
+
+  //構造体のときは名前で判定する
+  if (type1->kind == TYPE_STRUCT || type2->kind == TYPE_STRUCT)
+    return string_compare(type1->name, type2->name);
+
+  return type1 && type2 && type1->kind == type2->kind &&
+         type1->length == type2->length &&
+         type_compare_deep(type1->base, type2->base);
 }
 
 bool type_vector_compare(Vector *typeVector1, Vector *typeVector2) {

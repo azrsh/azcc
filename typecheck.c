@@ -16,7 +16,7 @@ Type *type_compare_deep_with_implicit_cast(Type *advantage,
   if (!advantage || !disadvantage)
     return NULL;
 
-  if (!advantage->base && !disadvantage->base)
+  if (type_is_primitive(advantage) && type_is_primitive(disadvantage))
     return advantage;
 
   if (type_compare_deep_with_implicit_cast(advantage->base, disadvantage->base))

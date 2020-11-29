@@ -226,6 +226,14 @@ int test13() {
   return 0;
 }
 
+/*int test14() {
+  // 異なるポインタ型への代入を許可しない
+  struct TupleIntInt instance1;
+  struct TupleCharChar instance2;
+  struct TupleIntInt *ptr1 = &instance2;
+  struct TupleCharChar *ptr2 = &instance1;
+}*/
+
 int main() {
   test1();
   test2();

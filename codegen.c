@@ -250,8 +250,8 @@ void generate_expression(Node *node, int *labelCount) {
 
     size_t lhsSize = type_to_size(node->lhs->type);
     size_t rhsSize = type_to_size(node->rhs->type);
-    if (lhsSize != rhsSize)
-      error("右辺を左辺と同じ型にキャストできない不正な代入です");
+    // if (lhsSize != rhsSize)
+    //  error("右辺を左辺と同じ型にキャストできない不正な代入です");
 
     if (lhsSize == 1 && rhsSize == 1)
       generate_assign_i8(node);
