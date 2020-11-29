@@ -267,6 +267,7 @@ Variable *global_variable_definition(VariableContainer *variableContainer);
 Type *struct_definition(VariableContainer *variableContainer);
 Typedef *type_definition();
 StatementUnion *statement(VariableContainer *variableContainer);
+NullStatement *null_statement(VariableContainer *variableContainer);
 ExpressionStatement *expression_statement(VariableContainer *variableContainer);
 ReturnStatement *return_statement(VariableContainer *variableContainer);
 IfStatement *if_statement(VariableContainer *variableContainer);
@@ -306,13 +307,18 @@ Node *literal();
 // struct_definition = "struct" identifier "{" (type_specifier identifier ";")*
 // "}" ";"
 // type_definition = "typedef" type_specifier identifier
-// statement = expression_statement | return_statement | if_statement |
-// while_statementa | break_statement | continue_statement expression_statement
-// = " expression ";" return_statement = "return" expression ";" if_statement =
-// "if" "(" expression ")" statement ("else" statement)? while_statement =
-// "while" "(" expression ")" statement for_statement = "for" "(" expression ";"
-// expression ";" expression ")" statement compound_statement = "{" statement*
-// "}" break_statement = "break" ";" continue_statement = "continue" ";"
+// statement = null_statement | expression_statement | return_statement |
+// if_statement | while_statementa | break_statement | continue_statement
+// null_statement = ";"
+// expression_statement = expression ";"
+// return_statement = "return" expression ";"
+// if_statement = "if" "(" expression ")" statement ("else" statement)?
+// while_statement = "while" "(" expression ")" statement
+// for_statement = "for" "(" expression ";" expression ";" expression ")"
+// statement
+// compound_statement = "{" statement* "}"
+// break_statement = "break" ";"
+// continue_statement = "continue" ";"
 
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
@@ -727,9 +733,21 @@ StatementUnion *statement(VariableContainer *variableContainer) {
     return new_statement_union_continue(continuePattern);
   }
 
+  NullStatement *nullPattern = null_statement(variableContainer);
+  if (nullPattern) {
+    return new_statement_union_null(nullPattern);
+  }
+
   ExpressionStatement *expressionPattern =
       expression_statement(variableContainer);
   return new_statement_union_expression(expressionPattern);
+}
+
+NullStatement *null_statement(VariableContainer *variableContainer) {
+  if (!consume(";"))
+    return NULL;
+
+  return calloc(1, sizeof(NullStatement));
 }
 
 // 式の文をパースする

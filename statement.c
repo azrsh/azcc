@@ -5,6 +5,7 @@
 typedef struct StatementUnion StatementUnion;
 
 typedef enum {
+  STATEMENT_NULL,
   STATEMENT_EXPRESSION,
   STATEMENT_IF,
   STATEMENT_WHILE,
@@ -18,6 +19,7 @@ typedef enum {
 struct StatementUnion {
   StatementKind tag;
   union {
+    NullStatement *nullStatement;
     ExpressionStatement *expressionStatement;
     ReturnStatement *returnStatement;
     IfStatement *ifStatement;
@@ -28,6 +30,13 @@ struct StatementUnion {
     ContinueStatement *continueStatement;
   };
 };
+
+StatementUnion *new_statement_union_null(NullStatement *statement) {
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->nullStatement = statement;
+  result->tag = STATEMENT_NULL;
+  return result;
+}
 
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement) {
   StatementUnion *result = calloc(1, sizeof(StatementUnion));
@@ -83,6 +92,12 @@ StatementUnion *new_statement_union_continue(ContinueStatement *statement) {
   result->continueStatement = statement;
   result->tag = STATEMENT_CONTINUE;
   return result;
+}
+
+NullStatement *statement_union_take_null(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_NULL)
+    return statementUnion->nullStatement;
+  return NULL;
 }
 
 ExpressionStatement *

@@ -200,6 +200,13 @@ int test13() {
   return 0;
 }
 
+int test14() {
+  for (int i = 0; i < 10; i = i + 1)
+    ;
+
+  return 0;
+}
+
 int main() {
   test1();
   test2();
@@ -214,6 +221,7 @@ int main() {
   test11();
   test12();
   test13();
+  test14();
   printf("OK\n");
   return 0;
 }

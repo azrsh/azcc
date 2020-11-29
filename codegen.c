@@ -530,6 +530,15 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     }
   }
 
+  // match null
+  {
+    NullStatement *nullPattern = statement_union_take_null(statementUnion);
+    if (nullPattern) {
+      insert_comment("null statement");
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =

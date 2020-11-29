@@ -357,11 +357,19 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     }
   }
 
-  // match break
+  // match continue
   {
     ContinueStatement *continuePattern =
         statement_union_take_continue(statementUnion);
     if (continuePattern) {
+      return;
+    }
+  }
+
+  // match null
+  {
+    NullStatement *nullPattern = statement_union_take_null(statementUnion);
+    if (nullPattern) {
       return;
     }
   }

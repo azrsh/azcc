@@ -5,6 +5,11 @@
 
 typedef struct StatementUnion StatementUnion;
 
+typedef struct NullStatement NullStatement;
+struct NullStatement {
+  int dummy;
+};
+
 typedef struct ExpressionStatement ExpressionStatement;
 struct ExpressionStatement {
   Node *node;
@@ -51,6 +56,7 @@ struct ContinueStatement {
   int dummy;
 };
 
+StatementUnion *new_statement_union_null(NullStatement *statement);
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement);
 StatementUnion *new_statement_union_return(ReturnStatement *statement);
 StatementUnion *new_statement_union_if(IfStatement *statement);
@@ -60,6 +66,7 @@ StatementUnion *new_statement_union_compound(CompoundStatement *statement);
 StatementUnion *new_statement_union_break(BreakStatement *statement);
 StatementUnion *new_statement_union_continue(ContinueStatement *statement);
 
+NullStatement *statement_union_take_null(StatementUnion *statementUnion);
 ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
 ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
