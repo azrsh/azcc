@@ -209,8 +209,23 @@ void generate_expression(Node *node, int *labelCount) {
     return;
   case NODE_DEREF:
     generate_expression(node->lhs, labelCount);
+    //暗黙的なキャスト
+    //配列はポインタに
+    //それ以外の値は64bitに符号拡張
     printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
+    switch (node->type->kind) {
+    case TYPE_CHAR:
+      printf("  movsx rax, BYTE PTR [rax]\n");
+      break;
+    case TYPE_INT:
+      printf("  movsx rax, DWORD PTR [rax]\n");
+      break;
+    case TYPE_PTR:
+      printf("  mov rax, [rax]\n");
+      break;
+    case TYPE_ARRAY:
+      break; //配列はポインタのままにする
+    }
     printf("  push rax\n");
     return;
   case NODE_VAR:
