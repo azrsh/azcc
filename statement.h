@@ -27,6 +27,19 @@ struct IfStatement {
   StatementUnion *elseStatement;
 };
 
+typedef struct SwitchStatement SwitchStatement;
+struct SwitchStatement {
+  Node *condition;
+  StatementUnion *statement;
+  Vector *labeledStatements; // LabeledStatement vector
+};
+
+typedef struct LabeledStatement LabeledStatement;
+struct LabeledStatement {
+  Node *constantExpression;
+  StatementUnion *statement;
+};
+
 typedef struct WhileStatement WhileStatement;
 struct WhileStatement {
   Node *condition;
@@ -60,6 +73,8 @@ StatementUnion *new_statement_union_null(NullStatement *statement);
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement);
 StatementUnion *new_statement_union_return(ReturnStatement *statement);
 StatementUnion *new_statement_union_if(IfStatement *statement);
+StatementUnion *new_statement_union_switch(SwitchStatement *statement);
+StatementUnion *new_statement_union_labeled(LabeledStatement *statement);
 StatementUnion *new_statement_union_while(WhileStatement *statement);
 StatementUnion *new_statement_union_for(ForStatement *statement);
 StatementUnion *new_statement_union_compound(CompoundStatement *statement);
@@ -71,6 +86,8 @@ ExpressionStatement *
 statement_union_take_expression(StatementUnion *statementUnion);
 ReturnStatement *statement_union_take_return(StatementUnion *statementUnion);
 IfStatement *statement_union_take_if(StatementUnion *statementUnion);
+SwitchStatement *statement_union_take_switch(StatementUnion *statementUnion);
+LabeledStatement *statement_union_take_labeled(StatementUnion *statementUnion);
 WhileStatement *statement_union_take_while(StatementUnion *statementUnion);
 ForStatement *statement_union_take_for(StatementUnion *statementUnion);
 CompoundStatement *

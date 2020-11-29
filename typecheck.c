@@ -296,6 +296,29 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     }
   }
 
+  // match switch
+  {
+    SwitchStatement *switchPattern =
+        statement_union_take_switch(statementUnion);
+    if (switchPattern) {
+      tag_type_to_node(switchPattern->condition, context);
+      tag_type_to_statement(switchPattern->statement, context);
+      return;
+    }
+  }
+
+  // match labeled
+  {
+    LabeledStatement *labeledPattern =
+        statement_union_take_labeled(statementUnion);
+    if (labeledPattern) {
+      if (labeledPattern->constantExpression)
+        tag_type_to_node(labeledPattern->constantExpression, context);
+      tag_type_to_statement(labeledPattern->statement, context);
+      return;
+    }
+  }
+
   // match while
   {
     WhileStatement *whilePattern = statement_union_take_while(statementUnion);

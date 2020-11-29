@@ -71,7 +71,7 @@ Token *tokenize(const char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=;{},&[].!", *p)) {
+    if (strchr("+-*/()<>=;{},&[].!:", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }
@@ -81,6 +81,9 @@ Token *tokenize(const char *p) {
     //同時に成立しないのでやっているが、最悪ぽい
     int length = is_reserved(p, "if");
     length += is_reserved(p, "else");
+    length += is_reserved(p, "switch");
+    length += is_reserved(p, "case");
+    length += is_reserved(p, "default");
     length += is_reserved(p, "while");
     length += is_reserved(p, "for");
     length += is_reserved(p, "return");

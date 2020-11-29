@@ -8,6 +8,8 @@ typedef enum {
   STATEMENT_NULL,
   STATEMENT_EXPRESSION,
   STATEMENT_IF,
+  STATEMENT_SWITCH,
+  STATEMENT_LABELED,
   STATEMENT_WHILE,
   STATEMENT_FOR,
   STATEMENT_COMPOUND,
@@ -23,6 +25,8 @@ struct StatementUnion {
     ExpressionStatement *expressionStatement;
     ReturnStatement *returnStatement;
     IfStatement *ifStatement;
+    SwitchStatement *switchStatement;
+    LabeledStatement *labeledStatement;
     WhileStatement *whileStatement;
     ForStatement *forStatement;
     CompoundStatement *compoundStatement;
@@ -56,6 +60,20 @@ StatementUnion *new_statement_union_if(IfStatement *statement) {
   StatementUnion *result = calloc(1, sizeof(StatementUnion));
   result->ifStatement = statement;
   result->tag = STATEMENT_IF;
+  return result;
+}
+
+StatementUnion *new_statement_union_switch(SwitchStatement *statement) {
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->switchStatement = statement;
+  result->tag = STATEMENT_SWITCH;
+  return result;
+}
+
+StatementUnion *new_statement_union_labeled(LabeledStatement *statement) {
+  StatementUnion *result = calloc(1, sizeof(StatementUnion));
+  result->labeledStatement = statement;
+  result->tag = STATEMENT_LABELED;
   return result;
 }
 
@@ -116,6 +134,18 @@ ReturnStatement *statement_union_take_return(StatementUnion *statementUnion) {
 IfStatement *statement_union_take_if(StatementUnion *statementUnion) {
   if (statementUnion->tag == STATEMENT_IF)
     return statementUnion->ifStatement;
+  return NULL;
+}
+
+SwitchStatement *statement_union_take_switch(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_SWITCH)
+    return statementUnion->switchStatement;
+  return NULL;
+}
+
+LabeledStatement *statement_union_take_labeled(StatementUnion *statementUnion) {
+  if (statementUnion->tag == STATEMENT_LABELED)
+    return statementUnion->labeledStatement;
   return NULL;
 }
 

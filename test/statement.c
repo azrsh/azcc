@@ -207,6 +207,31 @@ int test14() {
   return 0;
 }
 
+int test15sub(int x) {
+  switch (x) {
+  case 1:
+    return x;
+  case 2:
+    return x;
+  case 3:
+    return x;
+  case 4:
+    return x;
+  default:
+    return 0;
+  }
+
+  return x;
+}
+void test15() {
+  for (int i = 0; i < 10; i = i + 1) {
+    int x = 0;
+    if (i < 5)
+      x = i;
+    assert(x, test15sub(i), "test15sub(i)");
+  }
+}
+
 int main() {
   test1();
   test2();
@@ -222,6 +247,7 @@ int main() {
   test12();
   test13();
   test14();
+  test15();
   printf("OK\n");
   return 0;
 }

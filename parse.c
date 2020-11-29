@@ -271,6 +271,8 @@ NullStatement *null_statement(VariableContainer *variableContainer);
 ExpressionStatement *expression_statement(VariableContainer *variableContainer);
 ReturnStatement *return_statement(VariableContainer *variableContainer);
 IfStatement *if_statement(VariableContainer *variableContainer);
+SwitchStatement *switch_statement(VariableContainer *variableContainer);
+LabeledStatement *labeled_statement(VariableContainer *variableContainer);
 WhileStatement *while_statement(VariableContainer *variableContainer);
 ForStatement *for_statement(VariableContainer *variableContainer);
 CompoundStatement *compound_statement(VariableContainer *variableContainer);
@@ -308,11 +310,14 @@ Node *literal();
 // "}" ";"
 // type_definition = "typedef" type_specifier identifier
 // statement = null_statement | expression_statement | return_statement |
-// if_statement | while_statementa | break_statement | continue_statement
+// if_statement | switch_statement | labeled_statement | while_statementa |
+// break_statement | continue_statement
 // null_statement = ";"
 // expression_statement = expression ";"
 // return_statement = "return" expression ";"
 // if_statement = "if" "(" expression ")" statement ("else" statement)?
+// switch_statement = "switch" "(" expression ")" statement
+// labeled_statement = (("case"? constant-expression) | "default") ":" statement
 // while_statement = "while" "(" expression ")" statement
 // for_statement = "for" "(" expression ";" expression ";" expression ")"
 // statement
@@ -493,6 +498,8 @@ Vector *function_declaration_argument() {
   return arguments;
 }
 
+ListNode *switchStatementNest; //引数に押し込みたい
+
 //関数の定義をパースする
 FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   Token *tokenHead = token;
@@ -530,6 +537,9 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
     token = tokenHead;
     return NULL;
   }
+
+  // switcH文のネスト情報の初期化
+  switchStatementNest = new_list_node(NULL);
 
   //
   //関数には引数があるので複文オブジェクトの生成を特別扱いしている
@@ -706,6 +716,16 @@ StatementUnion *statement(VariableContainer *variableContainer) {
     return new_statement_union_if(ifPattern);
   }
 
+  SwitchStatement *switchPattern = switch_statement(variableContainer);
+  if (switchPattern) {
+    return new_statement_union_switch(switchPattern);
+  }
+
+  LabeledStatement *labeledPattern = labeled_statement(variableContainer);
+  if (labeledPattern) {
+    return new_statement_union_labeled(labeledPattern);
+  }
+
   WhileStatement *whilePattern = while_statement(variableContainer);
   if (whilePattern) {
     return new_statement_union_while(whilePattern);
@@ -789,6 +809,59 @@ IfStatement *if_statement(VariableContainer *variableContainer) {
   }
 
   return result;
+}
+
+// switch文をパースする
+SwitchStatement *switch_statement(VariableContainer *variableContainer) {
+  if (!consume("switch") || !consume("(")) {
+    return NULL;
+  }
+
+  SwitchStatement *result = calloc(1, sizeof(SwitchStatement));
+  result->condition = expression(variableContainer);
+  result->labeledStatements = new_vector(16);
+
+  expect(")");
+
+  switchStatementNest = list_push_front(switchStatementNest, result);
+  result->statement = statement(variableContainer);
+  switchStatementNest = switchStatementNest->next;
+
+  return result;
+}
+
+// label付の文をパースする
+LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
+  LabeledStatement *result = calloc(1, sizeof(LabeledStatement));
+  bool isCaseLabel = consume("case");
+  if (isCaseLabel) {
+    result->constantExpression = expression(variableContainer);
+  }
+  if (isCaseLabel || consume("default")) {
+    expect(":");
+
+    //最も新しいswitch文に自身を登録
+    SwitchStatement *switchStatement = switchStatementNest->body;
+    if (switchStatement)
+      vector_push_back(switchStatement->labeledStatements, result);
+    else
+      error_at(tokenHead->string.head,
+               "switch文の外でcaseまたはdefaultラベルが定義されました");
+
+    result->statement = statement(variableContainer);
+    return result;
+  }
+
+  Token *identifier = consume_identifier();
+  if (identifier && consume(":")) {
+    error_at(identifier->string.head,
+             "caseまたはdefaultラべル以外はサポートされていません");
+  }
+
+  token = tokenHead;
+  return NULL;
 }
 
 // while文をパースする

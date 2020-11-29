@@ -395,7 +395,7 @@ void generate_global_variable(const Variable *variable) {
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount,
-                        int loopNest) {
+                        int latestBreakTarget, int latestSwitch) {
   // match if
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
@@ -413,14 +413,66 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         printf("  je .Lendif%d\n", ifLabel);
       }
 
-      generate_statement(ifPattern->thenStatement, labelCount, loopNest);
+      generate_statement(ifPattern->thenStatement, labelCount,
+                         latestBreakTarget, latestSwitch);
 
       if (ifPattern->elseStatement) {
         printf(".Lelse%d:\n", ifLabel);
-        generate_statement(ifPattern->elseStatement, labelCount, loopNest);
+        generate_statement(ifPattern->elseStatement, labelCount,
+                           latestBreakTarget, latestSwitch);
       }
 
       printf(".Lendif%d:\n", ifLabel);
+      return;
+    }
+  }
+
+  // match switch
+  {
+    SwitchStatement *switchPattern =
+        statement_union_take_switch(statementUnion);
+    if (switchPattern) {
+      int switchLabel = *labelCount;
+      *labelCount += 1;
+
+      generate_expression(switchPattern->condition, labelCount);
+      printf("  pop rax\n");
+
+      Vector *labeledStatements = switchPattern->labeledStatements;
+      for (int i = 0; i < vector_length(labeledStatements); i++) {
+        //定数式はコード生成前に解決され、数値になっていることを期待できる
+        LabeledStatement *labeled = vector_get(labeledStatements, i);
+        Node *constantExpression = labeled->constantExpression;
+        if (constantExpression) { // caseラベルの場合
+          printf("  cmp rax, %d\n", constantExpression->val);
+          printf("  je .Lcase%d.%d\n", switchLabel, constantExpression->val);
+        } else { // defaultラベルの場合
+          printf("  jmp .Ldefault%d\n", switchLabel);
+        }
+      }
+      printf("  jmp .Lend%d\n", switchLabel);
+
+      generate_statement(switchPattern->statement, labelCount, switchLabel,
+                         switchLabel);
+
+      printf(".Lend%d:\n", switchLabel);
+      return;
+    }
+  }
+
+  // match labeled
+  {
+    LabeledStatement *labeledPattern =
+        statement_union_take_labeled(statementUnion);
+    if (labeledPattern) {
+      if (labeledPattern->constantExpression) // caseラベルの場合
+        printf(".Lcase%d.%d:\n", latestSwitch,
+               labeledPattern->constantExpression->val);
+      else // defaultラベルの場合
+        printf(".Ldefault%d:\n", latestSwitch);
+
+      generate_statement(labeledPattern->statement, labelCount,
+                         latestBreakTarget, latestSwitch);
       return;
     }
   }
@@ -437,14 +489,15 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       generate_expression(whilePattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .Lendloop%d\n", loopLabel);
+      printf("  je .Lend%d\n", loopLabel);
 
-      generate_statement(whilePattern->statement, labelCount, loopLabel);
+      generate_statement(whilePattern->statement, labelCount, loopLabel,
+                         latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
-      printf(".Lendloop%d:\n", loopLabel);
+      printf(".Lend%d:\n", loopLabel);
       return;
     }
   }
@@ -463,15 +516,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       generate_expression(forPattern->condition, labelCount);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .Lendloop%d\n", loopLabel);
+      printf("  je .Lend%d\n", loopLabel);
 
-      generate_statement(forPattern->statement, labelCount, loopLabel);
+      generate_statement(forPattern->statement, labelCount, loopLabel,
+                         latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
       generate_expression(forPattern->afterthought, labelCount);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
-      printf(".Lendloop%d:\n", loopLabel);
+      printf(".Lend%d:\n", loopLabel);
       return;
     }
   }
@@ -484,7 +538,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       ListNode *node = compoundPattern->statementHead;
 
       while (node) {
-        generate_statement(node->body, labelCount, loopNest);
+        generate_statement(node->body, labelCount, latestBreakTarget,
+                           latestSwitch);
         node = node->next;
       }
 
@@ -513,7 +568,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
   {
     BreakStatement *breakPattern = statement_union_take_break(statementUnion);
     if (breakPattern) {
-      printf("  jmp .Lendloop%d    ", loopNest);
+      printf("  jmp .Lend%d    ", latestBreakTarget);
       insert_comment("break statement");
       return;
     }
@@ -524,7 +579,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     ContinueStatement *continuePattern =
         statement_union_take_continue(statementUnion);
     if (continuePattern) {
-      printf("  jmp .Lcontinueloop%d    ", loopNest);
+      printf("  jmp .Lcontinueloop%d    ", latestBreakTarget);
       insert_comment("continue statement");
       return;
     }
@@ -598,7 +653,7 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
 
     //抽象構文木を降りながらコード生成
     // loopNestを無効な値にする(ループ外でbreakしないように)
-    generate_statement(statementList->body, labelCount, -1);
+    generate_statement(statementList->body, labelCount, -1, -1);
     statementList = statementList->next;
 
     insert_comment("statement end");
