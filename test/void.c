@@ -8,6 +8,8 @@ void test(int a) {
   assert(a, d, "void *b = &a; int *c = b; int d = *c;");
 }
 
+void return_test() { return; }
+
 int main() {
   test(1);
   test(10);
@@ -17,6 +19,8 @@ int main() {
   test(240);
 
   // int a = test(240); //ちゃんとエラーになる
+
+  return_test();
 
   printf("OK\n");
   return 0;

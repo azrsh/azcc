@@ -333,6 +333,12 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     ReturnStatement *returnPattern =
         statement_union_take_return(statementUnion);
     if (returnPattern) {
+      // voidのための処理
+      if (returnType->kind == TYPE_VOID && !returnPattern->node)
+        return;
+      if (returnType->kind == TYPE_VOID)
+        error("void型関数で戻り値が返されています");
+
       tag_type_to_node(returnPattern->node, context);
       if (!type_compare_deep(returnType, returnPattern->node->type) &&
           type_compare_deep_with_implicit_cast(returnType,

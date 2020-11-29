@@ -497,7 +497,10 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     ReturnStatement *returnPattern =
         statement_union_take_return(statementUnion);
     if (returnPattern) {
-      generate_expression(returnPattern->node, labelCount);
+      if (returnPattern->node)
+        generate_expression(returnPattern->node, labelCount);
+      else
+        printf("  push 0\n"); //戻り値がvoid型のときはダミーの0をプッシュ
       printf("  pop rax\n");
       printf("  mov rsp, rbp\n");
       printf("  pop rbp\n");

@@ -748,8 +748,11 @@ ReturnStatement *return_statement(VariableContainer *variableContainer) {
   }
 
   ReturnStatement *result = calloc(1, sizeof(ReturnStatement));
-  result->node = expression(variableContainer);
-  expect(";");
+
+  if (!consume(";")) {
+    result->node = expression(variableContainer);
+    expect(";");
+  }
   return result;
 }
 
