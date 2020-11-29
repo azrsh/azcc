@@ -19,7 +19,7 @@ int test2() {
 int test3() {
   int a = 26;
   a -= 3 - 2;
-  assert(25, a, "int a; int b; a=5*(9-6);b=26-3+2;");
+  assert(25, a, "int a = 26; a -= 3 - 2;");
   return 0;
 }
 
@@ -33,7 +33,14 @@ int test4() {
 int test5() {
   int a = 5 * (9 - 6);
   a += 26 - 3 + 2;
-  assert(40, a, "int a; int b; a=5*(9-6);b=26-3+2;return a + b;");
+  assert(40, a, "int a = 5*(9-6); a += 26-3+2;");
+  return 0;
+}
+
+int test6() {
+  int a = 5 * (9 - 6);
+  a %= 11;
+  assert(4, a, "int a = 5*(9-6); a %= 4;");
   return 0;
 }
 

@@ -312,8 +312,17 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_DIV:
     // idiv命令のためにraxを符号を維持したままrdx+raxの128ビット整数に伸ばす
     // idiv命令は暗黙のうちにrdx+raxを取る
+    // raxに商、rdxに剰余が代入される
     printf("  cqo\n");
     printf("  idiv rdi\n");
+    break;
+  case NODE_MOD:
+    // idiv命令のためにraxを符号を維持したままrdx+raxの128ビット整数に伸ばす
+    // idiv命令は暗黙のうちにrdx+raxを取る
+    // raxに商、rdxに剰余が代入される
+    printf("  cqo\n");
+    printf("  idiv rdi\n");
+    printf("  mov rax, rdx\n");
     break;
   case NODE_EQ:
     printf("  cmp rax, rdi\n");

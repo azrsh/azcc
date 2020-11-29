@@ -213,51 +213,20 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       }
     }
     error("演算子-のオペランド型が不正です");
-  case NODE_MUL: {
+  case NODE_MUL:
+  case NODE_DIV:
+  case NODE_MOD: {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
       add_implicit_cast_node(node);
       return;
     }
-    error("演算子*のオペランド型が不正です");
+    error("乗除算演算子のオペランド型が不正です");
   }
-  case NODE_DIV: {
-    Type *result = check_arithmetic_binary_operator(lhs, rhs);
-    if (result) {
-      node->type = result;
-      add_implicit_cast_node(node);
-      return;
-    }
-    error("演算子/のオペランド型が不正です");
-  }
-  case NODE_EQ: {
-    Type *result = check_arithmetic_binary_operator(lhs, rhs);
-    if (result) {
-      node->type = result;
-      add_implicit_cast_node(node);
-      return;
-    }
-    error("演算子==のオペランド型が不正です");
-  }
-  case NODE_NE: {
-    Type *result = check_arithmetic_binary_operator(lhs, rhs);
-    if (result) {
-      node->type = result;
-      add_implicit_cast_node(node);
-      return;
-    }
-    error("演算子!=のオペランド型が不正です");
-  }
-  case NODE_LT: {
-    Type *result = check_arithmetic_binary_operator(lhs, rhs);
-    if (result) {
-      node->type = result;
-      add_implicit_cast_node(node);
-      return;
-    }
-    error("演算子<または>=のオペランド型が不正です");
-  }
+  case NODE_EQ:
+  case NODE_NE:
+  case NODE_LT:
   case NODE_LE: {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
@@ -265,7 +234,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       add_implicit_cast_node(node);
       return;
     }
-    error("演算子<=または>のオペランド型が不正です");
+    error("比較演算子のオペランド型が不正です");
   }
   case NODE_LAND:
   case NODE_LOR:

@@ -1104,6 +1104,9 @@ Node *assign(VariableContainer *variableContainer) {
     } else if (consume("/=")) {
       Node *divNode = new_node(NODE_DIV, node, logic_or(variableContainer));
       node = new_node(NODE_ASSIGN, node, divNode);
+    } else if (consume("%=")) {
+      Node *modNode = new_node(NODE_MOD, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, modNode);
     } else {
       return node;
     }
@@ -1185,6 +1188,8 @@ Node *multiply(VariableContainer *variableContainer) {
       node = new_node(NODE_MUL, node, unary(variableContainer));
     else if (consume("/"))
       node = new_node(NODE_DIV, node, unary(variableContainer));
+    else if (consume("%"))
+      node = new_node(NODE_MOD, node, unary(variableContainer));
     else
       return node;
   }

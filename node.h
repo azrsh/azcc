@@ -10,6 +10,7 @@ typedef enum {
   NODE_SUB,    // -
   NODE_MUL,    // *
   NODE_DIV,    // /
+  NODE_MOD,    // %
   NODE_EQ,     // ==
   NODE_NE,     // !=
   NODE_LT,     // <
