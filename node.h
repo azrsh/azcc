@@ -34,10 +34,11 @@ typedef enum {
 
 typedef struct Node Node;
 struct Node {
-  NodeKind kind; //ノードの種類
-  Type *type;    //ノードの型
-  Node *lhs;     //左辺
-  Node *rhs;     //右辺
+  NodeKind kind;      //ノードの種類
+  Type *type;         //ノードの型
+  Node *lhs;          //左辺
+  Node *rhs;          //右辺
+  const char *source; //エラー出力のための情報
   int val; // kindがNODE_NUMのときに数字、NODE_STRINGのとき文字列リテラルの識別に使用
   Variable *variable;         // kindがNODE_VARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う

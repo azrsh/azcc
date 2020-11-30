@@ -183,6 +183,7 @@ Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
   node->kind = kind;
   node->lhs = lhs;
   node->rhs = rhs;
+  node->source = token->string.head;
   return node;
 }
 
@@ -191,12 +192,14 @@ Node *new_node_num(int val) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_NUM;
   node->val = val;
+  node->source = token->string.head;
   return node;
 }
 
 //抽象構文木のローカル変数定義のノードを新しく生成する
 Node *new_node_variable_definition(Variable *variable,
-                                   VariableContainer *variableContainer) {
+                                   VariableContainer *variableContainer,
+                                   Token *source) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
@@ -205,6 +208,7 @@ Node *new_node_variable_definition(Variable *variable,
     error_at(variable->name.head, "同名の変数が既に定義されています");
 
   node->variable = localVariable;
+  node->source = source->string.head;
   return node;
 }
 
@@ -221,6 +225,7 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
   }
 
   node->variable = variable;
+  node->source = token->string.head;
   return node;
 }
 
@@ -232,7 +237,7 @@ Node *new_node_member(Token *token) {
   String name = token->string;
   Variable *variable = new_variable_member(name);
   node->variable = variable;
-
+  node->source = token->string.head;
   return node;
 }
 
@@ -241,6 +246,7 @@ Node *new_node_function_call(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_FUNC;
   node->functionCall = new_function_call(token);
+  node->source = token->string.head;
   return node;
 }
 
@@ -596,8 +602,13 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(32);
 
   do {
+    Token *source = token;
     Variable *declaration = variable_declaration();
-    Node *node = new_node_variable_definition(declaration, variableContainer);
+    if (!declaration)
+      error_at(source->string.head, "関数定義の引数の宣言が不正です");
+
+    Node *node =
+        new_node_variable_definition(declaration, variableContainer, source);
     node->type =
         node->variable->type; // tag_type_to_node(type)できないので手動型付け
 
@@ -1015,7 +1026,8 @@ Node *variable_definition(VariableContainer *variableContainer) {
   if (!variable)
     return NULL;
 
-  Node *node = new_node_variable_definition(variable, variableContainer);
+  Node *node =
+      new_node_variable_definition(variable, variableContainer, tokenHead);
 
   for (;;) {
     if (consume("=")) {

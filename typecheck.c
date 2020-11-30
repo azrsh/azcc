@@ -30,7 +30,7 @@ Node *new_node_cast(Type *target, Node *source) {
   castNode->lhs = source;
 
   if (source->type->kind == TYPE_VOID)
-    error("void型の値のキャストは禁止されています");
+    error_at(source->source, "void型の値のキャストは禁止されています");
 
   return castNode;
 }
@@ -56,7 +56,7 @@ void tag_type_to_node(Node *node, TypeCheckContext *context) {
   tag_type_to_node_inner(node, context);
 
   if (node->kind != NODE_FUNC && node->type->kind == TYPE_VOID)
-    error("void型を値として操作することは禁止されています");
+    error_at(node->source, "void型を値として操作することは禁止されています");
 }
 
 //式への型付け
@@ -89,7 +89,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     tag_type_to_node(node->lhs, context);
     Type *lhsBase = node->lhs->type->base;
     if (!lhsBase)
-      error("単項演算子*のオペランド型が不正です");
+      error_at(node->source, "単項演算子*のオペランド型が不正です");
     node->type = lhsBase;
     return;
   case NODE_VAR:
@@ -112,7 +112,8 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     if (vector_length(declaration->arguments) == 0)
       return;
     if (vector_length(declaration->arguments) != vector_length(argumentTypes))
-      error("関数の呼び出しと前方宣言の引数の数が一致しません");
+      error_at(node->source,
+               "関数の呼び出しと前方宣言の引数の数が一致しません");
     for (int i = 0; i < vector_length(declaration->arguments); i++) {
       Type *type1 = vector_get(declaration->arguments, i);
       Type *type2 = vector_get(argumentTypes, i);
@@ -125,7 +126,8 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         continue;
       }
 
-      error("関数の呼び出しと前方宣言の引数の型が一致しません");
+      error_at(node->source,
+               "関数の呼び出しと前方宣言の引数の型が一致しません");
     }
     return;
   }
@@ -143,14 +145,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       return;
     }
 
-    error("演算子=のオペランド型が不正です");
+    error_at(node->source, "演算子=のオペランド型が不正です");
   }
   case NODE_DOT:
     tag_type_to_node(node->lhs, context);
     if (node->lhs->type->kind != TYPE_STRUCT)
-      error("ドット演算子のオペランド型が不正です");
+      error_at(node->source, "ドット演算子のオペランド型が不正です");
     if (node->rhs->kind != NODE_VAR)
-      error("ドット演算子のオペランド型が不正です");
+      error_at(node->source, "ドット演算子のオペランド型が不正です");
     node->rhs->variable = member_container_get(node->lhs->type->members,
                                                node->rhs->variable->name);
     tag_type_to_node(node->rhs, context);
@@ -171,7 +173,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       return;
     }
     if (lhs->kind == TYPE_INT && rhs->base != NULL) {
-      error("未実装の演算です");
+      error_at(node->source, "未実装の演算です");
     }
     {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
@@ -181,14 +183,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         return;
       }
     }
-    error("演算子+のオペランド型が不正です");
+    error_at(node->source, "演算子+のオペランド型が不正です");
   case NODE_SUB:
     if (lhs->base != NULL && rhs->kind == TYPE_INT) {
       node->type = lhs;
       return;
     }
     if (lhs->kind == TYPE_PTR && rhs->base != NULL) {
-      error("未実装の演算です");
+      error_at(node->source, "未実装の演算です");
     }
     {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
@@ -198,7 +200,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         return;
       }
     }
-    error("演算子-のオペランド型が不正です");
+    error_at(node->source, "演算子-のオペランド型が不正です");
   case NODE_MUL:
   case NODE_DIV:
   case NODE_MOD: {
@@ -208,7 +210,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       add_implicit_cast_node(node);
       return;
     }
-    error("乗除算演算子のオペランド型が不正です");
+    error_at(node->source, "乗除算演算子のオペランド型が不正です");
   }
   case NODE_EQ:
   case NODE_NE:
@@ -220,7 +222,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       add_implicit_cast_node(node);
       return;
     }
-    error("比較演算子のオペランド型が不正です");
+    error_at(node->source, "比較演算子のオペランド型が不正です");
   }
   case NODE_LAND:
   case NODE_LOR:
@@ -228,7 +230,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   }
 
-  error("予期しないノードが指定されました");
+  error_at(node->source, "予期しないノードが指定されました");
 }
 
 void tag_type_to_statement(StatementUnion *statementUnion,
