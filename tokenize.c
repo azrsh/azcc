@@ -130,7 +130,7 @@ Token *tokenize(const char *p) {
     if (strchr("\"", *p)) {
       p++;
       const char *q = p;
-      while (!strchr("\"", *p)) {
+      while (!strchr("\"", *p) || strchr("\\", *(p - 1))) {
         p++;
       }
       current = new_token(TOKEN_STRING, current, q, p - q);
