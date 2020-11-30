@@ -666,17 +666,8 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
   int memberOffset = 0;
   if (consume("{")) {
     while (!consume("}")) {
-      Variable *member = calloc(1, sizeof(Variable));
+      Variable *member = variable_declaration();
       member->kind = VARIABLE_LOCAL;
-      member->type = type_specifier();
-      if (!member->type) {
-        error_at(token->string.head, "構造体のメンバの型を指定して下さい");
-      }
-      Token *memberName = consume_identifier();
-      if (!memberName) {
-        error_at(token->string.head, "構造体のメンバの名前を指定して下さい");
-      }
-      member->name = memberName->string;
       size_t memberAlignment = type_to_align(member->type);
       memberOffset +=
           (memberAlignment - memberOffset % memberAlignment) % memberAlignment;
@@ -684,7 +675,7 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
       memberOffset += type_to_size(member->type);
 
       if (!member_container_push(result->members, member))
-        error(memberName->string.head, "同名のメンバが既に定義されています");
+        error(member->name.head, "同名のメンバが既に定義されています");
       expect(";");
     }
   }
