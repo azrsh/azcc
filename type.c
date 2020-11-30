@@ -133,6 +133,12 @@ bool type_compare_deep_with_implicit_cast(Type *advantage, Type *disadvantage) {
   if (type_is_primitive(advantage) && type_is_primitive(disadvantage))
     return true;
 
+  // voidポインタと他の型のポインタの相互キャストを許可
+  if (advantage->kind == TYPE_PTR && disadvantage->kind == TYPE_PTR &&
+      (advantage->base->kind == TYPE_VOID ||
+       disadvantage->base->kind == TYPE_VOID))
+    return true;
+
   if (type_compare_deep_with_implicit_cast(advantage->base, disadvantage->base))
     return true;
 
