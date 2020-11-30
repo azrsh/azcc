@@ -1,6 +1,7 @@
 *~
 *.o
 tmp*
+*.i
 *.s
 *.out
 azcc

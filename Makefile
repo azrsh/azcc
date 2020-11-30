@@ -21,6 +21,10 @@ test/%.out: azcc $(TEST_TOOL_OBJS) test/%.c
 test: $(TESTS)
 	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
 
+self: azcc
+	cpp -I test/self/dummylib test/self/container.c > test/self/container.i
+	./azcc test/self/container.i
+
 test-old: azcc $(TEST_TOOL_OBJS)
 	./test.sh
 
