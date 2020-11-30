@@ -187,6 +187,7 @@ void generate_assign_i8(Node *node) {
 void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
+  case NODE_CHAR:
     printf("  push %d\n", node->val);
     return;
   case NODE_STRING:

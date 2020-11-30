@@ -85,6 +85,9 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_NUM:
     node->type = new_type(TYPE_INT);
     return;
+  case NODE_CHAR:
+    node->type = new_type(TYPE_CHAR);
+    return;
   case NODE_STRING:
     node->type = new_type(TYPE_PTR);
     node->type->base = new_type(TYPE_CHAR);

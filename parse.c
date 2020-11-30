@@ -47,6 +47,16 @@ Token *consume_string() {
   return current;
 }
 
+//次のトークンが文字のときには、トークンを1つ読み進めてそのトークンを返す
+//それ以外の場合にはNULLを返す
+Token *consume_character() {
+  if (token->kind != TOKEN_CHAR)
+    return NULL;
+  Token *current = token;
+  token = token->next;
+  return current;
+}
+
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
 Token *consume_identifier() {
@@ -1349,6 +1359,52 @@ Vector *function_call_argument(VariableContainer *variableContainer) {
 }
 
 Node *literal() {
+  Token *character = consume_character();
+  if (character) {
+    Node *node = new_node(NODE_CHAR, NULL, NULL);
+    if (character->string.length == 1)
+      node->val = *character->string.head;
+    else if (character->string.head[0] == '\\') {
+      switch (character->string.head[1]) {
+      case '0':
+        node->val = '\0';
+        break;
+      case 'a':
+        node->val = '\a';
+        break;
+      case 'b':
+        node->val = '\b';
+        break;
+      case 'f':
+        node->val = '\f';
+        break;
+      case 'n':
+        node->val = '\n';
+        break;
+      case 'r':
+        node->val = '\r';
+        break;
+      case 't':
+        node->val = '\t';
+        break;
+      case 'v':
+        node->val = '\v';
+        break;
+      case '\\':
+      case '\'':
+      case '\"':
+      case '\?':
+        node->val = character->string.head[1];
+        break;
+      default:
+        error_at(character->string.head,
+                 "予期しない文字のエスケープシーケンスです");
+        break;
+      }
+    }
+    return node;
+  }
+
   Token *string = consume_string();
   if (string) {
     Node *node = new_node(NODE_STRING, NULL, NULL);
