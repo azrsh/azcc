@@ -16,6 +16,7 @@ bool type_is_primitive(Type *type) {
   case TYPE_VOID:
   case TYPE_CHAR:
   case TYPE_INT:
+  case TYPE_BOOL:
     return true;
   }
 
@@ -28,6 +29,7 @@ int type_to_size(Type *type) {
   case TYPE_VOID:
     return 1;
   case TYPE_INT:
+  case TYPE_BOOL:
     return 4;
   case TYPE_PTR:
     return 8;
@@ -47,6 +49,7 @@ int type_to_align(Type *type) {
   case TYPE_VOID:
     return 1;
   case TYPE_INT:
+  case TYPE_BOOL:
     return 4;
   case TYPE_PTR:
     return 8;
@@ -74,6 +77,8 @@ char *type_kind_to_char(TypeKind kind) {
     return "void";
   case TYPE_INT:
     return "int";
+  case TYPE_BOOL:
+    return "_Bool";
   case TYPE_PTR:
     return "Pointer";
   case TYPE_ARRAY:

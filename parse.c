@@ -139,6 +139,9 @@ TypeKind map_token_to_kind(Token *token) {
   if (string_compare(token->string, new_string("void", 4)))
     return TYPE_VOID;
 
+  if (string_compare(token->string, new_string("_Bool", 5)))
+    return TYPE_BOOL;
+
   error_at(token->string.head, "組み込み型ではありません");
   return 0;
 }
@@ -339,7 +342,7 @@ Node *literal();
 
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
-// type_specifier = ("int" | "char") "*"*
+// type_specifier = ("int" | "char" | "void" | "_Bool") "*"*
 // assign = logic_or (("=" | "+=" | "-=" | "*=" | "/=") assign)?
 // logic_or = logic_and ("||" logic_and)*
 // logic_and = equality ("&&" equality)*
@@ -1034,9 +1037,9 @@ Type *type_specifier() {
   Token *current = token;
 
   //プリミティブ
-  const char *types[] = {"int", "char", "void"};
+  const char *types[] = {"int", "char", "void", "_Bool"};
 
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < sizeof(types) / sizeof(char *); i++) {
     if (!consume(types[i]))
       continue;
 

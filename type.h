@@ -10,6 +10,7 @@ typedef enum {
   TYPE_INT,
   TYPE_CHAR,
   TYPE_VOID,
+  TYPE_BOOL,
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_STRUCT,
