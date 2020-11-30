@@ -62,6 +62,15 @@ Token *tokenize(const char *p) {
     }
     //--------------
 
+    // プリプロセッサが出力したメタデータをスキップ
+    if (start_with(p, "#") && (p == user_input || *(p - 1) == '\n')) {
+      p++;
+      while (*p != '\n')
+        p++;
+      continue;
+    }
+    //--------------
+
     //---記号---
     if (start_with(p, ">=") || start_with(p, "<=") || start_with(p, "==") ||
         start_with(p, "!=") || start_with(p, "->") || start_with(p, "&&") ||
