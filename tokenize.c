@@ -90,24 +90,50 @@ Token *tokenize(const char *p) {
 
     //--予約語--
     //同時に成立しないのでやっているが、最悪ぽい
-    int length = is_reserved(p, "if");
-    length += is_reserved(p, "else");
-    length += is_reserved(p, "switch");
-    length += is_reserved(p, "case");
-    length += is_reserved(p, "default");
-    length += is_reserved(p, "while");
-    length += is_reserved(p, "do");
-    length += is_reserved(p, "for");
-    length += is_reserved(p, "return");
+    int length = is_reserved(p, "auto");
     length += is_reserved(p, "break");
-    length += is_reserved(p, "continue");
-    length += is_reserved(p, "int");
+    length += is_reserved(p, "case");
     length += is_reserved(p, "char");
-    length += is_reserved(p, "void");
+    length += is_reserved(p, "const");
+    length += is_reserved(p, "continue");
+    length += is_reserved(p, "default");
+    length += is_reserved(p, "do");
+    length += is_reserved(p, "double");
+    length += is_reserved(p, "else");
+    length += is_reserved(p, "enum");
+    length += is_reserved(p, "extern");
+    length += is_reserved(p, "float");
+    length += is_reserved(p, "for");
+    length += is_reserved(p, "goto");
+    length += is_reserved(p, "if");
+    length += is_reserved(p, "inline");
+    length += is_reserved(p, "int");
+    length += is_reserved(p, "long");
+    length += is_reserved(p, "register");
+    length += is_reserved(p, "restrict");
+    length += is_reserved(p, "return");
+    length += is_reserved(p, "short");
+    length += is_reserved(p, "signed");
     length += is_reserved(p, "sizeof");
-    length += is_reserved(p, "_Alignof");
     length += is_reserved(p, "struct");
+    length += is_reserved(p, "switch");
     length += is_reserved(p, "typedef");
+    length += is_reserved(p, "union");
+    length += is_reserved(p, "unsigned");
+    length += is_reserved(p, "void");
+    length += is_reserved(p, "volatile");
+    length += is_reserved(p, "while");
+    length += is_reserved(p, "_Alignas");
+    length += is_reserved(p, "_Alignof");
+    length += is_reserved(p, "_Atomic");
+    length += is_reserved(p, "_Bool");
+    length += is_reserved(p, "_Complex");
+    length += is_reserved(p, "_Generic");
+    length += is_reserved(p, "_Imaginary");
+    length += is_reserved(p, "_Noreturn");
+    length += is_reserved(p, "_Static_assert");
+    length += is_reserved(p, "_Thread_local");
+
     if (length > 0) {
       current = new_token(TOKEN_RESERVED, current, p, length);
       p += length;
