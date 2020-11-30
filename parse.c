@@ -1034,6 +1034,9 @@ Node *variable_definition(VariableContainer *variableContainer) {
 
 //型指定子をパースする
 Type *type_specifier() {
+  Token *tokenHead = token;
+
+  consume("const"); // constの検証はgccに任せるのでスキップ
   Token *current = token;
 
   //プリミティブ
@@ -1064,14 +1067,14 @@ Type *type_specifier() {
         return type;
       }
     }
-    token = current;
+    token = tokenHead;
     return NULL;
   }
 
   if (consume("struct")) {
     Token *identifier = consume_identifier();
     if (!identifier) {
-      token = current;
+      token = tokenHead;
       return NULL;
     }
 
@@ -1094,7 +1097,7 @@ Type *type_specifier() {
     return wrap_by_pointer(type, head);
   }
 
-  token = current;
+  token = tokenHead;
   return NULL;
 }
 
