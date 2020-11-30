@@ -3,7 +3,7 @@ assert() {
     expected="$1"
     input="$2"
 
-    ./9cc "$input" > tmp.s
+    ./azcc "$input" > tmp.s
     cc -o tmp tmp.s test/tool/funccalltest.o test/tool/alloctesthelper.o
     ./tmp
     actual="$?"
