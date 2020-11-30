@@ -112,6 +112,8 @@ char *type_to_char(Type *type) {
 bool type_compare_deep(const Type *type1, const Type *type2) {
   if (!type1 && !type2)
     return true;
+  if (!type1 || !type2)
+    return false;
 
   //構造体のときは名前で判定する
   if (type1->kind == TYPE_STRUCT || type2->kind == TYPE_STRUCT)
