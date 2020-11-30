@@ -1036,7 +1036,13 @@ Node *variable_definition(VariableContainer *variableContainer) {
 Type *type_specifier() {
   Token *tokenHead = token;
 
-  consume("const"); // constの検証はgccに任せるのでスキップ
+  // 型修飾子のスキップ
+  // constの検証はgccに任せる
+  consume("const");
+  consume("restrict");
+  consume("volatile");
+  consume("_Atomic");
+
   Token *current = token;
 
   //プリミティブ
