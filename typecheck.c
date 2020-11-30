@@ -35,16 +35,16 @@ Node *new_node_cast(Type *target, Node *source) {
   return castNode;
 }
 
-void add_implicit_cast_node(Node *node) {
+void insert_implicit_cast_node(Type *target, Node *node) {
   Node *lhs = node->lhs;
-  if (!type_compare_deep(node->type, lhs->type)) {
-    Node *castNode = new_node_cast(node->type, lhs);
+  if (!type_compare_deep(target, lhs->type)) {
+    Node *castNode = new_node_cast(target, lhs);
     node->lhs = castNode;
   }
 
   Node *rhs = node->rhs;
-  if (!type_compare_deep(node->type, rhs->type)) {
-    Node *castNode = new_node_cast(node->type, rhs);
+  if (!type_compare_deep(target, rhs->type)) {
+    Node *castNode = new_node_cast(target, rhs);
     node->rhs = castNode;
   }
 }
@@ -140,7 +140,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
                                              node->rhs->type)) {
       node->type = node->lhs->type;
       if (!node->lhs->type->base && !node->rhs->type->base) {
-        add_implicit_cast_node(node);
+        insert_implicit_cast_node(node->type, node);
       }
       return;
     }
@@ -179,7 +179,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        add_implicit_cast_node(node);
+        insert_implicit_cast_node(node->type, node);
         return;
       }
     }
@@ -196,7 +196,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        add_implicit_cast_node(node);
+        insert_implicit_cast_node(node->type, node);
         return;
       }
     }
@@ -207,7 +207,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
-      add_implicit_cast_node(node);
+      insert_implicit_cast_node(node->type, node);
       return;
     }
     error_at(node->source, "乗除算演算子のオペランド型が不正です");
@@ -216,17 +216,35 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_NE:
   case NODE_LT:
   case NODE_LE: {
-    Type *result = check_arithmetic_binary_operator(lhs, rhs);
-    if (result) {
-      node->type = result;
-      add_implicit_cast_node(node);
+    //ポインタ型と0の比較のときのみ0をNULLポインタと見なす
+    bool isLhsNull = rhs->kind == TYPE_PTR && node->lhs->kind == NODE_NUM &&
+                     node->lhs->val == 0;
+    bool isRhsNull = lhs->kind == TYPE_PTR && node->rhs->kind == NODE_NUM &&
+                     node->rhs->val == 0;
+    if (isLhsNull) {
+      node->lhs = new_node_cast(rhs, node->lhs);
+      lhs = node->lhs->type;
+    } else if (isRhsNull) {
+      node->rhs = new_node_cast(lhs, node->rhs);
+      rhs = node->rhs->type;
+    }
+
+    //比較対象の型の決定
+    Type *target = check_arithmetic_binary_operator(lhs, rhs);
+    if (!target && type_compare_deep_with_implicit_cast(lhs, rhs)) {
+      target = lhs;
+    }
+
+    if (target) {
+      node->type = new_type(TYPE_BOOL);
+      insert_implicit_cast_node(target, node);
       return;
     }
     error_at(node->source, "比較演算子のオペランド型が不正です");
   }
   case NODE_LAND:
   case NODE_LOR:
-    node->type = new_type(TYPE_INT);
+    node->type = new_type(TYPE_BOOL);
     return;
   }
 
