@@ -45,7 +45,7 @@ Token *tokenize(const char *p) {
     }
 
     // 行コメントをスキップ
-    if (strncmp(p, "//", 2) == 0) {
+    if (start_with(p, "//")) {
       p += 2;
       while (*p != '\n')
         p++;
@@ -53,7 +53,7 @@ Token *tokenize(const char *p) {
     }
 
     // ブロックコメントをスキップ
-    if (strncmp(p, "/*", 2) == 0) {
+    if (start_with(p, "/*")) {
       char *q = strstr(p + 2, "*/");
       if (!q)
         error_at(p, "コメントが閉じられていません");
