@@ -9,22 +9,6 @@
 #include "util.h"
 #include <stdlib.h>
 
-Type *type_compare_deep_with_implicit_cast(Type *advantage,
-                                           Type *disadvantage) {
-  if (type_compare_deep(advantage, disadvantage))
-    return advantage;
-  if (!advantage || !disadvantage)
-    return NULL;
-
-  if (type_is_primitive(advantage) && type_is_primitive(disadvantage))
-    return advantage;
-
-  if (type_compare_deep_with_implicit_cast(advantage->base, disadvantage->base))
-    return advantage;
-
-  return NULL;
-}
-
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
   if (lhs->base || rhs->base)
     return NULL;
@@ -135,7 +119,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       if (type_compare_deep(type1, type2))
         continue;
 
-      if (type_is_primitive(type1) && type_is_primitive(type2)) {
+      if (type_compare_deep_with_implicit_cast(type1, type2)) {
         vector_set(arguments, i,
                    new_node_cast(type1, vector_get(arguments, i)));
         continue;
@@ -150,10 +134,9 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     tag_type_to_node(node->rhs, context);
 
     //代入は代入先の型を最優先とする
-    Type *result =
-        type_compare_deep_with_implicit_cast(node->lhs->type, node->rhs->type);
-    if (result) {
-      node->type = result;
+    if (type_compare_deep_with_implicit_cast(node->lhs->type,
+                                             node->rhs->type)) {
+      node->type = node->lhs->type;
       if (!node->lhs->type->base && !node->rhs->type->base) {
         add_implicit_cast_node(node);
       }

@@ -122,6 +122,21 @@ bool type_compare_deep(const Type *type1, const Type *type2) {
          type_compare_deep(type1->base, type2->base);
 }
 
+bool type_compare_deep_with_implicit_cast(Type *advantage, Type *disadvantage) {
+  if (type_compare_deep(advantage, disadvantage))
+    return true;
+  if (!advantage || !disadvantage)
+    return false;
+
+  if (type_is_primitive(advantage) && type_is_primitive(disadvantage))
+    return true;
+
+  if (type_compare_deep_with_implicit_cast(advantage->base, disadvantage->base))
+    return true;
+
+  return false;
+}
+
 bool type_vector_compare(Vector *typeVector1, Vector *typeVector2) {
   if (vector_length(typeVector1) != vector_length(typeVector2))
     return false;

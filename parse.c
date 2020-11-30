@@ -20,9 +20,10 @@
 
 Token *token;
 int currentOffset;
-Vector *stringLiterals; // String vector
-Vector *structs;        // Type vector
-Vector *typedefs;       // Typedef vector
+Vector *globalVariables; // Variable vector
+Vector *stringLiterals;  // String vector
+Vector *structs;         // Type vector
+Vector *typedefs;        // Typedef vector
 FunctionContainer *functionContainer;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
@@ -276,7 +277,7 @@ FunctionDeclaration *function_declaration();
 Vector *function_declaration_argument();
 FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
-Variable *global_variable_definition(VariableContainer *variableContainer);
+Variable *global_variable_declaration(VariableContainer *variableContainer);
 Type *struct_definition(VariableContainer *variableContainer);
 Typedef *type_definition();
 Node *variable_definition(VariableContainer *variableContainer);
@@ -371,6 +372,7 @@ Program *program() {
   result->functionDefinitions = new_vector(16);
   result->globalVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
+  globalVariables = result->globalVariables;
   stringLiterals = result->stringLiterals;
   structs = new_vector(16);
   typedefs = new_vector(16);
@@ -418,12 +420,8 @@ Program *program() {
     }
 
     {
-      Variable *globalVariableDefinition =
-          global_variable_definition(variableContainer);
-      if (globalVariableDefinition) {
-        vector_push_back(result->globalVariables, globalVariableDefinition);
+      if (global_variable_declaration(variableContainer))
         continue;
-      }
     }
 
     {
@@ -608,15 +606,17 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   return arguments;
 }
 
-Variable *global_variable_definition(VariableContainer *variableContainer) {
+Variable *global_variable_declaration(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Variable *variable = variable_declaration();
-  if (!variable)
+  bool isExtern = consume("extern");
+
+  Variable *declaration = variable_declaration();
+  if (!declaration)
     return NULL;
 
   Node *initialization = NULL;
-  if (consume("=")) {
+  if (!isExtern && consume("=")) {
     initialization = literal();
   }
 
@@ -625,9 +625,12 @@ Variable *global_variable_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  Variable *globalVariable = variable_to_global(variable, initialization);
+  Variable *globalVariable = variable_to_global(declaration, initialization);
   if (!variable_container_push(variableContainer, globalVariable))
-    error_at(token->string.head, "同名の変数が既に定義されています");
+    error_at(token->string.head, "同名の変数が既に宣言されています");
+
+  if (!isExtern)
+    vector_push_back(globalVariables, globalVariable);
 
   return globalVariable;
 }
