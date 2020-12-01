@@ -158,6 +158,20 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     tag_type_to_node(node->rhs, context);
     node->type = node->rhs->type;
     return;
+  case NODE_CAST:
+    return; //キャストは型検査を行わない
+  case NODE_ADD:
+  case NODE_SUB:
+  case NODE_MUL:
+  case NODE_DIV:
+  case NODE_MOD:
+  case NODE_EQ:
+  case NODE_NE:
+  case NODE_LT:
+  case NODE_LE:
+  case NODE_LAND:
+  case NODE_LOR:
+    break; //次のswitch文で判定する
   }
 
   //二項演算子の型検査
@@ -246,6 +260,18 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LOR:
     node->type = new_type(TYPE_BOOL);
     return;
+  case NODE_LNOT:
+  case NODE_REF:
+  case NODE_DEREF:
+  case NODE_ASSIGN:
+  case NODE_VAR:
+  case NODE_FUNC:
+  case NODE_NUM:
+  case NODE_CHAR:
+  case NODE_STRING:
+  case NODE_CAST:
+  case NODE_DOT:
+    error("コンパイラの内部エラー");
   }
 
   error_at(node->source, "予期しないノードが指定されました");

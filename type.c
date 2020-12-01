@@ -18,8 +18,13 @@ bool type_is_primitive(Type *type) {
   case TYPE_INT:
   case TYPE_BOOL:
     return true;
+  case TYPE_PTR:
+  case TYPE_ARRAY:
+  case TYPE_STRUCT:
+    return false;
   }
 
+  error("予期しない型が指定されました");
   return false;
 }
 
@@ -79,11 +84,16 @@ char *type_kind_to_char(TypeKind kind) {
     return "int";
   case TYPE_BOOL:
     return "_Bool";
+  case TYPE_STRUCT:
+    return "struct";
   case TYPE_PTR:
     return "Pointer";
   case TYPE_ARRAY:
     return "Array";
   }
+
+  error("予期しない型が指定されました");
+  return NULL;
 }
 
 char *type_to_char(Type *type) {

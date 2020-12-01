@@ -115,10 +115,8 @@ Variable *variable_to_global(Variable *variable, Node *initialization) {
   return variable;
 }
 
-Variable *new_variable_member(String name) {
-  Variable *variable = calloc(1, sizeof(Variable));
-  variable->name = name;
-  variable->kind = VARIABLE_LOCAL;
+Variable *variable_to_member(Variable *variable) {
+  variable->kind = VARIABLE_MEMBER;
   return variable;
 }
 
@@ -235,7 +233,7 @@ Node *new_node_member(Token *token) {
   node->kind = NODE_VAR;
 
   String name = token->string;
-  Variable *variable = new_variable_member(name);
+  Variable *variable = variable_to_member(new_variable(NULL, name));
   node->variable = variable;
   node->source = token->string.head;
   return node;

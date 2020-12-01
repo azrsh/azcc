@@ -50,6 +50,9 @@ void generate_variable(Node *node) {
     printf("  lea rax, %s[rip]\n", name);
     printf("  push rax\n");
     return;
+  case VARIABLE_MEMBER:
+    error_at(node->source, "予期しない種類の変数です");
+    return;
   }
 }
 
@@ -219,6 +222,7 @@ void generate_expression(Node *node, int *labelCount) {
       printf("  movsx rax, BYTE PTR [rax]\n");
       break;
     case TYPE_INT:
+    case TYPE_BOOL:
       printf("  movsx rax, DWORD PTR [rax]\n");
       break;
     case TYPE_PTR:
@@ -226,6 +230,9 @@ void generate_expression(Node *node, int *labelCount) {
       break;
     case TYPE_ARRAY:
       break; //配列はポインタのままにする
+    case TYPE_STRUCT:
+    case TYPE_VOID:
+      error_at(node->source, "許可されていない型のデリファレンスです");
     }
     printf("  push rax\n");
     return;
@@ -241,6 +248,7 @@ void generate_expression(Node *node, int *labelCount) {
       printf("  movsx rax, BYTE PTR [rax]\n");
       break;
     case TYPE_INT:
+    case TYPE_BOOL:
       printf("  movsx rax, DWORD PTR [rax]\n");
       break;
     case TYPE_PTR:
@@ -248,6 +256,10 @@ void generate_expression(Node *node, int *labelCount) {
       break;
     case TYPE_ARRAY:
       break; //配列はポインタのままにする
+    case TYPE_STRUCT:
+      break; //未実装
+    case TYPE_VOID:
+      error_at(node->source, "許可されていない型の代入です");
     }
     printf("  push rax\n");
     return;
@@ -288,12 +300,22 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
     return;
+  case NODE_ADD:
+  case NODE_SUB:
+  case NODE_MUL:
+  case NODE_DIV:
+  case NODE_MOD:
+  case NODE_EQ:
+  case NODE_NE:
+  case NODE_LT:
+  case NODE_LE:
+  case NODE_LAND:
+  case NODE_LOR:
+    break; //次のswitch文で判定する
   }
 
   generate_expression(node->lhs, labelCount);
   generate_expression(node->rhs, labelCount);
-  Type *lhsType = node->lhs->type;
-  Type *rhsType = node->rhs->type;
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -376,6 +398,18 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  movzb rax, al\n");
     insert_comment("logic or end");
     break;
+  case NODE_LNOT:
+  case NODE_REF:
+  case NODE_DEREF:
+  case NODE_ASSIGN:
+  case NODE_VAR:
+  case NODE_FUNC:
+  case NODE_NUM:
+  case NODE_CHAR:
+  case NODE_STRING:
+  case NODE_CAST:
+  case NODE_DOT:
+    error("コンパイラの内部エラー");
   }
 
   printf("  push rax\n");
