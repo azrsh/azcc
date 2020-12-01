@@ -68,6 +68,8 @@ test/unit/az1/%.out: self $(filter-out main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OB
 test-unit2: $(UNIT_AZ1_TESTS)
 	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
 
+test2: test test-unit2
+
 
 # Others
 
