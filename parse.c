@@ -937,6 +937,10 @@ ForStatement *for_statement(VariableContainer *variableContainer) {
     return NULL;
   }
 
+  //スコープの生成
+  variableContainer =
+      variable_container_push_table(variableContainer, new_hash_table());
+
   ForStatement *result = calloc(1, sizeof(ForStatement));
   result->initialization = expression(variableContainer);
   expect(";");
