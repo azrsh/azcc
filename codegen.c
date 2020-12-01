@@ -39,7 +39,7 @@ void generate_variable(Node *node) {
     error_at(node->source, "変数ではありません");
 
   const Variable *variable = node->variable;
-  const char *name = string_to_char(variable->name);
+  const char *name = string_to_char(&variable->name);
   switch (variable->kind) {
   case VARIABLE_LOCAL:
     printf("  mov rax, rbp\n");
@@ -93,7 +93,7 @@ void generate_fuction_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     error("関数ではありません");
 
-  const char *functionName = string_to_char(node->functionCall->name);
+  const char *functionName = string_to_char(&node->functionCall->name);
 
   insert_comment("function call start : %s", functionName);
 
@@ -425,7 +425,7 @@ void generate_global_variable(const Variable *variable) {
   if (variable->kind != VARIABLE_GLOBAL)
     error("グローバル変数ではありません");
 
-  const char *name = string_to_char(variable->name);
+  const char *name = string_to_char(&variable->name);
   const size_t typeSize = type_to_stack_size(
       variable
           ->type); //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる
@@ -697,7 +697,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 //抽象構文木をもとにコード生成を行う
 void generate_function_definition(const FunctionDefinition *functionDefinition,
                                   int *labelCount) {
-  const char *functionName = string_to_char(functionDefinition->name);
+  const char *functionName = string_to_char(&functionDefinition->name);
 
   //ラベルを生成
   printf("  .text\n");

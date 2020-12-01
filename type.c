@@ -127,7 +127,7 @@ bool type_compare_deep(const Type *type1, const Type *type2) {
 
   //構造体のときは名前で判定する
   if (type1->kind == TYPE_STRUCT || type2->kind == TYPE_STRUCT)
-    return string_compare(type1->name, type2->name);
+    return string_compare(&type1->name, &type2->name);
 
   return type1 && type2 && type1->kind == type2->kind &&
          type1->length == type2->length &&

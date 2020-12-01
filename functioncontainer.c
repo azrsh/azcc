@@ -14,15 +14,15 @@ FunctionContainer *new_function_container() {
 
 FunctionDeclaration *function_container_get(FunctionContainer *container,
                                             String name) {
-  return hash_table_find(container->table, name);
+  return hash_table_find(container->table, &name);
 }
 
 bool function_container_push(FunctionContainer *container,
                              FunctionDeclaration *declaration) {
-  bool isExist = hash_table_contain(container->table, declaration->name);
+  bool isExist = hash_table_contain(container->table, &declaration->name);
   if (isExist)
     return false;
 
-  hash_table_store(container->table, declaration->name, declaration);
+  hash_table_store(container->table, &declaration->name, declaration);
   return true;
 }

@@ -32,7 +32,8 @@ bool at_eof() { return token->kind == TOKEN_EOF; }
 //それ以外の場合には偽を返す
 bool consume(const char *op) {
   const String operator= new_string(op, strlen(op));
-  if (token->kind != TOKEN_RESERVED || !string_compare(token->string, operator))
+  if (token->kind != TOKEN_RESERVED ||
+      !string_compare(&token->string, &operator))
     return false;
   token = token->next;
   return true;
@@ -130,16 +131,20 @@ TypeKind map_token_to_kind(Token *token) {
   if (token->kind != TOKEN_RESERVED)
     error_at(token->string.head, "組み込み型ではありません");
 
-  if (string_compare(token->string, new_string("int", 3)))
+  String name = char_to_string("int");
+  if (string_compare(&token->string, &name))
     return TYPE_INT;
 
-  if (string_compare(token->string, new_string("char", 4)))
+  name = char_to_string("char");
+  if (string_compare(&token->string, &name))
     return TYPE_CHAR;
 
-  if (string_compare(token->string, new_string("void", 4)))
+  name = char_to_string("void");
+  if (string_compare(&token->string, &name))
     return TYPE_VOID;
 
-  if (string_compare(token->string, new_string("_Bool", 5)))
+  name = char_to_string("_Bool");
+  if (string_compare(&token->string, &name))
     return TYPE_BOOL;
 
   error_at(token->string.head, "組み込み型ではありません");
@@ -149,7 +154,7 @@ TypeKind map_token_to_kind(Token *token) {
 Type *wrap_by_pointer(Type *base, Token *token) {
   Type *current = base;
   const String star = new_string("*", 1);
-  while (token && string_compare(token->string, star)) {
+  while (token && string_compare(&token->string, &star)) {
     Type *pointer = new_type(TYPE_PTR);
     pointer->base = current;
     current = pointer;
@@ -219,7 +224,7 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
   Variable *variable = variable_container_get(container, variableName);
   if (!variable) {
     error_at(variableName.head, "変数%sは定義されていません",
-             string_to_char(variableName));
+             string_to_char(&variableName));
   }
 
   node->variable = variable;
@@ -441,7 +446,7 @@ Program *program() {
           //  type = type->base;
           Type *type = typeDefinition->type;
           if (type->kind == TYPE_STRUCT &&
-              string_compare(structDefinition->name, type->name)) {
+              string_compare(&structDefinition->name, &type->name)) {
             typeDefinition->type = structDefinition;
             break;
           }
@@ -1065,7 +1070,7 @@ Type *type_specifier() {
     for (int i = 0; i < vector_length(typedefs); i++) {
       Typedef *typeDefinition = vector_get(typedefs, i);
       Type *type = typeDefinition->type;
-      if (string_compare(identifier->string, typeDefinition->name)) {
+      if (string_compare(&identifier->string, &typeDefinition->name)) {
         while (consume("*")) {
           Type *pointer = new_type(TYPE_PTR);
           pointer->base = type;
@@ -1087,7 +1092,7 @@ Type *type_specifier() {
 
     for (int i = 0; i < vector_length(structs); i++) {
       Type *type = vector_get(structs, i);
-      if (string_compare(identifier->string, type->name)) {
+      if (string_compare(&identifier->string, &type->name)) {
         Token *head = token;
         while (consume("*"))
           ;
@@ -1423,7 +1428,7 @@ Node *literal() {
     Node *node = new_node(NODE_STRING, NULL, NULL);
     node->val = vector_length(stringLiterals);
     //コンテナはポインタしか受け入れられないので
-    vector_push_back(stringLiterals, string_to_char(string->string));
+    vector_push_back(stringLiterals, string_to_char(&string->string));
     return node;
   }
 

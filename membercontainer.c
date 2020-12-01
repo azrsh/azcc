@@ -17,15 +17,15 @@ MemberContainer *new_member_container() {
 }
 
 Variable *member_container_get(MemberContainer *container, String name) {
-  return hash_table_find(container->table, name);
+  return hash_table_find(container->table, &name);
 }
 
 bool member_container_push(MemberContainer *container, Variable *variable) {
-  bool isExist = hash_table_contain(container->table, variable->name);
+  bool isExist = hash_table_contain(container->table, &variable->name);
   if (isExist)
     return false;
 
-  hash_table_store(container->table, variable->name, variable);
+  hash_table_store(container->table, &variable->name, variable);
   vector_push_back(container->vector, variable);
   return true;
 }
