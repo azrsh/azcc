@@ -13,7 +13,7 @@ Token *new_token(TokenKind kind, Token *current, const char *string,
                  int length) {
   Token *token = calloc(1, sizeof(Token));
   token->kind = kind;
-  token->string = new_string(string, length);
+  token->string = *new_string(string, length);
   current->next = token;
   return token;
 }

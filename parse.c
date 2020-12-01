@@ -31,9 +31,9 @@ bool at_eof() { return token->kind == TOKEN_EOF; }
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
 bool consume(const char *op) {
-  const String operator= new_string(op, strlen(op));
+  const String *operator= new_string(op, strlen(op));
   if (token->kind != TOKEN_RESERVED ||
-      !string_compare(&token->string, &operator))
+      !string_compare(&token->string, operator))
     return false;
   token = token->next;
   return true;
@@ -131,20 +131,16 @@ TypeKind map_token_to_kind(Token *token) {
   if (token->kind != TOKEN_RESERVED)
     error_at(token->string.head, "組み込み型ではありません");
 
-  String name = char_to_string("int");
-  if (string_compare(&token->string, &name))
+  if (string_compare(&token->string, char_to_string("int")))
     return TYPE_INT;
 
-  name = char_to_string("char");
-  if (string_compare(&token->string, &name))
+  if (string_compare(&token->string, char_to_string("char")))
     return TYPE_CHAR;
 
-  name = char_to_string("void");
-  if (string_compare(&token->string, &name))
+  if (string_compare(&token->string, char_to_string("void")))
     return TYPE_VOID;
 
-  name = char_to_string("_Bool");
-  if (string_compare(&token->string, &name))
+  if (string_compare(&token->string, char_to_string("_Bool")))
     return TYPE_BOOL;
 
   error_at(token->string.head, "組み込み型ではありません");
@@ -153,8 +149,8 @@ TypeKind map_token_to_kind(Token *token) {
 
 Type *wrap_by_pointer(Type *base, Token *token) {
   Type *current = base;
-  const String star = new_string("*", 1);
-  while (token && string_compare(&token->string, &star)) {
+  const String *star = char_to_string("*");
+  while (token && string_compare(&token->string, star)) {
     Type *pointer = new_type(TYPE_PTR);
     pointer->base = current;
     current = pointer;

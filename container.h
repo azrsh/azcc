@@ -9,8 +9,8 @@ struct String {
   const char *head;
   int length;
 };
-String new_string(const char *source, int length);
-String char_to_string(const char *source);
+const String *new_string(const char *source, int length);
+const String *char_to_string(const char *source);
 char *string_to_char(const String *source);
 bool string_compare(const String *string1, const String *string2);
 

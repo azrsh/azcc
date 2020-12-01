@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-String new_string(const char *source, int length) {
-  String string;
-  string.head = source;
-  string.length = length;
+const String *new_string(const char *source, int length) {
+  String *string = calloc(1, sizeof(String));
+  string->head = source;
+  string->length = length;
   return string;
 }
 
-String char_to_string(const char *source) {
+const String *char_to_string(const char *source) {
   return new_string(source, strlen(source));
 }
 
