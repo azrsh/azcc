@@ -1,86 +1,288 @@
-#include "util.h"
-#include <errno.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+# 1 "test/self/container.c"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 31 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 32 "<command-line>" 2
+# 1 "test/self/container.c"
+# 1 "test/self/container.h" 1
 
-bool start_with(const char *p, const char *q) {
-  return memcmp(p, q, strlen(q)) == 0;
+
+
+# 1 "test/self/util.h" 1
+
+
+
+# 1 "/usr/lib/gcc/x86_64-linux-gnu/9/include/stdbool.h" 1 3 4
+# 5 "test/self/util.h" 2
+
+
+# 6 "test/self/util.h" 3 4
+_Bool 
+# 6 "test/self/util.h"
+    start_with(const char *p, const char *q);
+
+
+
+
+void error();
+
+extern const char *user_input;
+extern const char *filename;
+
+
+
+
+void error_at();
+
+const char *read_file(const char *path);
+# 5 "test/self/container.h" 2
+
+
+typedef struct String String;
+struct String {
+  const char *head;
+  int length;
+};
+String new_string(const char *source, int length);
+String char_to_string(const char *source);
+char *string_to_char(String source);
+
+# 15 "test/self/container.h" 3 4
+_Bool 
+# 15 "test/self/container.h"
+    string_compare(String string1, String string2);
+
+typedef struct ListNode ListNode;
+struct ListNode {
+  void *body;
+  ListNode *next;
+};
+ListNode *new_list_node(void *body);
+ListNode *list_head_to_tail(ListNode *head);
+void list_merge(ListNode *list1, ListNode *list2);
+ListNode *list_push_back(ListNode *tail, void *element);
+ListNode *list_push_front(ListNode *head, void *element);
+
+typedef struct Vector Vector;
+Vector *new_vector(int initialSize);
+void vector_push_back(Vector *vector, void *element);
+void *vector_get(Vector *vector, int index);
+void vector_set(Vector *vector, int index, void *element);
+int vector_length(Vector *vector);
+
+typedef struct HashTable HashTable;
+HashTable *new_hash_table();
+int hash_table_store(HashTable *table, String key, void *data);
+
+# 38 "test/self/container.h" 3 4
+_Bool 
+# 38 "test/self/container.h"
+    hash_table_contain(HashTable *table, String key);
+void *hash_table_find(HashTable *table, String key);
+# 2 "test/self/container.c" 2
+# 1 "test/self/dummylib/assert.h" 1
+# 3 "test/self/container.c" 2
+
+# 1 "test/self/dummylib/stdio.h" 1
+# 5 "test/self/container.c" 2
+# 1 "test/self/dummylib/stdlib.h" 1
+
+
+
+typedef int size_t;
+void *calloc(size_t nmemb, size_t size);
+# 6 "test/self/container.c" 2
+# 1 "test/self/dummylib/string.h" 1
+
+
+
+
+
+
+
+size_t strlen(const char *s);
+void *memcpy(void *dest, const void *src, size_t n);
+int memcmp(const void *s1, const void *s2, size_t n);
+# 7 "test/self/container.c" 2
+
+String new_string(const char *source, int length) {
+  String string;
+  string.head = source;
+  string.length = length;
+  return string;
 }
 
-// printfと同じ引数をとる
-void error(const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(EXIT_FAILURE);
+String char_to_string(const char *source) {
+  return new_string(source, strlen(source));
 }
 
-const char *user_input;
-const char *filename; // 入力ファイル名
-
-// エラーの起きた場所を報告するための関数
-// 下のようなフォーマットでエラーメッセージを表示する
-//
-// foo.c:10: x = y + + 5;
-//                   ^ 式ではありません
-void error_at(const char *location, const char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-
-  // locが含まれている行の開始地点と終了地点を取得
-  const char *line = location;
-  while (user_input < line && line[-1] != '\n')
-    line--;
-
-  const char *end = location;
-  while (*end != '\n')
-    end++;
-
-  // 見つかった行が全体の何行目なのかを調べる
-  int line_num = 1;
-  for (const char *p = user_input; p < line; p++)
-    if (*p == '\n')
-      line_num++;
-
-  // 見つかった行を、ファイル名と行番号と一緒に表示
-  int indent = fprintf(stderr, "%s:%d: ", filename, line_num);
-  fprintf(stderr, "%.*s\n", (int)(end - line), line);
-
-  // エラー箇所を"^"で指し示して、エラーメッセージを表示
-  int pos = location - line + indent;
-  fprintf(stderr, "%*s", pos, " "); // pos個の空白を出力
-  fprintf(stderr, "^ ");
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(EXIT_FAILURE);
+char *string_to_char(String source) {
+  char *p = calloc(source.length + 1, sizeof(char));
+  memcpy(p, source.head, source.length);
+  p[source.length] = '\0';
+  return p;
 }
 
-// 指定されたファイルの内容を返す
-const char *read_file(const char *path) {
-  // ファイルを開く
-  FILE *fp = fopen(path, "r");
-  if (!fp)
-    error("cannot open %s: %s", path, strerror(errno));
 
-  // ファイルの長さを調べる
-  if (fseek(fp, 0, SEEK_END) == -1)
-    error("%s: fseek: %s", path, strerror(errno));
-  size_t size = ftell(fp);
-  if (fseek(fp, 0, SEEK_SET) == -1)
-    error("%s: fseek: %s", path, strerror(errno));
+# 26 "test/self/container.c" 3 4
+_Bool 
+# 26 "test/self/container.c"
+    string_compare(String string1, String string2) {
+  if (string1.length != string2.length) {
+    return 
+# 28 "test/self/container.c" 3 4
+          0
+# 28 "test/self/container.c"
+               ;
+  }
 
-  // ファイル内容を読み込む
-  char *buf = calloc(1, size + 2);
-  fread(buf, size, 1, fp);
+  return memcmp(string1.head, string2.head, string1.length) == 0;
+}
 
-  // ファイルが必ず"\n\0"で終わっているようにする
-  if (size == 0 || buf[size - 1] != '\n')
-    buf[size++] = '\n';
-  buf[size] = '\0';
-  fclose(fp);
-  return buf;
+
+
+
+ListNode *new_list_node(void *body) {
+  ListNode *node = calloc(1, sizeof(ListNode));
+  node->body = body;
+  return node;
+}
+
+ListNode *list_head_to_tail(ListNode *head) {
+  while (head->next)
+    head = head->next;
+  return head;
+}
+
+void list_merge(ListNode *list1, ListNode *list2) { list1->next = list2; }
+
+ListNode *list_push_back(ListNode *tail, void *element) {
+  ListNode *node = new_list_node(element);
+  tail->next = node;
+  return node;
+}
+
+ListNode *list_push_front(ListNode *head, void *element) {
+  ListNode *node = new_list_node(element);
+  node->next = head;
+  return node;
+}
+
+
+
+
+struct Vector {
+  void **head;
+  int length;
+  int reserved;
+};
+
+Vector *new_vector(int initialSize) {
+  Vector *vector = calloc(1, sizeof(Vector));
+  vector->head = calloc(initialSize, sizeof(void *));
+  vector->reserved = initialSize;
+  return vector;
+}
+
+void vector_push_back(Vector *vector, void *element) {
+  if (vector->length >= vector->reserved) {
+    void **old = vector->head;
+    void **new = calloc(vector->reserved * 2, sizeof(void *));
+    for (int i = 0; i < vector->length; i++) {
+      new[i] = old[i];
+    }
+    vector->head = new;
+    vector->reserved *= 2;
+  }
+
+  vector->head[vector->length] = element;
+  vector->length++;
+}
+
+void *vector_get(Vector *vector, int index) {
+  if (index < 0 || index >= vector->length) {
+    error("配列外参照エラー");
+  }
+
+  return vector->head[index];
+}
+void vector_set(Vector *vector, int index, void *element) {
+  if (index < 0 || index >= vector->length) {
+    error("配列外参照エラー");
+  }
+
+  vector->head[index] = element;
+}
+
+int vector_length(Vector *vector) { return vector->length; }
+
+
+
+
+struct HashTable {
+  ListNode *table[256];
+};
+
+int hash(String source) {
+  int sum = 0;
+  for (int i = 0; i < source.length; i++) {
+    sum += *(source.head + i);
+  }
+  return sum % 256;
+}
+
+typedef struct KeyValuePair KeyValuePair;
+struct KeyValuePair {
+  String key;
+  void *value;
+};
+
+KeyValuePair *new_key_value_pair(String key, void *value) {
+  KeyValuePair *pair = calloc(1, sizeof(KeyValuePair));
+  pair->key = key;
+  pair->value = value;
+  return pair;
+}
+
+HashTable *new_hash_table() { return calloc(1, sizeof(HashTable)); }
+
+int hash_table_store(HashTable *table, String key, void *data) {
+  const int keyhash = hash(key);
+
+  ListNode head;
+  ListNode *node = &head;
+  node->next = table->table[keyhash];
+  while (node->next) {
+    node = node->next;
+  }
+  KeyValuePair *pair = new_key_value_pair(key, data);
+  list_push_back(node, pair);
+
+
+
+  table->table[keyhash] = head.next;
+
+  return keyhash;
+}
+
+
+# 160 "test/self/container.c" 3 4
+_Bool 
+# 160 "test/self/container.c"
+    hash_table_contain(HashTable *table, String key) {
+  return hash_table_find(table, key) != 0;
+}
+
+void *hash_table_find(HashTable *table, String key) {
+  const int keyhash = hash(key);
+  ListNode *node = table->table[keyhash];
+  while (node) {
+    KeyValuePair *pair = node->body;
+    if (string_compare(pair->key, key)) {
+      return pair->value;
+    }
+    node = node->next;
+  }
+  return 0;
 }
