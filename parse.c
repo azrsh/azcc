@@ -1225,11 +1225,11 @@ Node *unary(VariableContainer *variableContainer) {
   if (consume("-"))
     return new_node(NODE_SUB, new_node_num(0), postfix(variableContainer));
   if (consume("!"))
-    return new_node(NODE_LNOT, postfix(variableContainer), NULL);
+    return new_node(NODE_LNOT, unary(variableContainer), NULL);
   if (consume("&"))
-    return new_node(NODE_REF, postfix(variableContainer), NULL);
+    return new_node(NODE_REF, unary(variableContainer), NULL);
   if (consume("*"))
-    return new_node(NODE_DEREF, postfix(variableContainer), NULL);
+    return new_node(NODE_DEREF, unary(variableContainer), NULL);
   if (consume("++")) {
     Node *source = postfix(variableContainer);
     Node *addNode = new_node(NODE_ADD, source, new_node_num(1));

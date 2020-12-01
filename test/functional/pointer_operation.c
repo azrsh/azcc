@@ -162,6 +162,10 @@ int test28() {
   p = a;
   return p[0] + p[1];
 }
+int test29() {
+  int a = 2;
+  return *&*&*&*&*&*&*&a;
+}
 
 int main() {
   assert(1, test1(), "int a; int *b; a = 1;b = &a; return *b;");
@@ -205,6 +209,7 @@ int main() {
       "int a[2]; *a = 1; *(a + 1) = 2; int *p; p = a; return *p + *(p + 1);");
   assert(3, test28(),
          "int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1];");
+  assert(2, test29(), "int a = 2; return *&*&*&*&*&*&*&a;");
   printf("OK\n");
   return 0;
 }

@@ -36,7 +36,7 @@ void generate_assign_lhs(Node *node, int *labelCount);
 
 void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
-    error("変数ではありません");
+    error_at(node->source, "変数ではありません");
 
   const Variable *variable = node->variable;
   const char *name = string_to_char(variable->name);
@@ -86,7 +86,7 @@ void generate_assign_lhs(Node *node, int *labelCount) {
     return;
   }
 
-  error("代入の左辺として予期しないノードが指定されました");
+  error_at(node->source, "代入の左辺として予期しないノードが指定されました");
 }
 
 void generate_fuction_call(Node *node, int *labelCount) {
@@ -209,7 +209,7 @@ void generate_expression(Node *node, int *labelCount) {
     insert_comment("logic not end");
     return;
   case NODE_REF:
-    generate_variable(node->lhs);
+    generate_assign_lhs(node->lhs, labelCount);
     return;
   case NODE_DEREF:
     generate_expression(node->lhs, labelCount);
