@@ -158,9 +158,19 @@ void generate_cast(Node *node, int *labelCount) {
     printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
     // 上位56bitを破棄すればよいのでなにもしない
+  } else if (source->kind == TYPE_BOOL && dest->kind == TYPE_INT) {
+    //そのままでよい
+  } else if (source->kind == TYPE_INT && dest->kind == TYPE_BOOL) {
+    printf("  cmp rax, 0\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
     generate_variable(node);
+  } else {
+    error_at(node->lhs->source, "許可されていないキャストです");
+    return;
   }
+
   printf("  push rax\n");
 
   insert_comment("cast end");
