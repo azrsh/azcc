@@ -157,21 +157,25 @@ void generate_cast(Node *node, int *labelCount) {
   printf("  pop rax\n");
 
   if (source->kind == TYPE_CHAR && dest->kind == TYPE_INT) {
+    insert_comment("cast char to int");
     printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
     // 上位56bitを破棄すればよいのでなにもしない
+    insert_comment("cast int to char");
   } else if (source->kind == TYPE_BOOL && dest->kind == TYPE_INT) {
-    //そのままでよい
+    insert_comment("cast bool to int");
+    printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_BOOL) {
+    insert_comment("cast int to bool");
     printf("  cmp rax, 0\n");
     printf("  sete al\n");
     printf("  movzb rax, al\n");
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
     generate_variable(node);
-  } else {
-    error_at(node->lhs->source, "許可されていないキャストです");
-    return;
   }
+
+  // void*とポインタ型のキャストを許可
+  // 比較演算子におけるポインタ型と0の比較を許可
 
   printf("  push rax\n");
 
@@ -231,10 +235,10 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  pop rax\n");
     switch (node->type->kind) {
     case TYPE_CHAR:
+    case TYPE_BOOL:
       printf("  movsx rax, BYTE PTR [rax]\n");
       break;
     case TYPE_INT:
-    case TYPE_BOOL:
       printf("  movsx rax, DWORD PTR [rax]\n");
       break;
     case TYPE_PTR:

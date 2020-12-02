@@ -32,9 +32,9 @@ int type_to_size(Type *type) {
   switch (type->kind) {
   case TYPE_CHAR:
   case TYPE_VOID:
+  case TYPE_BOOL:
     return 1;
   case TYPE_INT:
-  case TYPE_BOOL:
     return 4;
   case TYPE_PTR:
     return 8;
@@ -52,9 +52,9 @@ int type_to_align(Type *type) {
   switch (type->kind) {
   case TYPE_CHAR:
   case TYPE_VOID:
+  case TYPE_BOOL:
     return 1;
   case TYPE_INT:
-  case TYPE_BOOL:
     return 4;
   case TYPE_PTR:
     return 8;
