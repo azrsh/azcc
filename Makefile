@@ -58,9 +58,9 @@ test/self/%.o: azcc test/self/%.c
 
 self: $(TEST_SELF_OBJS)
 
-test/unit/az1/%.out: self $(filter-out main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS) test/unit/%.c
+test/unit/az1/%.out: self $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS) test/unit/%.c
 	./test/unit/rmlink.sh
-	cpp -I test/self test/unit/$*.c > test/unit/az1/$*.i
+	cpp -I test/self -I test/self/dummylib test/unit/$*.c > test/unit/az1/$*.i
 	./azcc test/unit/az1/$*.i > test/unit/az1/$*.s
 	$(CC) -o $@ test/unit/az1/$*.s $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS)
 	./test/unit/makelink.sh
