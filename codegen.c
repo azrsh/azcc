@@ -31,7 +31,7 @@ void insert_comment(char *fmt, ...) {
 
 void generate_expression(Node *node, int *labelCount);
 void generate_variable(Node *node);
-void generate_fuction_call(Node *node, int *labelCount);
+void generate_function_call(Node *node, int *labelCount);
 void generate_assign_lhs(Node *node, int *labelCount);
 
 void generate_variable(Node *node) {
@@ -89,7 +89,7 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   error_at(node->source, "代入の左辺として予期しないノードが指定されました");
 }
 
-void generate_fuction_call(Node *node, int *labelCount) {
+void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     error("関数ではありません");
 
@@ -117,8 +117,10 @@ void generate_fuction_call(Node *node, int *labelCount) {
 
   //引数の評価
   for (int i = vector_length(arguments) - 1; i >= 0; i--) {
+    insert_comment("function %s argument %d start", functionName, i);
     Node *argument = vector_get(arguments, i);
     generate_expression(argument, labelCount);
+    insert_comment("function %s argument %d end", functionName, i);
   }
 
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
@@ -274,7 +276,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     return;
   case NODE_FUNC:
-    generate_fuction_call(node, labelCount);
+    generate_function_call(node, labelCount);
     return;
   case NODE_ASSIGN:
     insert_comment("assign start");
