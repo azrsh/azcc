@@ -251,7 +251,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     }
 
     if (target) {
-      node->type = new_type(TYPE_BOOL);
+      node->type = new_type(TYPE_INT);
       insert_implicit_cast_node(target, node);
       return;
     }
@@ -259,7 +259,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   }
   case NODE_LAND:
   case NODE_LOR:
-    node->type = new_type(TYPE_BOOL);
+    node->type = new_type(TYPE_INT);
     return;
   case NODE_LNOT:
   case NODE_REF:
