@@ -122,8 +122,6 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         continue;
 
       if (type_compare_deep_with_implicit_cast(type1, type2)) {
-        if (type2->kind == TYPE_BOOL && type1->kind == TYPE_INT)
-          printf("#pass\n");
         vector_set(arguments, i,
                    new_node_cast(type1, vector_get(arguments, i)));
         continue;
