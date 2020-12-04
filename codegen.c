@@ -174,10 +174,11 @@ void generate_cast(Node *node, int *labelCount) {
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_BOOL) {
     insert_comment("cast int to bool");
     printf("  cmp rax, 0\n");
-    printf("  sete al\n");
+    printf("  setne al\n");
     printf("  movzb rax, al\n");
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
-    generate_variable(node);
+    // generate_variable(node);
+    // 今はgenerate_rhd_extensionでやっている
   }
 
   // void*とポインタ型のキャストを許可
