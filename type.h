@@ -14,6 +14,7 @@ typedef enum {
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_STRUCT,
+  TYPE_ENUM,
 } TypeKind;
 
 typedef struct Type Type;

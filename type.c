@@ -17,6 +17,7 @@ bool type_is_primitive(Type *type) {
   case TYPE_CHAR:
   case TYPE_INT:
   case TYPE_BOOL:
+  case TYPE_ENUM:
     return true;
   case TYPE_PTR:
   case TYPE_ARRAY:
@@ -35,6 +36,7 @@ int type_to_size(Type *type) {
   case TYPE_BOOL:
     return 1;
   case TYPE_INT:
+  case TYPE_ENUM:
     return 4;
   case TYPE_PTR:
     return 8;
@@ -55,6 +57,7 @@ int type_to_align(Type *type) {
   case TYPE_BOOL:
     return 1;
   case TYPE_INT:
+  case TYPE_ENUM:
     return 4;
   case TYPE_PTR:
     return 8;
@@ -81,6 +84,7 @@ char *type_kind_to_char(TypeKind kind) {
   case TYPE_VOID:
     return "void";
   case TYPE_INT:
+  case TYPE_ENUM:
     return "int";
   case TYPE_BOOL:
     return "_Bool";

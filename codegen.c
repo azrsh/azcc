@@ -221,6 +221,7 @@ void generate_rhs_extension(Node *node) {
     printf("  movsx rax, BYTE PTR [rax]\n");
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     printf("  movsx rax, DWORD PTR [rax]\n");
     break;
   case TYPE_PTR:
@@ -245,6 +246,7 @@ void generate_value_extension(Node *node) {
     printf("  movsx rax, al\n");
     break;
   case TYPE_INT:
+  case TYPE_ENUM:
     printf("  movsx rax, eax\n");
     break;
   case TYPE_PTR:
@@ -531,8 +533,17 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         LabeledStatement *labeled = vector_get(labeledStatements, i);
         Node *constantExpression = labeled->constantExpression;
         if (constantExpression) { // caseラベルの場合
-          printf("  cmp rax, %d\n", constantExpression->val);
-          printf("  je .Lcase%d.%d\n", switchLabel, constantExpression->val);
+          int value;
+          if (constantExpression->kind == NODE_NUM)
+            value = constantExpression->val;
+          else if (constantExpression->kind == NODE_VAR &&
+                   constantExpression->variable->kind == VARIABLE_GLOBAL &&
+                   constantExpression->variable->initialization)
+            value = constantExpression->variable->initialization->val;
+          else
+            error_at(constantExpression->source, "定数式ではありません");
+          printf("  cmp rax, %d\n", value);
+          printf("  je .Lcase%d.%d\n", switchLabel, value);
         } else { // defaultラベルの場合
           printf("  jmp .Ldefault%d\n", switchLabel);
         }
@@ -553,9 +564,19 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         statement_union_take_labeled(statementUnion);
     if (labeledPattern) {
       if (labeledPattern->constantExpression) // caseラベルの場合
-        printf(".Lcase%d.%d:\n", latestSwitch,
-               labeledPattern->constantExpression->val);
-      else // defaultラベルの場合
+      {
+        Node *constantExpression = labeledPattern->constantExpression;
+        int value;
+        if (constantExpression->kind == NODE_NUM)
+          value = constantExpression->val;
+        else if (constantExpression->kind == NODE_VAR &&
+                 constantExpression->variable->kind == VARIABLE_GLOBAL &&
+                 constantExpression->variable->initialization)
+          value = constantExpression->variable->initialization->val;
+        else
+          error_at(constantExpression->source, "定数式ではありません");
+        printf(".Lcase%d.%d:\n", latestSwitch, value);
+      } else // defaultラベルの場合
         printf(".Ldefault%d:\n", latestSwitch);
 
       generate_statement(labeledPattern->statement, labelCount,

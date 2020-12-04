@@ -278,16 +278,17 @@ function_definition_to_declaration(FunctionDefinition *definition) {
 
 // EBNFパーサ
 Program *program();
-FunctionDeclaration *function_declaration();
-Vector *function_declaration_argument();
+FunctionDeclaration *function_declaration(VariableContainer *variableContainer);
+Vector *function_declaration_argument(VariableContainer *variableContainer);
 FunctionDefinition *function_definition(VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
 Variable *global_variable_declaration(VariableContainer *variableContainer);
 Type *struct_definition(VariableContainer *variableContainer);
-Typedef *type_definition();
+Typedef *type_definition(VariableContainer *variableContainer);
 Node *variable_definition(VariableContainer *variableContainer);
-Type *type_specifier();
-Variable *variable_declaration();
+Type *type_specifier(VariableContainer *variableContainer);
+Type *enum_specifier(VariableContainer *variableContainer);
+Variable *variable_declaration(VariableContainer *variableContainer);
 
 StatementUnion *statement(VariableContainer *variableContainer);
 NullStatement *null_statement(VariableContainer *variableContainer);
@@ -385,7 +386,8 @@ Program *program() {
 
   while (!at_eof()) {
     {
-      FunctionDeclaration *functionDeclaration = function_declaration();
+      FunctionDeclaration *functionDeclaration =
+          function_declaration(variableContainer);
       if (functionDeclaration) {
         function_container_push(functionContainer, functionDeclaration);
         continue;
@@ -454,7 +456,7 @@ Program *program() {
     }
 
     {
-      Typedef *typeDefinition = type_definition();
+      Typedef *typeDefinition = type_definition(variableContainer);
       if (typeDefinition) {
         vector_push_back(typedefs, typeDefinition);
         continue;
@@ -467,10 +469,11 @@ Program *program() {
   return result;
 }
 
-FunctionDeclaration *function_declaration() {
+FunctionDeclaration *
+function_declaration(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Type *type = type_specifier();
+  Type *type = type_specifier(variableContainer);
   if (!type) {
     return NULL;
   }
@@ -490,7 +493,7 @@ FunctionDeclaration *function_declaration() {
   if (consume(")")) {
     arguments = new_vector(0);
   } else {
-    arguments = function_declaration_argument();
+    arguments = function_declaration_argument(variableContainer);
     expect(")");
   }
 
@@ -504,10 +507,10 @@ FunctionDeclaration *function_declaration() {
   return result;
 }
 
-Vector *function_declaration_argument() {
+Vector *function_declaration_argument(VariableContainer *variableContainer) {
   Vector *arguments = new_vector(16);
   do {
-    Type *type = type_specifier();
+    Type *type = type_specifier(variableContainer);
     if (!type)
       error_at(token->string.head, "型指定子ではありません");
 
@@ -524,7 +527,7 @@ ListNode *switchStatementNest; //引数に押し込みたい
 FunctionDefinition *function_definition(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Type *type = type_specifier();
+  Type *type = type_specifier(variableContainer);
   if (!type) {
     return NULL;
   }
@@ -602,7 +605,7 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
 
   do {
     Token *source = token;
-    Variable *declaration = variable_declaration();
+    Variable *declaration = variable_declaration(variableContainer);
     if (!declaration)
       error_at(source->string.head, "関数定義の引数の宣言が不正です");
 
@@ -621,7 +624,7 @@ Variable *global_variable_declaration(VariableContainer *variableContainer) {
 
   bool isExtern = consume("extern");
 
-  Variable *declaration = variable_declaration();
+  Variable *declaration = variable_declaration(variableContainer);
   if (!declaration)
     return NULL;
 
@@ -665,7 +668,7 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
   int memberOffset = 0;
   if (consume("{")) {
     while (!consume("}")) {
-      Variable *member = variable_declaration();
+      Variable *member = variable_declaration(variavbelContainer);
       member->kind = VARIABLE_LOCAL;
       size_t memberAlignment = type_to_align(member->type);
       memberOffset +=
@@ -684,12 +687,12 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
   return result;
 }
 
-Typedef *type_definition() {
+Typedef *type_definition(VariableContainer *variableContainer) {
   if (!consume("typedef")) {
     return NULL;
   }
 
-  Type *type = type_specifier();
+  Type *type = type_specifier(variableContainer);
   if (!type) {
     error_at(token->string.head, "型指定子ではありません");
   }
@@ -705,10 +708,10 @@ Typedef *type_definition() {
   return result;
 }
 
-Variable *variable_declaration() {
+Variable *variable_declaration(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Type *type = type_specifier();
+  Type *type = type_specifier(variableContainer);
   if (!type) {
     return NULL;
   }
@@ -1016,7 +1019,7 @@ Node *expression(VariableContainer *variableContainer) {
 Node *variable_definition(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Variable *variable = variable_declaration();
+  Variable *variable = variable_declaration(variableContainer);
   if (!variable)
     return NULL;
 
@@ -1035,7 +1038,7 @@ Node *variable_definition(VariableContainer *variableContainer) {
 }
 
 //型指定子をパースする
-Type *type_specifier() {
+Type *type_specifier(VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
   // 型修飾子のスキップ
@@ -1105,8 +1108,60 @@ Type *type_specifier() {
     return wrap_by_pointer(type, head);
   }
 
+  Type *enumType = enum_specifier(variableContainer);
+  if (enumType)
+    return enumType;
+
   token = tokenHead;
   return NULL;
+}
+
+Type *enum_specifier(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
+  if (!consume("enum"))
+    return NULL;
+
+  Token *identifier = consume_identifier();
+
+  Type *type = new_type(TYPE_ENUM);
+  if (identifier)
+    type->name = identifier->string;
+
+  if (variableContainer && consume("{")) {
+    int count = 0;
+    do {
+      Token *enumeratorIdentifier = consume_identifier();
+      if (!enumeratorIdentifier)
+        break;
+
+      Node *constantExpression = NULL;
+      if (consume("="))
+        constantExpression = literal(); //定数式としてリテラルのみを許可する
+      else {
+        constantExpression = new_node_num(count);
+        count++;
+      }
+
+      Variable *variable =
+          new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
+      Variable *enumeratorVariable =
+          variable_to_global(variable, constantExpression);
+      if (!variable_container_push(variableContainer, enumeratorVariable))
+        error_at(constantExpression->source,
+                 "列挙子と同名の識別子が既に定義されています");
+      vector_push_back(globalVariables, enumeratorVariable);
+    } while (consume(","));
+    expect("}");
+  } else if (!variableContainer) {
+    error_at(tokenHead->string.head,
+             "関数の戻り値への無名列挙体の指定はサポートされていません");
+  } else if (!identifier) {
+    error_at(tokenHead->string.head,
+             "列挙体の名称または列挙子を指定してください");
+  }
+
+  return type;
 }
 
 //代入をパースする
@@ -1244,7 +1299,7 @@ Node *unary(VariableContainer *variableContainer) {
   if (consume("sizeof")) {
     Token *head = token;
     if (consume("(")) {
-      Type *type = type_specifier();
+      Type *type = type_specifier(variableContainer);
       if (type) {
         expect(")");
         return new_node_num(type_to_size(type));
@@ -1271,7 +1326,7 @@ Node *unary(VariableContainer *variableContainer) {
   if (consume("_Alignof")) {
     expect("(");
 
-    Type *type = type_specifier();
+    Type *type = type_specifier(variableContainer);
     if (!type)
       error_at(token->string.head, "型指定子ではありません");
 
