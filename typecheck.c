@@ -140,8 +140,12 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     if (type_compare_deep_with_implicit_cast(node->lhs->type,
                                              node->rhs->type)) {
       node->type = node->lhs->type;
-      if (!node->lhs->type->base && !node->rhs->type->base) {
+      if (type_is_primitive(node->lhs->type) &&
+          type_is_primitive(node->rhs->type)) {
         insert_implicit_cast_node(node->type, node);
+      } else if (node->type->kind == TYPE_PTR &&
+                 node->rhs->type->kind == TYPE_ARRAY) {
+        node->rhs = new_node_cast(node->type, node->rhs);
       }
       return;
     }

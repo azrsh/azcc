@@ -1,7 +1,7 @@
 #include "container.h"
+#include <stdio.h>
 
-void assert();
-void printf();
+void assert(int, int, char *);
 
 int main() {
   int source[10];

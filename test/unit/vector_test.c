@@ -1,6 +1,6 @@
 #include "container.h"
 
-void assert();
+void assert(int, int, char *);
 
 int main() {
   int source[10];

@@ -1,5 +1,6 @@
-int assert(int, int, char *);
-int printf();
+#include "testtool.h"
+#include <stdbool.h>
+#include <stdio.h>
 
 int test1sub() {
   int b;
@@ -198,6 +199,14 @@ void test14() {
     ;
 }
 
+void test15() {
+  bool flag = false;
+  if (flag) {
+    assert(1, 0, "unexpected pass");
+  }
+  assert(1, 1, "expected pass");
+}
+
 int main() {
   test1();
   test2();
@@ -213,6 +222,7 @@ int main() {
   test12();
   test13();
   test14();
+  test15();
   printf("OK\n");
   return 0;
 }

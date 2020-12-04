@@ -210,6 +210,53 @@ void generate_assign_i8(Node *node) {
   printf("  push rdi\n");
 }
 
+void generate_rhs_extension(Node *node) {
+  //暗黙的なキャスト
+  //配列はポインタに
+  //それ以外の値は64bitに符号拡張
+  printf("  pop rax\n");
+  switch (node->type->kind) {
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+    printf("  movsx rax, BYTE PTR [rax]\n");
+    break;
+  case TYPE_INT:
+    printf("  movsx rax, DWORD PTR [rax]\n");
+    break;
+  case TYPE_PTR:
+  case TYPE_STRUCT:
+    printf("  mov rax, [rax]\n");
+    break;
+  case TYPE_ARRAY:
+    break; //配列はポインタのままにする
+  case TYPE_VOID:
+    error_at(node->source, "許可されていない型の値です");
+  }
+  printf("  push rax\n");
+}
+
+void generate_value_extension(Node *node) {
+  // 64bitに符号拡張
+  printf("  pop rax\n");
+  switch (node->type->kind) {
+  case TYPE_CHAR:
+  case TYPE_BOOL:
+    insert_comment("extension bool to i64");
+    printf("  movsx rax, al\n");
+    break;
+  case TYPE_INT:
+    printf("  movsx rax, eax\n");
+    break;
+  case TYPE_PTR:
+    break;
+  case TYPE_STRUCT:
+  case TYPE_ARRAY:
+  case TYPE_VOID:
+    error_at(node->source, "許可されていない型の値です");
+  }
+  printf("  push rax\n");
+}
+
 void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
@@ -236,81 +283,15 @@ void generate_expression(Node *node, int *labelCount) {
     return;
   case NODE_DEREF:
     generate_expression(node->lhs, labelCount);
-    //暗黙的なキャスト
-    //配列はポインタに
-    //それ以外の値は64bitに符号拡張
-    printf("  pop rax\n");
-    switch (node->type->kind) {
-    case TYPE_CHAR:
-    case TYPE_BOOL:
-      printf("  movsx rax, BYTE PTR [rax]\n");
-      break;
-    case TYPE_INT:
-      printf("  movsx rax, DWORD PTR [rax]\n");
-      break;
-    case TYPE_PTR:
-      printf("  mov rax, [rax]\n");
-      break;
-    case TYPE_ARRAY:
-      break; //配列はポインタのままにする
-    case TYPE_STRUCT:
-    case TYPE_VOID:
-      error_at(node->source, "許可されていない型のデリファレンスです");
-    }
-    printf("  push rax\n");
+    generate_rhs_extension(node);
     return;
   case NODE_VAR:
     generate_variable(node);
-
-    //暗黙的なキャスト
-    //配列はポインタに
-    //それ以外の値は64bitに符号拡張
-    printf("  pop rax\n");
-    switch (node->type->kind) {
-    case TYPE_CHAR:
-      printf("  movsx rax, BYTE PTR [rax]\n");
-      break;
-    case TYPE_INT:
-    case TYPE_BOOL:
-      printf("  movsx rax, DWORD PTR [rax]\n");
-      break;
-    case TYPE_PTR:
-      printf("  mov rax, [rax]\n");
-      break;
-    case TYPE_ARRAY:
-      break; //配列はポインタのままにする
-    case TYPE_STRUCT:
-      break; //未実装
-    case TYPE_VOID:
-      error_at(node->source, "許可されていない型の代入です");
-    }
-    printf("  push rax\n");
+    generate_rhs_extension(node);
     return;
   case NODE_DOT:
     generate_dot_operator(node, labelCount);
-
-    //暗黙的なキャスト
-    //配列はポインタに
-    //それ以外の値は64bitに符号拡張
-    printf("  pop rax\n");
-    switch (node->type->kind) {
-    case TYPE_CHAR:
-      printf("  movsx rax, BYTE PTR [rax]\n");
-      break;
-    case TYPE_INT:
-    case TYPE_BOOL:
-      printf("  movsx rax, DWORD PTR [rax]\n");
-      break;
-    case TYPE_PTR:
-    case TYPE_STRUCT:
-      printf("  mov rax, [rax]\n");
-      break;
-    case TYPE_ARRAY:
-      break; //配列はポインタのままにする
-    case TYPE_VOID:
-      error_at(node->source, "許可されていない型のメンバです");
-    }
-    printf("  push rax\n");
+    generate_rhs_extension(node);
     return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
@@ -334,8 +315,10 @@ void generate_expression(Node *node, int *labelCount) {
       generate_assign_i8(node);
     else if (lhsSize == 4 && rhsSize == 4)
       generate_assign_i32(node);
-    else
+    else if (lhsSize == 8 && rhsSize == 8)
       generate_assign_i64(node);
+    else
+      error_at(node->source, "予期しない代入");
 
     insert_comment("assign end");
     return;
@@ -506,6 +489,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       *labelCount += 1;
 
       generate_expression(ifPattern->condition, labelCount);
+      generate_value_extension(ifPattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
 
@@ -538,6 +522,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       *labelCount += 1;
 
       generate_expression(switchPattern->condition, labelCount);
+      generate_value_extension(switchPattern->condition);
       printf("  pop rax\n");
 
       Vector *labeledStatements = switchPattern->labeledStatements;
@@ -589,6 +574,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       printf(".Lbeginloop%d:\n", loopLabel);
 
       generate_expression(whilePattern->condition, labelCount);
+      generate_value_extension(whilePattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend%d\n", loopLabel);
@@ -618,6 +604,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
                          latestSwitch);
 
       generate_expression(doWhilePattern->condition, labelCount);
+      generate_value_extension(doWhilePattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend%d\n", loopLabel);
@@ -642,6 +629,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       printf(".Lbeginloop%d:\n", loopLabel);
 
       generate_expression(forPattern->condition, labelCount);
+      generate_value_extension(forPattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend%d\n", loopLabel);
