@@ -136,6 +136,16 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     tag_type_to_node(node->lhs, context);
     tag_type_to_node(node->rhs, context);
 
+    bool isLhsNull = node->rhs->type->kind == TYPE_PTR &&
+                     node->lhs->kind == NODE_NUM && node->lhs->val == 0;
+    bool isRhsNull = node->lhs->type->kind == TYPE_PTR &&
+                     node->rhs->kind == NODE_NUM && node->rhs->val == 0;
+    if (isLhsNull) {
+      node->lhs = new_node_cast(node->rhs->type, node->lhs);
+    } else if (isRhsNull) {
+      node->rhs = new_node_cast(node->lhs->type, node->rhs);
+    }
+
     //代入は代入先の型を最優先とする
     if (type_compare_deep_with_implicit_cast(node->lhs->type,
                                              node->rhs->type)) {
@@ -208,8 +218,10 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       node->type = lhs;
       return;
     }
-    if (lhs->kind == TYPE_PTR && rhs->base != NULL) {
-      error_at(node->source, "未実装の演算です");
+    if (lhs->base != NULL && rhs->base != NULL &&
+        type_compare_deep(lhs->base, rhs->base)) {
+      node->type = new_type(TYPE_INT);
+      return;
     }
     {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);

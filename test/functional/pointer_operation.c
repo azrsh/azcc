@@ -166,6 +166,12 @@ int test29() {
   int a = 2;
   return *&*&*&*&*&*&*&a;
 }
+int test30() {
+  int a[16];
+  int *ptr1 = &a[0];
+  int *ptr2 = &a[15];
+  return ptr2 - ptr1;
+}
 
 int main() {
   assert(1, test1(), "int a; int *b; a = 1;b = &a; return *b;");
@@ -210,6 +216,9 @@ int main() {
   assert(3, test28(),
          "int a[2]; a[0] = 1; a[1] = 2; int *p; p = a; return p[0] + p[1];");
   assert(2, test29(), "int a = 2; return *&*&*&*&*&*&*&a;");
+  assert(
+      15, test30(),
+      "int a[16]; int *ptr1 = &a[0]; int *ptr2 = &a[15]; return ptr2 - ptr1;");
   printf("OK\n");
   return 0;
 }

@@ -349,29 +349,39 @@ void generate_expression(Node *node, int *labelCount) {
   printf("  pop rax\n");
 
   switch (node->kind) {
-  case NODE_ADD:
+  case NODE_ADD: {
     insert_comment("start add node");
 
     // int+int、pointer+intのみを許可する
-    Type *addLhsPointerTo = node->lhs->type->base;
-    if (addLhsPointerTo) {
-      printf("  imul rdi, %d\n", type_to_size(addLhsPointerTo));
+    Type *lhsBase = node->lhs->type->base;
+    if (lhsBase) {
+      printf("  imul rdi, %d\n", type_to_size(lhsBase));
     }
 
     printf("  add rax, rdi\n");
     insert_comment("end add node");
     break;
-  case NODE_SUB:
+  }
+  case NODE_SUB: {
     insert_comment("start sub node");
 
-    // int-int、pointer-intのみを許可する
-    Type *subLhsPointerTo = node->lhs->type->base;
-    if (subLhsPointerTo) {
-      printf("  imul rdi, %d\n", type_to_size(subLhsPointerTo));
+    // int-int、pointer-int、pointer-pointerのみを許可する
+    Type *lhsBase = node->lhs->type->base;
+    Type *rhsBase = node->rhs->type->base;
+    if (lhsBase && !rhsBase) {
+      printf("  imul rdi, %d\n", type_to_size(lhsBase));
     }
 
     printf("  sub rax, rdi\n");
+
+    if (lhsBase && rhsBase) {
+      printf("  cqo\n");
+      printf("  mov rdi, %d\n", type_to_size(lhsBase));
+      printf("  idiv rdi\n");
+    }
+
     break;
+  }
   case NODE_MUL:
     printf("  imul rax, rdi\n");
     break;
