@@ -2,7 +2,6 @@
 #include "container.h"
 #include "util.h"
 #include <ctype.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -156,7 +155,9 @@ Token *tokenize(const char *p) {
     if (strchr("\"", *p)) {
       p++;
       const char *q = p;
-      while (!strchr("\"", *p) || strchr("\\", *(p - 1))) {
+      while (!strchr("\"", *p)) {
+        if (strchr("\\", *p))
+          p++;
         p++;
       }
       current = new_token(TOKEN_STRING, current, q, p - q);
@@ -169,7 +170,9 @@ Token *tokenize(const char *p) {
     if (strchr("\'", *p)) {
       p++;
       const char *q = p;
-      while (!strchr("\'", *p) || strchr("\\", *(p - 1))) {
+      while (!strchr("\'", *p)) {
+        if (strchr("\\", *p))
+          p++;
         p++;
       }
       current = new_token(TOKEN_CHAR, current, q, p - q);
