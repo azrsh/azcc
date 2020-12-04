@@ -42,8 +42,7 @@ void generate_variable(Node *node) {
   const char *name = string_to_char(&variable->name);
   switch (variable->kind) {
   case VARIABLE_LOCAL:
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", variable->offset);
+    printf("  lea rax, [rbp-%d]\n", variable->offset);
     printf("  push rax\n");
     return;
   case VARIABLE_GLOBAL:
@@ -58,11 +57,12 @@ void generate_variable(Node *node) {
 
 void generate_dot_operator(Node *node, int *labelCount) {
   if (node->kind != NODE_DOT)
-    error("ドット演算子ではありません");
+    error_at(node->source, "ドット演算子ではありません");
 
   insert_comment("dot operator start");
-  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR)
-    error("ドット演算子のオペランドが不正です");
+  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
+      node->rhs->variable->kind != VARIABLE_MEMBER*/)
+    error_at(node->source, "ドット演算子のオペランドが不正です");
   generate_assign_lhs(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
@@ -130,6 +130,12 @@ void generate_function_call(Node *node, int *labelCount) {
   }
 
   printf("  mov rax, 0\n");
+  // if (string_compare(&node->functionCall->name, char_to_string("calloc")) ||
+  //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
+  //    string_compare(&node->functionCall->name, char_to_string("memcmp")) ||
+  //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
+  //  printf("  call %s@PLT\n", functionName);
+  // else
   printf("  call %s\n", functionName);
 
   //スタックに積んだ引数を処理
@@ -279,6 +285,32 @@ void generate_expression(Node *node, int *labelCount) {
     }
     printf("  push rax\n");
     return;
+  case NODE_DOT:
+    generate_dot_operator(node, labelCount);
+
+    //暗黙的なキャスト
+    //配列はポインタに
+    //それ以外の値は64bitに符号拡張
+    printf("  pop rax\n");
+    switch (node->type->kind) {
+    case TYPE_CHAR:
+      printf("  movsx rax, BYTE PTR [rax]\n");
+      break;
+    case TYPE_INT:
+    case TYPE_BOOL:
+      printf("  movsx rax, DWORD PTR [rax]\n");
+      break;
+    case TYPE_PTR:
+    case TYPE_STRUCT:
+      printf("  mov rax, [rax]\n");
+      break;
+    case TYPE_ARRAY:
+      break; //配列はポインタのままにする
+    case TYPE_VOID:
+      error_at(node->source, "許可されていない型のメンバです");
+    }
+    printf("  push rax\n");
+    return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
     return;
@@ -309,12 +341,6 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_CAST:
     generate_expression(node->lhs, labelCount);
     generate_cast(node, labelCount);
-    return;
-  case NODE_DOT:
-    generate_dot_operator(node, labelCount);
-    printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
     return;
   case NODE_ADD:
   case NODE_SUB:

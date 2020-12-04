@@ -1,5 +1,5 @@
-int assert(int, int, char *);
-int printf();
+#include "testtool.h"
+#include <stdio.h>
 
 struct TupleIntInt {
   int a;
@@ -153,6 +153,29 @@ int test9() {
   return 0;
 }
 
+void test10() {
+  struct TupleIntInt instance1;
+  struct TupleIntInt instance2;
+  struct TupleIntInt instance3;
+  struct TupleIntInt instance4;
+  instance1.a = 34;
+  instance2.a = 2184;
+  instance3.a = 134;
+  instance4.a = 3809;
+  instance1.b = 13789;
+  instance2.b = 133;
+  instance3.b = 643;
+  instance4.b = 1319;
+  assert(0, instance1.a > instance1.b, "instance1.a > instance1.b");
+  assert(1, instance1.a < instance1.b, "instance1.a < instance1.b");
+  assert(1, instance2.a > instance2.b, "instance2.a > instance2.b");
+  assert(0, instance2.a < instance2.b, "instance2.a < instance2.b");
+  assert(0, instance3.a > instance3.b, "instance3.a > instance3.b");
+  assert(1, instance3.a < instance3.b, "instance3.a < instance3.b");
+  assert(1, instance4.a > instance4.b, "instance4.a > instance4.b");
+  assert(0, instance4.a < instance4.b, "instance4.a < instance4.b");
+}
+
 int main() {
   test1();
   test2();
@@ -163,6 +186,7 @@ int main() {
   test7();
   test8();
   test9();
+  test10();
   printf("OK\n");
   return 0;
 }
