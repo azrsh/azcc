@@ -94,10 +94,10 @@ Token *expect_identifier() {
   return current;
 }
 
-Variable *new_variable(Type *type, String name) {
+Variable *new_variable(Type *type, const String *name) {
   Variable *variable = calloc(1, sizeof(Variable));
   variable->type = type;
-  variable->name = new_string(name.head, name.length);
+  variable->name = new_string(name->head, name->length);
   return variable;
 }
 
@@ -231,8 +231,7 @@ Node *new_node_member(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  const String *name = token->string;
-  Variable *variable = variable_to_member(new_variable(NULL, *name));
+  Variable *variable = variable_to_member(new_variable(NULL, token->string));
   node->variable = variable;
   node->source = token->string->head;
   return node;
@@ -726,8 +725,7 @@ Variable *variable_declaration(VariableContainer *variableContainer) {
     expect("]");
   }
 
-  String variableName = *identifier->string;
-  return new_variable(type, variableName);
+  return new_variable(type, identifier->string);
 }
 
 //文をパースする
@@ -1151,7 +1149,7 @@ Type *enum_specifier(VariableContainer *variableContainer) {
       }
 
       Variable *variable =
-          new_variable(new_type(TYPE_INT), *enumeratorIdentifier->string);
+          new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
       Variable *enumeratorVariable =
           variable_to_global(variable, constantExpression);
       if (!variable_container_push(variableContainer, enumeratorVariable))
