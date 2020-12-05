@@ -8,7 +8,7 @@
 
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
-  String name;
+  const String *name;
   Type *returnType;
   Vector *arguments; // Variavble Nodes
   CompoundStatement *body;

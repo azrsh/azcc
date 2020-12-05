@@ -763,7 +763,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 //抽象構文木をもとにコード生成を行う
 void generate_function_definition(const FunctionDefinition *functionDefinition,
                                   int *labelCount) {
-  const char *functionName = string_to_char(&functionDefinition->name);
+  const char *functionName = string_to_char(functionDefinition->name);
 
   //ラベルを生成
   printf("  .text\n");

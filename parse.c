@@ -270,7 +270,7 @@ function_definition_to_declaration(FunctionDefinition *definition) {
     vector_push_back(arguments, variable->type);
   }
 
-  return new_function_declaration(definition->returnType, definition->name,
+  return new_function_declaration(definition->returnType, *definition->name,
                                   arguments);
 }
 
@@ -396,8 +396,8 @@ Program *program() {
       FunctionDefinition *functionDefinition =
           function_definition(variableContainer);
       if (functionDefinition) {
-        FunctionDeclaration *declaration =
-            function_container_get(functionContainer, functionDefinition->name);
+        FunctionDeclaration *declaration = function_container_get(
+            functionContainer, *functionDefinition->name);
         if (declaration) {
           //宣言に引数がなければ引数チェックをスキップ
           if (vector_length(declaration->arguments) > 0) {
@@ -590,7 +590,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
 
   FunctionDefinition *definition = new_function_definition();
   definition->returnType = type;
-  definition->name = *identifier->string;
+  definition->name = identifier->string;
   definition->arguments = arguments;
   definition->body = body;
   definition->stackSize = currentOffset;
