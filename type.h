@@ -19,7 +19,7 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
-  String name; //とりあえずはTYPE_STRUCTのときのみ使用
+  const String *name; //とりあえずはTYPE_STRUCTのときのみ使用
   TypeKind kind;
   Type *base;
   size_t length;            // TypeKindがTYPE_ARRAYのときのみ使用する

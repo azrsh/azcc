@@ -442,7 +442,7 @@ Program *program() {
           //  type = type->base;
           Type *type = typeDefinition->type;
           if (type->kind == TYPE_STRUCT &&
-              string_compare(&structDefinition->name, &type->name)) {
+              string_compare(structDefinition->name, type->name)) {
             typeDefinition->type = structDefinition;
             break;
           }
@@ -661,7 +661,7 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
 
   Type *result = new_type(TYPE_STRUCT);
   result->kind = TYPE_STRUCT;
-  result->name = *identifier->string;
+  result->name = identifier->string;
   result->members = new_member_container();
   int memberOffset = 0;
   if (consume("{")) {
@@ -1098,7 +1098,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
 
     for (int i = 0; i < vector_length(structs); i++) {
       Type *type = vector_get(structs, i);
-      if (string_compare(identifier->string, &type->name)) {
+      if (string_compare(identifier->string, type->name)) {
         Token *head = token;
         while (consume("*"))
           ;
@@ -1108,7 +1108,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
 
     //未定義の構造体
     Type *type = new_type(TYPE_STRUCT);
-    type->name = *identifier->string;
+    type->name = identifier->string;
     Token *head = token;
     while (consume("*"))
       ;
@@ -1133,7 +1133,7 @@ Type *enum_specifier(VariableContainer *variableContainer) {
 
   Type *type = new_type(TYPE_ENUM);
   if (identifier)
-    type->name = *identifier->string;
+    type->name = identifier->string;
 
   if (variableContainer && consume("{")) {
     int count = 0;
