@@ -1054,7 +1054,11 @@ Type *type_specifier(VariableContainer *variableContainer) {
   Token *current = token;
 
   //プリミティブ
-  const char *types[] = {"int", "char", "void", "_Bool"};
+  const char *types[4];
+  types[0] = "int";
+  types[1] = "char";
+  types[2] = "void";
+  types[3] = "_Bool";
 
   for (int i = 0; i < sizeof(types) / sizeof(char *); i++) {
     if (!consume(types[i]))
