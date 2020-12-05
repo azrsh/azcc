@@ -109,7 +109,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     }
     //存在確認はパーサが行う
     FunctionDeclaration *declaration = function_container_get(
-        context->functionContainer, node->functionCall->name);
+        context->functionContainer, *node->functionCall->name);
     if (vector_length(declaration->arguments) == 0)
       return;
     if (vector_length(declaration->arguments) != vector_length(argumentTypes))

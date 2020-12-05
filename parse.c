@@ -121,7 +121,7 @@ Variable *variable_to_member(Variable *variable) {
 
 FunctionCall *new_function_call(Token *token) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
-  functionCall->name = *token->string;
+  functionCall->name = token->string;
   return functionCall;
 }
 
@@ -214,11 +214,11 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  String variableName = *token->string;
-  Variable *variable = variable_container_get(container, variableName);
+  const String *variableName = token->string;
+  Variable *variable = variable_container_get(container, *variableName);
   if (!variable) {
-    error_at(variableName.head, "変数%sは定義されていません",
-             string_to_char(&variableName));
+    error_at(variableName->head, "変数%sは定義されていません",
+             string_to_char(variableName));
   }
 
   node->variable = variable;
@@ -231,8 +231,8 @@ Node *new_node_member(Token *token) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  String name = *token->string;
-  Variable *variable = variable_to_member(new_variable(NULL, name));
+  const String *name = token->string;
+  Variable *variable = variable_to_member(new_variable(NULL, *name));
   node->variable = variable;
   node->source = token->string->head;
   return node;

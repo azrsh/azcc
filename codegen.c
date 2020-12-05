@@ -93,7 +93,7 @@ void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     error("関数ではありません");
 
-  const char *functionName = string_to_char(&node->functionCall->name);
+  const char *functionName = string_to_char(node->functionCall->name);
 
   insert_comment("function call start : %s", functionName);
 
