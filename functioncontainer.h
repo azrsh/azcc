@@ -7,7 +7,7 @@
 
 typedef struct FunctionDeclaration FunctionDeclaration;
 struct FunctionDeclaration {
-  String name;
+  const String *name;
   Type *returnType;
   Vector *arguments; // Type vector
 };

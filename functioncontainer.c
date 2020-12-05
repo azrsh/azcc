@@ -19,10 +19,10 @@ FunctionDeclaration *function_container_get(FunctionContainer *container,
 
 bool function_container_push(FunctionContainer *container,
                              FunctionDeclaration *declaration) {
-  bool isExist = hash_table_contain(container->table, &declaration->name);
+  bool isExist = hash_table_contain(container->table, declaration->name);
   if (isExist)
     return false;
 
-  hash_table_store(container->table, &declaration->name, declaration);
+  hash_table_store(container->table, declaration->name, declaration);
   return true;
 }

@@ -251,7 +251,7 @@ FunctionDeclaration *new_function_declaration(Type *type, String name,
                                               Vector *arguments) {
   FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
   result->returnType = type;
-  result->name = name;
+  result->name = new_string(name.head, name.length);
   result->arguments = arguments;
   return result;
 }
