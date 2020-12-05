@@ -696,7 +696,7 @@ Typedef *type_definition(VariableContainer *variableContainer) {
   }
 
   Token *identifier = expect_identifier();
-  String name = *identifier->string;
+  const String *name = identifier->string;
 
   expect(";");
 
@@ -1076,7 +1076,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
     for (int i = 0; i < vector_length(typedefs); i++) {
       Typedef *typeDefinition = vector_get(typedefs, i);
       Type *type = typeDefinition->type;
-      if (string_compare(identifier->string, &typeDefinition->name)) {
+      if (string_compare(identifier->string, typeDefinition->name)) {
         while (consume("*")) {
           Type *pointer = new_type(TYPE_PTR);
           pointer->base = type;
