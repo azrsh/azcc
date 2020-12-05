@@ -156,7 +156,7 @@ void generate_function_call(Node *node, int *labelCount) {
   insert_comment("function call end : %s", functionName);
 }
 
-void generate_cast(Node *node, int *labelCount) {
+void generate_cast(Node *node) {
   insert_comment("cast start");
 
   Type *source = node->lhs->type;
@@ -190,21 +190,21 @@ void generate_cast(Node *node, int *labelCount) {
   insert_comment("cast end");
 }
 
-void generate_assign_i64(Node *node) {
+void generate_assign_i64() {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov [rax], rdi\n");
   printf("  push rdi\n");
 }
 
-void generate_assign_i32(Node *node) {
+void generate_assign_i32() {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov DWORD PTR [rax], edi\n");
   printf("  push rdi\n");
 }
 
-void generate_assign_i8(Node *node) {
+void generate_assign_i8() {
   printf("  pop rdi\n");
   printf("  pop rax\n");
   printf("  mov BYTE PTR [rax], dil\n");
@@ -315,11 +315,11 @@ void generate_expression(Node *node, int *labelCount) {
     //  error("右辺を左辺と同じ型にキャストできない不正な代入です");
 
     if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8(node);
+      generate_assign_i8();
     else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i32(node);
+      generate_assign_i32();
     else if (lhsSize == 8 && rhsSize == 8)
-      generate_assign_i64(node);
+      generate_assign_i64();
     else
       error_at(node->source, "予期しない代入");
 
@@ -327,7 +327,7 @@ void generate_expression(Node *node, int *labelCount) {
     return;
   case NODE_CAST:
     generate_expression(node->lhs, labelCount);
-    generate_cast(node, labelCount);
+    generate_cast(node);
     return;
   case NODE_ADD:
   case NODE_SUB:
@@ -483,6 +483,8 @@ void generate_global_variable(const Variable *variable) {
       } else if (variable->type->kind == TYPE_INT) {
         printf("  .quad %d\n", variable->initialization->val);
         return;
+      } else {
+        error("指定された型のグローバル変数は初期化できません");
       }
     default:
       error("グローバル変数の初期化に失敗しました");
