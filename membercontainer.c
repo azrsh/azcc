@@ -16,8 +16,8 @@ MemberContainer *new_member_container() {
   return container;
 }
 
-Variable *member_container_get(MemberContainer *container, String name) {
-  return hash_table_find(container->table, &name);
+Variable *member_container_get(MemberContainer *container, const String *name) {
+  return hash_table_find(container->table, name);
 }
 
 bool member_container_push(MemberContainer *container, Variable *variable) {

@@ -7,9 +7,10 @@
 typedef struct Node Node;
 
 typedef enum {
-  VARIABLE_LOCAL,  // ローカル変数
-  VARIABLE_GLOBAL, // グローバル変数
-  VARIABLE_MEMBER  // メンバ変数
+  VARIABLE_LOCAL,      // ローカル変数
+  VARIABLE_GLOBAL,     // グローバル変数
+  VARIABLE_ENUMERATOR, // 列挙子
+  VARIABLE_MEMBER      // メンバ変数
 } VariableKind;
 
 typedef struct Variable Variable;

@@ -109,7 +109,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     }
     //存在確認はパーサが行う
     FunctionDeclaration *declaration = function_container_get(
-        context->functionContainer, *node->functionCall->name);
+        context->functionContainer, node->functionCall->name);
     if (vector_length(declaration->arguments) == 0)
       return;
     if (vector_length(declaration->arguments) != vector_length(argumentTypes))
@@ -182,7 +182,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     if (node->rhs->kind != NODE_VAR)
       error_at(node->source, "ドット演算子のオペランド型が不正です");
     node->rhs->variable = member_container_get(node->lhs->type->members,
-                                               *node->rhs->variable->name);
+                                               node->rhs->variable->name);
     tag_type_to_node(node->rhs, context);
     node->type = node->rhs->type;
     return;

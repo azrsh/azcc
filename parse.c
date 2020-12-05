@@ -401,8 +401,8 @@ Program *program() {
       FunctionDefinition *functionDefinition =
           function_definition(variableContainer);
       if (functionDefinition) {
-        FunctionDeclaration *declaration = function_container_get(
-            functionContainer, *functionDefinition->name);
+        FunctionDeclaration *declaration =
+            function_container_get(functionContainer, functionDefinition->name);
         if (declaration) {
           //宣言に引数がなければ引数チェックをスキップ
           if (vector_length(declaration->arguments) > 0) {
@@ -1370,7 +1370,7 @@ Node *postfix(VariableContainer *variableContainer) {
     //関数宣言との整合性の検証
     {
       FunctionDeclaration *declaration =
-          function_container_get(functionContainer, *identifier->string);
+          function_container_get(functionContainer, identifier->string);
       if (declaration)
         function->functionCall->type = declaration->returnType;
       else

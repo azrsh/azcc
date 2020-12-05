@@ -15,7 +15,7 @@ struct FunctionDeclaration {
 typedef struct FunctionContainer FunctionContainer;
 FunctionContainer *new_function_container();
 FunctionDeclaration *function_container_get(FunctionContainer *container,
-                                            String name);
+                                            const String *name);
 bool function_container_push(FunctionContainer *container,
                              FunctionDeclaration *declaration);
 

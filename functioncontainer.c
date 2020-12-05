@@ -13,8 +13,8 @@ FunctionContainer *new_function_container() {
 }
 
 FunctionDeclaration *function_container_get(FunctionContainer *container,
-                                            String name) {
-  return hash_table_find(container->table, &name);
+                                            const String *name) {
+  return hash_table_find(container->table, name);
 }
 
 bool function_container_push(FunctionContainer *container,

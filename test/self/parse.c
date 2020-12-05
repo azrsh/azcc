@@ -114,6 +114,12 @@ Variable *variable_to_global(Variable *variable, Node *initialization) {
   return variable;
 }
 
+Variable *variable_to_enumerator(Variable *variable, Node *initialization) {
+  variable->kind = VARIABLE_ENUMERATOR;
+  variable->initialization = initialization;
+  return variable;
+}
+
 Variable *variable_to_member(Variable *variable) {
   variable->kind = VARIABLE_MEMBER;
   return variable;
@@ -395,8 +401,8 @@ Program *program() {
       FunctionDefinition *functionDefinition =
           function_definition(variableContainer);
       if (functionDefinition) {
-        FunctionDeclaration *declaration = function_container_get(
-            functionContainer, *functionDefinition->name);
+        FunctionDeclaration *declaration =
+            function_container_get(functionContainer, functionDefinition->name);
         if (declaration) {
           //宣言に引数がなければ引数チェックをスキップ
           if (vector_length(declaration->arguments) > 0) {
@@ -442,7 +448,9 @@ Program *program() {
           Type *type = typeDefinition->type;
           if (type->kind == TYPE_STRUCT &&
               string_compare(structDefinition->name, type->name)) {
-            typeDefinition->type = structDefinition;
+            //既に使用した型指定子にも反映するため、メンバへの代入を行う
+            // typeDefinition->type->name = structDefinition->name;
+            typeDefinition->type->members = structDefinition->members;
             break;
           }
         }
@@ -1151,11 +1159,10 @@ Type *enum_specifier(VariableContainer *variableContainer) {
       Variable *variable =
           new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
       Variable *enumeratorVariable =
-          variable_to_global(variable, constantExpression);
+          variable_to_enumerator(variable, constantExpression);
       if (!variable_container_push(variableContainer, enumeratorVariable))
         error_at(constantExpression->source,
                  "列挙子と同名の識別子が既に定義されています");
-      vector_push_back(globalVariables, enumeratorVariable);
     } while (consume(","));
     expect("}");
   } else if (!variableContainer) {
@@ -1363,7 +1370,7 @@ Node *postfix(VariableContainer *variableContainer) {
     //関数宣言との整合性の検証
     {
       FunctionDeclaration *declaration =
-          function_container_get(functionContainer, *identifier->string);
+          function_container_get(functionContainer, identifier->string);
       if (declaration)
         function->functionCall->type = declaration->returnType;
       else
@@ -1423,7 +1430,12 @@ Node *primary(VariableContainer *variableContainer) {
 
   Token *identifier = consume_identifier();
   if (identifier) {
-    return new_node_variable(identifier, variableContainer);
+    Node *node = new_node_variable(identifier, variableContainer);
+    //列挙子の解決 ここでやるべきではない
+    if (node->variable->kind == VARIABLE_ENUMERATOR)
+      return node->variable->initialization;
+    else
+      return node;
   }
 
   //そうでなければリテラル
