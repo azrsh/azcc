@@ -566,7 +566,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  // switcH文のネスト情報の初期化
+  // switch文のネスト情報の初期化
   switchStatementNest = new_list_node(NULL);
 
   //
@@ -576,7 +576,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
 
   //新しいスコープの追加を外へ移動
 
-  //ブロック内の文をパ-ス
+  //ブロック内の文をパース
   ListNode head;
   head.next = NULL;
   ListNode *node = &head;
