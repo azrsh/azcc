@@ -11,7 +11,7 @@ bool start_with(const char *p, const char *q) {
 }
 
 // printfと同じ引数をとる
-void error(const char *fmt, ...) {
+void _Noreturn error(const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
@@ -27,7 +27,7 @@ const char *filename; // 入力ファイル名
 //
 // foo.c:10: x = y + + 5;
 //                   ^ 式ではありません
-void error_at(const char *location, const char *fmt, ...) {
+void _Noreturn error_at(const char *location, const char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
