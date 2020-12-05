@@ -1,4 +1,4 @@
-CFLAGS=-std=c11 -g -static -Wall
+CFLAGS=-std=c11 -g -static -Wall -Wextra
 
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
@@ -60,9 +60,8 @@ test/self/%.o: azcc test/self/%.c
 	./azcc test/self/$*.i > test/self/$*.s
 	$(CC) -c -o $@ test/self/$*.s
 
-self: $(TEST_SELF_OBJS)
 
-test/unit/ccaz1/%.out: self $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_TOOL_OBJS)) test/unit/%.c
+test/unit/ccaz1/%.out: $(TEST_SELF_OBJS) $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_TOOL_OBJS)) test/unit/%.c
 	./test/unit/rmlink.sh
 	$(CC) -c -I test/self -o test/unit/ccaz1/$*.o test/unit/$*.c
 	$(CC) -o $@ test/unit/ccaz1/$*.o $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS)
@@ -75,10 +74,25 @@ test/unit/az1cc/%.out: azcc $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS) test
 	$(CC) -o $@ test/unit/az1cc/$*.s $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS)
 	./test/unit/makelink.sh
 
+#self: $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS))
+#	$(CC) -o ./test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
+TEST_TARGET_NAMES=functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
+TEST_TARGETS=$(TEST_TARGET_NAMES:%.o=test/self/%.o)
+self: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
+	$(CC) -o ./test/self/azcc $(TEST_TARGETS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS)) $(LDFLAGS)
+
+test/functional/az2/%.out: self $(TEST_TOOL_OBJS) test/functional/%.c
+	cpp -I test/dummylib test/functional/$*.c > test/functional/az2/$*.i
+	./test/self/azcc test/functional/az2/$*.i > test/functional/az2/$*.s
+	$(CC) -o $@ test/functional/az2/$*.s $(TEST_TOOL_OBJS)
+
 test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_CCAZ1_TESTS)
 	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
 
-test2: test test-unit2
+test-functional2: $(FUNCTIONAL_AZ2_TESTS)
+	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
+
+test2: test test-unit2 test-functional2
 
 
 # Others
