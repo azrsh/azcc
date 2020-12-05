@@ -2,8 +2,7 @@
 #include <stdio.h>
 
 typedef enum { TEST_A, TEST_B } TestKind;
-
-int main() {
+void test1() {
   TestKind kind = TEST_A;
   switch (kind) {
   case TEST_A:
@@ -25,5 +24,20 @@ int main() {
   }
 
   printf("OK\n");
+}
+
+enum A { B, C };
+int test2sub() {
+  enum A b;
+  return 174;
+}
+void test2() {
+  assert(174, test2sub(), "emum A b;");
+  printf("OK\n");
+}
+
+int main() {
+  test1();
+  test2();
   return 0;
 }

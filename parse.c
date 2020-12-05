@@ -22,6 +22,7 @@ int currentOffset;
 Vector *globalVariables; // Variable vector
 Vector *stringLiterals;  // String vector
 Vector *structs;         // Type vector
+Vector *enums;           // Type vector
 Vector *typedefs;        // Typedef vector
 FunctionContainer *functionContainer;
 
@@ -281,17 +282,21 @@ function_definition_to_declaration(FunctionDefinition *definition) {
 
 // EBNFパーサ
 Program *program();
-FunctionDeclaration *function_declaration(VariableContainer *variableContainer);
+FunctionDeclaration *function_declaration(Type *returnType,
+                                          VariableContainer *variableContainer);
 Vector *function_declaration_argument(VariableContainer *variableContainer);
-FunctionDefinition *function_definition(VariableContainer *variableContainer);
+FunctionDefinition *function_definition(Type *returnType,
+                                        VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
-Variable *global_variable_declaration(VariableContainer *variableContainer);
-Type *struct_definition(VariableContainer *variableContainer);
+Variable *global_variable_declaration(bool isExtern, Type *type,
+                                      VariableContainer *variableContainer);
 Typedef *type_definition(VariableContainer *variableContainer);
-Node *variable_definition(VariableContainer *variableContainer);
+Node *variable_definition(Type *type, VariableContainer *variableContainer);
 Type *type_specifier(VariableContainer *variableContainer);
 Type *enum_specifier(VariableContainer *variableContainer);
-Variable *variable_declaration(VariableContainer *variableContainer);
+Type *struct_specifier(VariableContainer *variableContainer);
+Variable *variable_declaration(Type *type,
+                               VariableContainer *variableContainer);
 
 StatementUnion *statement(VariableContainer *variableContainer);
 NullStatement *null_statement(VariableContainer *variableContainer);
@@ -322,7 +327,7 @@ Vector *function_call_argument(VariableContainer *variableContainer);
 Node *literal();
 
 // program = (function_definition | global_variable_definition |
-// struct_definition)*
+// function_declaration | type_specifier ";")*
 // function_declaration = type_specifier identity "("
 // function_declaration_argument? ")" ";"
 // function_declaration_argument = type_specifier identifier? (","
@@ -384,80 +389,67 @@ Program *program() {
   globalVariables = result->globalVariables;
   stringLiterals = result->stringLiterals;
   structs = new_vector(16);
+  enums = new_vector(16);
   typedefs = new_vector(16);
   functionContainer = new_function_container();
 
   while (!at_eof()) {
-    {
-      FunctionDeclaration *functionDeclaration =
-          function_declaration(variableContainer);
-      if (functionDeclaration) {
-        function_container_push(functionContainer, functionDeclaration);
-        continue;
+    //先頭に型指定子がつくもの
+    bool isExtern = consume("extern");
+    Type *type = type_specifier(variableContainer);
+    if (type) {
+      {
+        FunctionDeclaration *functionDeclaration =
+            function_declaration(type, variableContainer);
+        if (functionDeclaration) {
+          function_container_push(functionContainer, functionDeclaration);
+          continue;
+        }
       }
-    }
 
-    {
-      FunctionDefinition *functionDefinition =
-          function_definition(variableContainer);
-      if (functionDefinition) {
-        FunctionDeclaration *declaration =
-            function_container_get(functionContainer, functionDefinition->name);
-        if (declaration) {
-          //宣言に引数がなければ引数チェックをスキップ
-          if (vector_length(declaration->arguments) > 0) {
-            // 関数定義の引数をTypeのvectorに変換
-            Vector *definitionArguments = new_vector(16);
-            for (int i = 0; i < vector_length(functionDefinition->arguments);
-                 i++) {
-              Node *node = vector_get(functionDefinition->arguments, i);
-              Variable *variable = node->variable;
-              vector_push_back(definitionArguments, variable->type);
+      {
+        FunctionDefinition *functionDefinition =
+            function_definition(type, variableContainer);
+        if (functionDefinition) {
+          FunctionDeclaration *declaration = function_container_get(
+              functionContainer, functionDefinition->name);
+          if (declaration) {
+            //宣言に引数がなければ引数チェックをスキップ
+            if (vector_length(declaration->arguments) > 0) {
+              // 関数定義の引数をTypeのvectorに変換
+              Vector *definitionArguments = new_vector(16);
+              for (int i = 0; i < vector_length(functionDefinition->arguments);
+                   i++) {
+                Node *node = vector_get(functionDefinition->arguments, i);
+                Variable *variable = node->variable;
+                vector_push_back(definitionArguments, variable->type);
+              }
+
+              if (!type_vector_compare(declaration->arguments,
+                                       definitionArguments))
+                error("関数の定義と前方宣言の引数が一致しません");
             }
-
-            if (!type_vector_compare(declaration->arguments,
-                                     definitionArguments))
-              error("関数の定義と前方宣言の引数が一致しません");
+          } else {
+            FunctionDeclaration *declaration =
+                function_definition_to_declaration(functionDefinition);
+            function_container_push(functionContainer, declaration);
           }
-        } else {
-          FunctionDeclaration *declaration =
-              function_definition_to_declaration(functionDefinition);
-          function_container_push(functionContainer, declaration);
+          vector_push_back(result->functionDefinitions, functionDefinition);
+          continue;
         }
-        vector_push_back(result->functionDefinitions, functionDefinition);
-        continue;
       }
-    }
 
-    {
-      if (global_variable_declaration(variableContainer))
-        continue;
-    }
-
-    {
-      Type *structDefinition = struct_definition(variableContainer);
-      if (structDefinition) {
-        // typedefの解決
-        for (int i = 0; i < vector_length(typedefs); i++) {
-          Typedef *typeDefinition = vector_get(typedefs, i);
-          // Type parent;
-          // parent.base = typeDefinition->type;
-          // Type *type = &parent;
-          // while (type->base->base)
-          //  type = type->base;
-          Type *type = typeDefinition->type;
-          if (type->kind == TYPE_STRUCT &&
-              string_compare(structDefinition->name, type->name)) {
-            //既に使用した型指定子にも反映するため、メンバへの代入を行う
-            // typeDefinition->type->name = structDefinition->name;
-            typeDefinition->type->members = structDefinition->members;
-            break;
-          }
-        }
-
-        vector_push_back(structs, structDefinition);
-        continue;
+      {
+        if (global_variable_declaration(isExtern, type, variableContainer))
+          continue;
       }
+
+      {
+        if (type && consume(";"))
+          continue;
+      }
+
+      error_at(token->string->head, "型指定子のあとに続くトークンが不正です");
     }
 
     {
@@ -468,12 +460,6 @@ Program *program() {
       }
     }
 
-    {
-      Type *type = type_specifier(variableContainer);
-      if (type && consume(";"))
-        continue;
-    }
-
     error_at(token->string->head, "認識できない構文です");
   }
 
@@ -481,13 +467,8 @@ Program *program() {
 }
 
 FunctionDeclaration *
-function_declaration(VariableContainer *variableContainer) {
+function_declaration(Type *type, VariableContainer *variableContainer) {
   Token *tokenHead = token;
-
-  Type *type = type_specifier(variableContainer);
-  if (!type) {
-    return NULL;
-  }
 
   Token *identifier = consume_identifier();
   if (!identifier) {
@@ -535,13 +516,9 @@ Vector *function_declaration_argument(VariableContainer *variableContainer) {
 ListNode *switchStatementNest; //引数に押し込みたい
 
 //関数の定義をパースする
-FunctionDefinition *function_definition(VariableContainer *variableContainer) {
+FunctionDefinition *function_definition(Type *type,
+                                        VariableContainer *variableContainer) {
   Token *tokenHead = token;
-
-  Type *type = type_specifier(variableContainer);
-  if (!type) {
-    return NULL;
-  }
 
   Token *identifier = consume_identifier();
   if (!identifier) {
@@ -616,7 +593,10 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
 
   do {
     Token *source = token;
-    Variable *declaration = variable_declaration(variableContainer);
+    Type *type = type_specifier(variableContainer);
+    if (!type)
+      error_at(source->string->head, "関数定義の引数の宣言が不正です");
+    Variable *declaration = variable_declaration(type, variableContainer);
     if (!declaration)
       error_at(source->string->head, "関数定義の引数の宣言が不正です");
 
@@ -630,12 +610,11 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
   return arguments;
 }
 
-Variable *global_variable_declaration(VariableContainer *variableContainer) {
+Variable *global_variable_declaration(bool isExtern, Type *type,
+                                      VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  bool isExtern = consume("extern");
-
-  Variable *declaration = variable_declaration(variableContainer);
+  Variable *declaration = variable_declaration(type, variableContainer);
   if (!declaration)
     return NULL;
 
@@ -659,48 +638,6 @@ Variable *global_variable_declaration(VariableContainer *variableContainer) {
   return globalVariable;
 }
 
-Type *struct_definition(VariableContainer *variavbelContainer) {
-  Token *tokenHead = token;
-
-  if (!consume("struct")) {
-    return NULL;
-  }
-
-  Token *identifier = consume_identifier();
-  if (!identifier) {
-    token = tokenHead;
-    return NULL;
-  }
-
-  Type *result = new_type(TYPE_STRUCT);
-  result->kind = TYPE_STRUCT;
-  result->name = identifier->string;
-  result->members = new_member_container();
-  int memberOffset = 0;
-  if (consume("{")) {
-    while (!consume("}")) {
-      Variable *member = variable_declaration(variavbelContainer);
-      if (!member)
-        error_at(token->string->head, "サポートされていない構文です");
-
-      member->kind = VARIABLE_LOCAL;
-      size_t memberAlignment = type_to_align(member->type);
-      memberOffset +=
-          (memberAlignment - memberOffset % memberAlignment) % memberAlignment;
-      member->offset = memberOffset;
-      memberOffset += type_to_size(member->type);
-
-      if (!member_container_push(result->members, member))
-        error(member->name->head, "同名のメンバが既に定義されています");
-      expect(";");
-    }
-  }
-
-  expect(";");
-
-  return result;
-}
-
 Typedef *type_definition(VariableContainer *variableContainer) {
   if (!consume("typedef")) {
     return NULL;
@@ -722,13 +659,9 @@ Typedef *type_definition(VariableContainer *variableContainer) {
   return result;
 }
 
-Variable *variable_declaration(VariableContainer *variableContainer) {
+Variable *variable_declaration(Type *type,
+                               VariableContainer *variableContainer) {
   Token *tokenHead = token;
-
-  Type *type = type_specifier(variableContainer);
-  if (!type) {
-    return NULL;
-  }
 
   Token *identifier = consume_identifier();
   if (!identifier) {
@@ -1024,20 +957,24 @@ ContinueStatement *continue_statement(VariableContainer *variableContainer) {
 
 //式をパースする
 Node *expression(VariableContainer *variableContainer) {
-  Node *node = variable_definition(variableContainer);
-  if (node) {
+  Node *node = NULL;
+
+  Type *type = type_specifier(variableContainer);
+  if (type)
+    node = variable_definition(type, variableContainer);
+
+  if (node)
     return node;
-  }
 
   node = assign(variableContainer);
   return node;
 }
 
 // 変数定義をパースする
-Node *variable_definition(VariableContainer *variableContainer) {
+Node *variable_definition(Type *type, VariableContainer *variableContainer) {
   Token *tokenHead = token;
 
-  Variable *variable = variable_declaration(variableContainer);
+  Variable *variable = variable_declaration(type, variableContainer);
   if (!variable)
     return NULL;
 
@@ -1104,35 +1041,21 @@ Type *type_specifier(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  if (consume("struct")) {
-    Token *identifier = consume_identifier();
-    if (!identifier) {
-      token = tokenHead;
-      return NULL;
-    }
-
-    for (int i = 0; i < vector_length(structs); i++) {
-      Type *type = vector_get(structs, i);
-      if (string_compare(identifier->string, type->name)) {
-        Token *head = token;
-        while (consume("*"))
-          ;
-        return wrap_by_pointer(type, head);
-      }
-    }
-
-    //未定義の構造体
-    Type *type = new_type(TYPE_STRUCT);
-    type->name = identifier->string;
+  Type *structType = struct_specifier(variableContainer);
+  if (structType) {
     Token *head = token;
     while (consume("*"))
       ;
-    return wrap_by_pointer(type, head);
+    return wrap_by_pointer(structType, head);
   }
 
   Type *enumType = enum_specifier(variableContainer);
-  if (enumType)
-    return enumType;
+  if (enumType) {
+    Token *head = token;
+    while (consume("*"))
+      ;
+    return wrap_by_pointer(enumType, head);
+  }
 
   token = tokenHead;
   return NULL;
@@ -1146,11 +1069,28 @@ Type *enum_specifier(VariableContainer *variableContainer) {
 
   Token *identifier = consume_identifier();
 
-  Type *type = new_type(TYPE_ENUM);
-  if (identifier)
-    type->name = identifier->string;
+  Type *result = NULL;
 
-  if (variableContainer && consume("{")) {
+  // 宣言済み構造体の解決
+  if (identifier) {
+    for (int i = 0; i < vector_length(structs); i++) {
+      Type *type = vector_get(structs, i);
+      if (type->kind == TYPE_ENUM &&
+          string_compare(identifier->string, type->name)) {
+        result = type;
+        break;
+      }
+    }
+  }
+
+  if (!result) {
+    result = new_type(TYPE_ENUM);
+    if (identifier)
+      result->name = identifier->string;
+    vector_push_back(enums, result);
+  }
+
+  if (consume("{")) {
     int count = 0;
     do {
       Token *enumeratorIdentifier = consume_identifier();
@@ -1175,15 +1115,72 @@ Type *enum_specifier(VariableContainer *variableContainer) {
                  string_to_char(enumeratorIdentifier->string));
     } while (consume(","));
     expect("}");
-  } else if (!variableContainer) {
-    error_at(tokenHead->string->head,
-             "関数の戻り値への無名列挙体の指定はサポートされていません");
   } else if (!identifier) {
     error_at(tokenHead->string->head,
              "列挙体の名称または列挙子を指定してください");
   }
 
-  return type;
+  return result;
+}
+
+Type *struct_specifier(VariableContainer *variableContainer) {
+  Token *tokenHead = token;
+
+  if (!consume("struct"))
+    return NULL;
+
+  Type *result = NULL;
+
+  Token *identifier = consume_identifier();
+
+  // 宣言済み構造体の解決
+  if (identifier) {
+    for (int i = 0; i < vector_length(structs); i++) {
+      Type *type = vector_get(structs, i);
+      if (type->kind == TYPE_STRUCT &&
+          string_compare(identifier->string, type->name)) {
+        result = type;
+        break;
+      }
+    }
+  }
+
+  // 解決できなければ生成
+  if (!result) {
+    result = new_type(TYPE_STRUCT);
+    if (identifier)
+      result->name = identifier->string;
+    result->members = new_member_container();
+    vector_push_back(structs, result);
+  }
+
+  if (consume("{")) {
+    int memberOffset = 0;
+    while (!consume("}")) {
+      Type *type = type_specifier(variableContainer);
+      if (!type)
+        error_at(token->string->head, "構造体のメンバの定義が不正です");
+      Variable *member = variable_declaration(type, variableContainer);
+      if (!member)
+        error_at(token->string->head, "構造体のメンバの定義が不正です");
+
+      member->kind = VARIABLE_LOCAL;
+      size_t memberAlignment = type_to_align(member->type);
+      memberOffset +=
+          (memberAlignment - memberOffset % memberAlignment) % memberAlignment;
+      member->offset = memberOffset;
+      memberOffset += type_to_size(member->type);
+
+      if (!member_container_push(result->members, member))
+        error(member->name->head, "同名のメンバが既に定義されています");
+      expect(";");
+    }
+  } else if (!identifier) {
+    error_at(token->string->head,
+             "無名構造体を定義なしで使用することはできません");
+  }
+
+  return result;
 }
 
 //代入をパースする
