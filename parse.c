@@ -246,11 +246,11 @@ Node *new_node_function_call(Token *token) {
   return node;
 }
 
-FunctionDeclaration *new_function_declaration(Type *type, String name,
+FunctionDeclaration *new_function_declaration(Type *type, const String *name,
                                               Vector *arguments) {
   FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
   result->returnType = type;
-  result->name = new_string(name.head, name.length);
+  result->name = new_string(name->head, name->length);
   result->arguments = arguments;
   return result;
 }
@@ -269,7 +269,7 @@ function_definition_to_declaration(FunctionDefinition *definition) {
     vector_push_back(arguments, variable->type);
   }
 
-  return new_function_declaration(definition->returnType, *definition->name,
+  return new_function_declaration(definition->returnType, definition->name,
                                   arguments);
 }
 
@@ -500,7 +500,7 @@ function_declaration(VariableContainer *variableContainer) {
   }
 
   FunctionDeclaration *result =
-      new_function_declaration(type, *identifier->string, arguments);
+      new_function_declaration(type, identifier->string, arguments);
   return result;
 }
 
