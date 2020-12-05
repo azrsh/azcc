@@ -5,4 +5,5 @@ tmp*
 *.s
 *.out
 azcc
+test/hsjoihs_tmp/*.c
 
