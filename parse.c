@@ -674,6 +674,9 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
   if (consume("{")) {
     while (!consume("}")) {
       Variable *member = variable_declaration(variavbelContainer);
+      if (!member)
+        error_at(token->string->head, "サポートされていない構文です");
+
       member->kind = VARIABLE_LOCAL;
       size_t memberAlignment = type_to_align(member->type);
       memberOffset +=
