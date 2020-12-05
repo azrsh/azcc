@@ -62,10 +62,10 @@ test/self/%.o: azcc test/self/%.c
 
 self: $(TEST_SELF_OBJS)
 
-test/unit/ccaz1/%.out: self $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(TEST_TOOL_OBJS) test/unit/%.c
+test/unit/ccaz1/%.out: self $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_TOOL_OBJS)) test/unit/%.c
 	./test/unit/rmlink.sh
 	$(CC) -c -I test/self -o test/unit/ccaz1/$*.o test/unit/$*.c
-	$(CC) -o $@ test/unit/ccaz1/$*.o $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(TEST_SELF_OBJS) $(TEST_TOOL_OBJS)
+	$(CC) -o $@ test/unit/ccaz1/$*.o $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS)
 	./test/unit/makelink.sh
 
 test/unit/az1cc/%.out: azcc $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS) test/unit/%.c
