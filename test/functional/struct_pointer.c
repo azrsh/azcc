@@ -1,5 +1,6 @@
-int assert(int, int, char *);
-int printf();
+#include "testtool.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 struct TupleIntInt {
   int a;
@@ -234,6 +235,19 @@ int test13() {
   struct TupleCharChar *ptr2 = &instance1;
 }*/
 
+struct TestCompound *test15sub() {
+  struct TestCompound *result = calloc(1, sizeof(struct TestCompound));
+  result->a = calloc(1, sizeof(struct TupleIntInt));
+  result->b = calloc(1, sizeof(struct TupleCharChar));
+  return result;
+}
+void test15() {
+  int a1 = test15sub()->a->a;
+  int b1 = test15sub()->a->b;
+  char a2 = test15sub()->b->a;
+  char b2 = test15sub()->b->b;
+}
+
 int main() {
   test1();
   test2();
@@ -248,6 +262,8 @@ int main() {
   test11();
   test12();
   test13();
+  // test14();
+  test15();
   printf("OK\n");
   return 0;
 }

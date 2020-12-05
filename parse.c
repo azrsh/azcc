@@ -1342,36 +1342,43 @@ Node *unary(VariableContainer *variableContainer) {
 //変数、関数呼び出し、添字付の配列
 Node *postfix(VariableContainer *variableContainer) {
   Token *head = token;
+
+  //----postfixが連続するときの先頭は関数呼び出しかprimary--------
+  Node *node = NULL;
+
   Token *identifier = consume_identifier();
-  if (identifier) {
-    if (consume("(")) {
-      Vector *arguments; // Node vector
-      if (consume(")")) {
-        arguments = new_vector(0);
-      } else {
-        arguments = function_call_argument(variableContainer);
-        expect(")");
-      }
-
-      Node *function = new_node_function_call(identifier);
-
-      //関数宣言との整合性の検証
-      {
-        FunctionDeclaration *declaration =
-            function_container_get(functionContainer, *identifier->string);
-        if (declaration)
-          function->functionCall->type = declaration->returnType;
-        else
-          error_at(identifier->string->head, "関数宣言がみつかりません");
-
-        function->functionCall->arguments = arguments;
-      }
-      return function;
+  if (identifier && consume("(")) {
+    Vector *arguments; // Node vector
+    if (consume(")")) {
+      arguments = new_vector(0);
+    } else {
+      arguments = function_call_argument(variableContainer);
+      expect(")");
     }
-  }
-  token = head;
 
-  Node *node = primary(variableContainer);
+    Node *function = new_node_function_call(identifier);
+
+    //関数宣言との整合性の検証
+    {
+      FunctionDeclaration *declaration =
+          function_container_get(functionContainer, *identifier->string);
+      if (declaration)
+        function->functionCall->type = declaration->returnType;
+      else
+        error_at(identifier->string->head, "関数宣言がみつかりません");
+
+      function->functionCall->arguments = arguments;
+    }
+    node = function;
+
+  } else
+    token = head;
+
+  if (!node)
+    node = primary(variableContainer);
+
+  //--------------
+
   for (;;) {
     if (consume("[")) {
       //配列の添字をポインタ演算に置き換え
