@@ -248,6 +248,21 @@ void test15() {
   char b2 = test15sub()->b->b;
 }
 
+typedef struct Node Node;
+struct Node {
+  Node *lhs;
+  Node *rhs;
+};
+void test16() {
+  Node *node = calloc(1, sizeof(Node));
+  node->lhs = calloc(1, sizeof(Node));
+  node->lhs->lhs = calloc(1, sizeof(Node));
+  node->lhs->rhs = calloc(1, sizeof(Node));
+  node->rhs = calloc(1, sizeof(Node));
+  node->rhs->lhs = calloc(1, sizeof(Node));
+  node->rhs->rhs = calloc(1, sizeof(Node));
+}
+
 int main() {
   test1();
   test2();
@@ -264,6 +279,7 @@ int main() {
   test13();
   // test14();
   test15();
+  test16();
   printf("OK\n");
   return 0;
 }

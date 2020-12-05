@@ -448,7 +448,9 @@ Program *program() {
           Type *type = typeDefinition->type;
           if (type->kind == TYPE_STRUCT &&
               string_compare(structDefinition->name, type->name)) {
-            typeDefinition->type = structDefinition;
+            //既に使用した型指定子にも反映するため、メンバへの代入を行う
+            // typeDefinition->type->name = structDefinition->name;
+            typeDefinition->type->members = structDefinition->members;
             break;
           }
         }
