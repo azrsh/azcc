@@ -775,7 +775,7 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   printf("%s:\n", functionName);
 
   //プロローグ
-  //変数26個分の領域を確保
+  //定義された変数の分の領域を確保
   insert_comment("function prologue start : %s", functionName);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
