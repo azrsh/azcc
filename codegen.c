@@ -329,6 +329,40 @@ void generate_expression(Node *node, int *labelCount) {
     generate_expression(node->lhs, labelCount);
     generate_cast(node);
     return;
+  case NODE_LAND:
+    insert_comment("logic and start");
+    int landLabel = *labelCount;
+    *labelCount += 1;
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je .Lendland%d\n", landLabel);
+    generate_expression(node->rhs, labelCount);
+    printf("  pop rax\n");
+    printf(".Lendland%d:\n", landLabel);
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    printf("  push rax\n");
+    insert_comment("logic and end");
+    return;
+  case NODE_LOR:
+    insert_comment("logic or start");
+    int lorLabel = *labelCount;
+    *labelCount += 1;
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  jne .Lendlor%d\n", lorLabel);
+    generate_expression(node->rhs, labelCount);
+    printf("  pop rax\n");
+    printf(".Lendlor%d:\n", lorLabel);
+    printf("  cmp rax, 0\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    printf("  push rax\n");
+    insert_comment("logic or end");
+    return;
   case NODE_ADD:
   case NODE_SUB:
   case NODE_MUL:
@@ -338,8 +372,6 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_NE:
   case NODE_LT:
   case NODE_LE:
-  case NODE_LAND:
-  case NODE_LOR:
     break; //次のswitch文で判定する
   }
 
@@ -422,21 +454,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  movzb rax, al\n");
     break;
   case NODE_LAND:
-    insert_comment("logic and start");
-    printf("  and rax, rdi\n");
-    printf("  cmp rax, 0\n");
-    printf("  setne al\n");
-    printf("  movzb rax, al\n");
-    insert_comment("logic and end");
-    break;
   case NODE_LOR:
-    insert_comment("logic or start");
-    printf("  or rax, rdi\n");
-    printf("  cmp rax, 0\n");
-    printf("  setne al\n");
-    printf("  movzb rax, al\n");
-    insert_comment("logic or end");
-    break;
   case NODE_LNOT:
   case NODE_REF:
   case NODE_DEREF:

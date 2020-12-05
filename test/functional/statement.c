@@ -207,6 +207,16 @@ void test15() {
   assert(1, 1, "expected pass");
 }
 
+int test16sub() {
+  int a;
+  a = 0;
+  do {
+    a += 1;
+  } while (a && a < 174);
+  return a;
+}
+void test16() { assert(174, test16sub(), "{int a = 0; do { a+=1; }while(a && a < 174) return a}"); }
+
 int main() {
   test1();
   test2();
@@ -223,6 +233,7 @@ int main() {
   test13();
   test14();
   test15();
+  test16();
   printf("OK\n");
   return 0;
 }
