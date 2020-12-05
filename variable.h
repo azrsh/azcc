@@ -14,9 +14,9 @@ typedef enum {
 
 typedef struct Variable Variable;
 struct Variable {
-  String name;       //名前
-  Type *type;        //型
-  VariableKind kind; //変数の種類
+  const String *name; //名前
+  Type *type;         //型
+  VariableKind kind;  //変数の種類
   int offset; // RBPからのオフセット、ローカル変数でのみ使用
   Node *initialization; // 初期化式、グローバル変数でのみ使用
 };

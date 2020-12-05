@@ -39,7 +39,7 @@ void generate_variable(Node *node) {
     error_at(node->source, "変数ではありません");
 
   const Variable *variable = node->variable;
-  const char *name = string_to_char(&variable->name);
+  const char *name = string_to_char(variable->name);
   switch (variable->kind) {
   case VARIABLE_LOCAL:
     printf("  lea rax, [rbp-%d]\n", variable->offset);
@@ -463,7 +463,7 @@ void generate_global_variable(const Variable *variable) {
   if (variable->kind != VARIABLE_GLOBAL)
     error("グローバル変数ではありません");
 
-  const char *name = string_to_char(&variable->name);
+  const char *name = string_to_char(variable->name);
   const size_t typeSize = type_to_stack_size(
       variable
           ->type); //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる

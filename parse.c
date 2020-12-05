@@ -97,7 +97,7 @@ Token *expect_identifier() {
 Variable *new_variable(Type *type, String name) {
   Variable *variable = calloc(1, sizeof(Variable));
   variable->type = type;
-  variable->name = name;
+  variable->name = new_string(name.head, name.length);
   return variable;
 }
 
@@ -202,7 +202,7 @@ Node *new_node_variable_definition(Variable *variable,
 
   Variable *localVariable = variable_to_local(variable);
   if (!variable_container_push(variableContainer, localVariable))
-    error_at(variable->name.head, "同名の変数が既に定義されています");
+    error_at(variable->name->head, "同名の変数が既に定義されています");
 
   node->variable = localVariable;
   node->source = source->string->head;
@@ -675,7 +675,7 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
       memberOffset += type_to_size(member->type);
 
       if (!member_container_push(result->members, member))
-        error(member->name.head, "同名のメンバが既に定義されています");
+        error(member->name->head, "同名のメンバが既に定義されています");
       expect(";");
     }
   }

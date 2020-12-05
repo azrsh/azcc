@@ -27,11 +27,11 @@ Variable *variable_container_get(VariableContainer *container, String name) {
 
 bool variable_container_push(VariableContainer *container, Variable *variable) {
   HashTable *localTable = container->tableHead->body;
-  bool isExist = hash_table_contain(localTable, &variable->name);
+  bool isExist = hash_table_contain(localTable, variable->name);
   if (isExist)
     return false;
 
-  hash_table_store(localTable, &variable->name, variable);
+  hash_table_store(localTable, variable->name, variable);
   container->stackSize += type_to_stack_size(variable->type);
   return true;
 }
