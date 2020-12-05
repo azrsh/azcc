@@ -468,6 +468,12 @@ Program *program() {
       }
     }
 
+    {
+      Type *type = type_specifier(variableContainer);
+      if (type && consume(";"))
+        continue;
+    }
+
     error_at(token->string->head, "認識できない構文です");
   }
 
@@ -1164,8 +1170,9 @@ Type *enum_specifier(VariableContainer *variableContainer) {
       Variable *enumeratorVariable =
           variable_to_enumerator(variable, constantExpression);
       if (!variable_container_push(variableContainer, enumeratorVariable))
-        error_at(constantExpression->source,
-                 "列挙子と同名の識別子が既に定義されています");
+        error_at(enumeratorIdentifier->string->head,
+                 "列挙子%sと同名の識別子が既に定義されています",
+                 string_to_char(enumeratorIdentifier->string));
     } while (consume(","));
     expect("}");
   } else if (!variableContainer) {

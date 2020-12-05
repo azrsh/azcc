@@ -468,6 +468,12 @@ Program *program() {
       }
     }
 
+    {
+      Type *type = type_specifier(variableContainer);
+      if (type && consume(";"))
+        continue;
+    }
+
     error_at(token->string->head, "認識できない構文です");
   }
 
@@ -566,7 +572,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  // switcH文のネスト情報の初期化
+  // switch文のネスト情報の初期化
   switchStatementNest = new_list_node(NULL);
 
   //
@@ -576,7 +582,7 @@ FunctionDefinition *function_definition(VariableContainer *variableContainer) {
 
   //新しいスコープの追加を外へ移動
 
-  //ブロック内の文をパ-ス
+  //ブロック内の文をパース
   ListNode head;
   head.next = NULL;
   ListNode *node = &head;
@@ -674,6 +680,9 @@ Type *struct_definition(VariableContainer *variavbelContainer) {
   if (consume("{")) {
     while (!consume("}")) {
       Variable *member = variable_declaration(variavbelContainer);
+      if (!member)
+        error_at(token->string->head, "サポートされていない構文です");
+
       member->kind = VARIABLE_LOCAL;
       size_t memberAlignment = type_to_align(member->type);
       memberOffset +=
@@ -1161,8 +1170,9 @@ Type *enum_specifier(VariableContainer *variableContainer) {
       Variable *enumeratorVariable =
           variable_to_enumerator(variable, constantExpression);
       if (!variable_container_push(variableContainer, enumeratorVariable))
-        error_at(constantExpression->source,
-                 "列挙子と同名の識別子が既に定義されています");
+        error_at(enumeratorIdentifier->string->head,
+                 "列挙子%sと同名の識別子が既に定義されています",
+                 string_to_char(enumeratorIdentifier->string));
     } while (consume(","));
     expect("}");
   } else if (!variableContainer) {
