@@ -127,6 +127,17 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         continue;
       }
 
+      // 0をNULL扱いすべきか検証する
+      {
+        Node *argument = vector_get(arguments, i);
+        bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
+                      argument->val == 0;
+        if (isNull) {
+          vector_set(arguments, i, new_node_cast(type1, argument));
+          continue;
+        }
+      }
+
       error_at(node->source,
                "関数の呼び出しと前方宣言の引数の型が一致しません");
     }
