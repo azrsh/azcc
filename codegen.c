@@ -50,6 +50,7 @@ void generate_variable(Node *node) {
     printf("  push rax\n");
     return;
   case VARIABLE_MEMBER:
+  case VARIABLE_ENUMERATOR:
     error_at(node->source, "予期しない種類の変数です");
     return;
   }
@@ -544,7 +545,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         Node *constantExpression = labeled->constantExpression;
         if (constantExpression) { // caseラベルの場合
           int value;
-          if (constantExpression->kind == NODE_NUM)
+          if (constantExpression->kind == NODE_NUM ||
+              constantExpression->kind == NODE_CHAR)
             value = constantExpression->val;
           else if (constantExpression->kind == NODE_VAR &&
                    constantExpression->variable->kind == VARIABLE_GLOBAL &&
@@ -577,7 +579,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       {
         Node *constantExpression = labeledPattern->constantExpression;
         int value;
-        if (constantExpression->kind == NODE_NUM)
+        if (constantExpression->kind == NODE_NUM ||
+            constantExpression->kind == NODE_CHAR)
           value = constantExpression->val;
         else if (constantExpression->kind == NODE_VAR &&
                  constantExpression->variable->kind == VARIABLE_GLOBAL &&
