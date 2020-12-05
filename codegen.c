@@ -657,13 +657,13 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       generate_statement(doWhilePattern->statement, labelCount, loopLabel,
                          latestSwitch);
 
+      printf(".Lcontinueloop%d:\n", loopLabel);
       generate_expression(doWhilePattern->condition, labelCount);
       generate_value_extension(doWhilePattern->condition);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
       printf("  je .Lend%d\n", loopLabel);
 
-      printf(".Lcontinueloop%d:\n", loopLabel);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
       printf(".Lend%d:\n", loopLabel);

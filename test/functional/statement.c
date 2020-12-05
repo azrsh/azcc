@@ -215,7 +215,30 @@ int test16sub() {
   } while (a && a < 174);
   return a;
 }
-void test16() { assert(174, test16sub(), "{int a = 0; do { a+=1; }while(a && a < 174) return a}"); }
+void test16() {
+  assert(174, test16sub(),
+         "{int a = 0; do { a+=1; }while(a && a < 174) return a}");
+}
+
+int test17sub() {
+  int a;
+  int b;
+  a = 0;
+  b = 0;
+  do {
+    a -= 1;
+    b += a;
+    if (a)
+      continue;
+    break;
+    a += 100;
+  } while (a + 3);
+  return -a;
+}
+void test17() {
+  assert(3, test17sub(),
+         "{int a; int b; a =0; b=0; do{a-=1;b+=a;if(a)continue;break;... ");
+}
 
 int main() {
   test1();
@@ -234,6 +257,7 @@ int main() {
   test14();
   test15();
   test16();
+  test17();
   printf("OK\n");
   return 0;
 }
