@@ -362,9 +362,12 @@ void tag_type_to_statement(StatementUnion *statementUnion,
   {
     ForStatement *forPattern = statement_union_take_for(statementUnion);
     if (forPattern) {
-      tag_type_to_node(forPattern->initialization, context);
-      tag_type_to_node(forPattern->condition, context);
-      tag_type_to_node(forPattern->afterthought, context);
+      if (forPattern->initialization)
+        tag_type_to_node(forPattern->initialization, context);
+      if (forPattern->condition)
+        tag_type_to_node(forPattern->condition, context);
+      if (forPattern->afterthought)
+        tag_type_to_node(forPattern->afterthought, context);
       tag_type_to_statement(forPattern->statement, context);
       return;
     }

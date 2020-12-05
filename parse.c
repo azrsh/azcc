@@ -12,7 +12,6 @@
 #include "variablecontainer.h"
 #include <assert.h>
 #include <ctype.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -945,13 +944,18 @@ ForStatement *for_statement(VariableContainer *variableContainer) {
       variable_container_push_table(variableContainer, new_hash_table());
 
   ForStatement *result = calloc(1, sizeof(ForStatement));
-  result->initialization = expression(variableContainer);
-  expect(";");
-  result->condition = expression(variableContainer);
-  expect(";");
-  result->afterthought = expression(variableContainer);
-
-  expect(")");
+  if (!consume(";")) {
+    result->initialization = expression(variableContainer);
+    expect(";");
+  }
+  if (!consume(";")) {
+    result->condition = expression(variableContainer);
+    expect(";");
+  }
+  if (!consume(")")) {
+    result->afterthought = expression(variableContainer);
+    expect(")");
+  }
 
   result->statement = statement(variableContainer);
 

@@ -655,21 +655,25 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       int loopLabel = *labelCount;
       *labelCount += 1;
 
-      generate_expression(forPattern->initialization, labelCount);
+      if (forPattern->initialization)
+        generate_expression(forPattern->initialization, labelCount);
 
       printf(".Lbeginloop%d:\n", loopLabel);
 
-      generate_expression(forPattern->condition, labelCount);
-      generate_value_extension(forPattern->condition);
-      printf("  pop rax\n");
-      printf("  cmp rax, 0\n");
-      printf("  je .Lend%d\n", loopLabel);
+      if (forPattern->condition) {
+        generate_expression(forPattern->condition, labelCount);
+        generate_value_extension(forPattern->condition);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .Lend%d\n", loopLabel);
+      }
 
       generate_statement(forPattern->statement, labelCount, loopLabel,
                          latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
-      generate_expression(forPattern->afterthought, labelCount);
+      if (forPattern->afterthought)
+        generate_expression(forPattern->afterthought, labelCount);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
       printf(".Lend%d:\n", loopLabel);
