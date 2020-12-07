@@ -1386,9 +1386,9 @@ Node *postfix(VariableContainer *variableContainer) {
       function->functionCall->arguments = arguments;
     }
     node = function;
-
-  } else
+  } else {
     token = head;
+  }
 
   if (!node)
     node = primary(variableContainer);

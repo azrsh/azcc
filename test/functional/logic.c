@@ -1,5 +1,6 @@
-int assert(int, int, char *);
-int printf();
+#include "testtool.h"
+#include <stdbool.h>
+#include <stdio.h>
 
 int main() {
   assert(1, 1 && 1, "1 && 1");
@@ -26,8 +27,10 @@ int main() {
   assert(1, 2 && 1, "2 && 1");
   assert(1, 1 && 2 < 174, "1 && 2 < 174");
   assert(1, 2 && 2 < 174, "2 && 2 < 174");
+  bool res = true;
   for (int a = 1; a < 174; a++)
-    assert(1, a && a < 174, "a && a < 174");
+    res = res && a && a < 174;
+  assert(1, res, "a && a < 174");
 
   assert(174, (3 && 2 && 5) + 173, "(3 && 2 && 5) + 173");
 

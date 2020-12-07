@@ -33,6 +33,7 @@ void generate_expression(Node *node, int *labelCount);
 void generate_variable(Node *node);
 void generate_function_call(Node *node, int *labelCount);
 void generate_assign_lhs(Node *node, int *labelCount);
+void generate_value_extension(Node *node);
 
 void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
@@ -156,8 +157,8 @@ void generate_function_call(Node *node, int *labelCount) {
   printf("  push rax\n");
 
   //内部で扱う値は基本的に64bit整数なので拡張
-  // if (node->type->kind != TYPE_VOID)
-  //  generate_value_extension(node);
+  if (node->type->kind != TYPE_VOID)
+    generate_value_extension(node);
 
   insert_comment("function call end : %s", functionName);
 }
@@ -224,8 +225,10 @@ void generate_rhs_extension(Node *node) {
   printf("  pop rax\n");
   switch (node->type->kind) {
   case TYPE_CHAR:
-  case TYPE_BOOL:
     printf("  movsx rax, BYTE PTR [rax]\n");
+    break;
+  case TYPE_BOOL:
+    printf("  movzx rax, BYTE PTR [rax]\n");
     break;
   case TYPE_INT:
   case TYPE_ENUM:
@@ -248,9 +251,12 @@ void generate_value_extension(Node *node) {
   printf("  pop rax\n");
   switch (node->type->kind) {
   case TYPE_CHAR:
+    insert_comment("extension char to i64");
+    printf("  movsx rax, al\n");
+    break;
   case TYPE_BOOL:
     insert_comment("extension bool to i64");
-    printf("  movsx rax, al\n");
+    printf("  movzx rax, al\n");
     break;
   case TYPE_INT:
   case TYPE_ENUM:

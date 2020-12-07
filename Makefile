@@ -74,9 +74,16 @@ test/unit/az1cc/%.out: azcc $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS) test
 	$(CC) -o $@ test/unit/az1cc/$*.s $(filter-out main.o, $(OBJS)) $(TEST_TOOL_OBJS)
 	./test/unit/makelink.sh
 
+test/unit/az1az1/%.out: azcc $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS) test/unit/%.c
+	./test/unit/rmlink.sh
+	cpp -I test/self -I test/dummylib test/unit/$*.c > test/unit/az1az1/$*.i
+	./azcc test/unit/az1az1/$*.i > test/unit/az1az1/$*.s
+	$(CC) -o $@ test/unit/az1az1/$*.s $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS)
+	./test/unit/makelink.sh
+
 #self: $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS))
 #	$(CC) -o ./test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
-TEST_TARGET_NAMES=functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
+TEST_TARGET_NAMES=tokenize.o functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
 TEST_TARGETS=$(TEST_TARGET_NAMES:%.o=test/self/%.o)
 self: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
 	$(CC) -o ./test/self/azcc $(TEST_TARGETS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS)) $(LDFLAGS)
@@ -86,7 +93,7 @@ test/functional/az2/%.out: self $(TEST_TOOL_OBJS) test/functional/%.c
 	./test/self/azcc test/functional/az2/$*.i > test/functional/az2/$*.s
 	$(CC) -o $@ test/functional/az2/$*.s $(TEST_TOOL_OBJS)
 
-test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_CCAZ1_TESTS)
+test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_AZ1AZ1_TESTS) $(UNIT_CCAZ1_TESTS)
 	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
 
 test-functional2: $(FUNCTIONAL_AZ2_TESTS)
