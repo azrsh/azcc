@@ -689,8 +689,10 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       int loopLabel = *labelCount;
       *labelCount += 1;
 
-      if (forPattern->initialization)
+      if (forPattern->initialization) {
         generate_expression(forPattern->initialization, labelCount);
+        printf("  pop rax\n");
+      }
 
       printf(".Lbeginloop%d:\n", loopLabel);
 
@@ -706,8 +708,10 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
                          latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
-      if (forPattern->afterthought)
+      if (forPattern->afterthought) {
         generate_expression(forPattern->afterthought, labelCount);
+        printf("  pop rax\n");
+      }
       printf("  jmp .Lbeginloop%d\n", loopLabel);
 
       printf(".Lend%d:\n", loopLabel);
