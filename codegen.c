@@ -78,7 +78,9 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   }
 
   if (node->kind == NODE_DEREF) {
+    insert_comment("dereference before dot start");
     generate_expression(node->lhs, labelCount);
+    insert_comment("dereference before dot end");
     return;
   }
 
@@ -152,6 +154,10 @@ void generate_function_call(Node *node, int *labelCount) {
   printf(".Lend%d:\n", currentLabel);
 
   printf("  push rax\n");
+
+  //内部で扱う値は基本的に64bit整数なので拡張
+  // if (node->type->kind != TYPE_VOID)
+  //  generate_value_extension(node);
 
   insert_comment("function call end : %s", functionName);
 }
@@ -282,11 +288,15 @@ void generate_expression(Node *node, int *labelCount) {
     insert_comment("logic not end");
     return;
   case NODE_REF:
+    insert_comment("reference start");
     generate_assign_lhs(node->lhs, labelCount);
+    insert_comment("reference start");
     return;
   case NODE_DEREF:
+    insert_comment("dereference start");
     generate_expression(node->lhs, labelCount);
     generate_rhs_extension(node);
+    insert_comment("dereference end");
     return;
   case NODE_VAR:
     generate_variable(node);
