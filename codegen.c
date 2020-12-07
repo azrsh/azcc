@@ -148,8 +148,8 @@ void generate_function_call(Node *node, int *labelCount) {
   }
 
   //アライメントの判定とスタックの復元
-  printf("  pop rbx\n");
-  printf("  cmp rbx, 0\n");
+  printf("  pop r11\n");
+  printf("  cmp r11, 0\n");
   printf("  je .Lend%d\n", currentLabel);
   printf("  add rsp, %d\n", stackUnitLength);
   printf(".Lend%d:\n", currentLabel);
@@ -834,9 +834,11 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     if (i < 6) {
       printf("  mov [rax], %s\n", argumentRegister[i]);
     } else {
-      printf("  mov rbx, [rbp+%d]\n", 16 + argumentStackOffset);
+      // rbp+16 is memory argument eightbyte 0
+      // rbp+16+8n is memory argument eightbyte n
+      printf("  mov r11, [rbp+%d]\n", 16 + argumentStackOffset);
       argumentStackOffset += type_to_stack_size(node->type);
-      printf("  mov [rax], rbx\n");
+      printf("  mov [rax], r11\n");
     }
   }
   insert_comment("function arguments assign end : %s", functionName);
