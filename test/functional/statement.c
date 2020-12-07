@@ -240,6 +240,28 @@ void test17() {
          "{int a; int b; a =0; b=0; do{a-=1;b+=a;if(a)continue;break;... ");
 }
 
+void test18() {
+  if (1) {
+    assert(1, 1, "expected pass");
+  } else {
+    assert(0, 1, "unexpected pass");
+  }
+  if (0) {
+    assert(0, 1, "unexpected pass");
+  } else {
+    assert(1, 1, "expected pass");
+  }
+  if (1)
+    assert(1, 1, "expected pass");
+  else
+    assert(0, 1, "unexpected pass");
+
+  if (0)
+    assert(0, 1, "unexpected pass");
+  else
+    assert(1, 1, "expected pass");
+}
+
 int main() {
   test1();
   test2();
@@ -258,6 +280,7 @@ int main() {
   test15();
   test16();
   test17();
+  test18();
   printf("OK\n");
   return 0;
 }

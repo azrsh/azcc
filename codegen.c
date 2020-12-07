@@ -546,6 +546,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
                          latestBreakTarget, latestSwitch);
 
       if (ifPattern->elseStatement) {
+        printf("  jmp .Lendif%d\n", ifLabel);
         printf(".Lelse%d:\n", ifLabel);
         generate_statement(ifPattern->elseStatement, labelCount,
                            latestBreakTarget, latestSwitch);
