@@ -83,7 +83,7 @@ test/unit/az1az1/%.out: azcc $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)
 
 #self: $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS))
 #	$(CC) -o test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
-TEST_TARGET_NAMES=tokenize.o functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
+TEST_TARGET_NAMES=type.o tokenize.o functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
 TEST_TARGETS=$(TEST_TARGET_NAMES:%.o=test/self/%.o)
 self: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
 	$(CC) -o test/self/azcc $(TEST_TARGETS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS)) $(LDFLAGS)
