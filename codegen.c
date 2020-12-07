@@ -14,7 +14,7 @@
 
 #define INSERT_COMMENT
 
-const char *argumentRegister[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+const char *argumentRegister[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 void insert_comment(char *fmt, ...) {
 #ifdef INSERT_COMMENT
@@ -283,6 +283,10 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  lea rax, .LC%d[rip]\n", node->val);
     printf("  push rax\n");
     return;
+  case NODE_ARRAY:
+    error_at(node->source,
+             "ローカル変数の配列による初期化はサポートされていません");
+    return;
   case NODE_LNOT:
     insert_comment("logic not start");
     generate_expression(node->lhs, labelCount);
@@ -480,6 +484,7 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_NUM:
   case NODE_CHAR:
   case NODE_STRING:
+  case NODE_ARRAY:
   case NODE_CAST:
   case NODE_DOT:
     error("コンパイラの内部エラー");
@@ -494,30 +499,36 @@ void generate_string_literal(int index, const char *string) {
   printf("  .string \"%s\"\n", string);
 }
 
-void generate_global_variable(const Variable *variable) {
-  if (variable->kind != VARIABLE_GLOBAL)
-    error("グローバル変数ではありません");
-
-  const char *name = string_to_char(variable->name);
-  const size_t typeSize = type_to_stack_size(
-      variable
-          ->type); //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる
-  printf("  .globl %s\n", name);
-  printf("  .data\n");
-  printf("%s:\n", name);
-  if (variable->initialization) {
-    switch (variable->initialization->kind) {
+void generate_global_variable_initializer(Type *type, Node *initializer) {
+  //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる
+  const size_t typeSize = type_to_stack_size(type);
+  if (initializer) {
+    switch (initializer->kind) {
     case NODE_STRING:
-      error("グローバル変数の文字列による初期化は未実装です");
+      if (type->kind == TYPE_PTR && type->base->kind == TYPE_CHAR)
+        printf("  .quad .LC%d\n", initializer->val);
+      else
+        error("指定された型のグローバル変数は初期化できません");
+      return;
+    case NODE_ARRAY: {
+      Vector *elements = initializer->elements;
+      for (int i = 0; i < vector_length(elements); i++) {
+        Node *node = vector_get(elements, i);
+        generate_global_variable_initializer(type->base, node);
+      }
       break;
+    }
     case NODE_NUM:
-      if (variable->type->kind == TYPE_CHAR) {
-        printf("  .byte %d\n", variable->initialization->val);
+    case NODE_CHAR:
+      switch (type->kind) {
+      case TYPE_CHAR:
+      case TYPE_BOOL:
+        printf("  .byte %d\n", initializer->val);
         return;
-      } else if (variable->type->kind == TYPE_INT) {
-        printf("  .quad %d\n", variable->initialization->val);
+      case TYPE_INT:
+        printf("  .long %d\n", initializer->val);
         return;
-      } else {
+      default:
         error("指定された型のグローバル変数は初期化できません");
       }
     default:
@@ -526,6 +537,18 @@ void generate_global_variable(const Variable *variable) {
   } else {
     printf("  .zero %zu\n", typeSize);
   }
+}
+
+void generate_global_variable(const Variable *variable) {
+  if (variable->kind != VARIABLE_GLOBAL)
+    error("グローバル変数ではありません");
+
+  const char *name = string_to_char(variable->name);
+  printf("  .globl %s\n", name);
+  printf("  .data\n");
+  printf("%s:\n", name);
+  generate_global_variable_initializer(variable->type,
+                                       variable->initialization);
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount,

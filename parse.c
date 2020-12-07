@@ -297,6 +297,7 @@ Type *enum_specifier(VariableContainer *variableContainer);
 Type *struct_specifier(VariableContainer *variableContainer);
 Variable *variable_declaration(Type *type,
                                VariableContainer *variableContainer);
+Node *initializer();
 
 StatementUnion *statement(VariableContainer *variableContainer);
 NullStatement *null_statement(VariableContainer *variableContainer);
@@ -336,7 +337,7 @@ Node *literal();
 // function_definition_argument? ")" compound_statement
 // function_definition_argument = type_specifier identity ("," type_specifier
 // identity)*
-// global_variable_definition = variable_definition ";"
+// global_variable_definition = variable_definition ("=" initializer)? ";"
 // struct_definition = "struct" identifier "{" (type_specifier identifier ";")*
 // "}" ";"
 // type_definition = "typedef" type_specifier identifier
@@ -620,7 +621,7 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
 
   Node *initialization = NULL;
   if (!isExtern && consume("=")) {
-    initialization = literal();
+    initialization = initializer();
   }
 
   if (!consume(";")) {
@@ -676,6 +677,22 @@ Variable *variable_declaration(Type *type,
   }
 
   return new_variable(type, identifier->string);
+}
+
+Node *initializer() {
+  if (consume("{")) {
+    Vector *elements = new_vector(16);
+    do {
+      vector_push_back(elements, literal());
+    } while (consume(","));
+    expect("}");
+
+    Node *result = new_node(NODE_ARRAY, NULL, NULL);
+    result->elements = elements;
+    return result;
+  }
+
+  return literal();
 }
 
 //文をパースする

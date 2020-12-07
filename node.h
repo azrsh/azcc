@@ -26,20 +26,25 @@ typedef enum {
   NODE_NUM,    // 整数
   NODE_CHAR,   // 文字
   NODE_STRING, // 文字列
+  NODE_ARRAY,  // 配列
   NODE_CAST,   // キャスト
   NODE_DOT     // ドット演算子
 } NodeKind;
 
 typedef struct Node Node;
 struct Node {
-  NodeKind kind;      //ノードの種類
-  Type *type;         //ノードの型
-  Node *lhs;          //左辺
-  Node *rhs;          //右辺
-  const char *source; //エラー出力のための情報
-  int val; // kindがNODE_NUMのときに数字、NODE_STRINGのとき文字列リテラルの識別に使用
+  NodeKind kind;              //ノードの種類
+  Type *type;                 //ノードの型
+  Node *lhs;                  //左辺
+  Node *rhs;                  //右辺
+  const char *source;         //エラー出力のための情報
   Variable *variable;         // kindがNODE_VARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う
+
+  Vector *elements; // Node Vector、kindがNODE_ARRAYのときのみ使う
+  int val;          // kindがNODE_NUMのときに数字
+                    // NODE_CHARのとき文字
+                    // NODE_STRINGのとき文字列リテラルのID
 };
 
 #endif
