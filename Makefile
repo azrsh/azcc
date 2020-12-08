@@ -85,10 +85,10 @@ test/unit/az1az1/%.out: azcc $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)
 #	$(CC) -o test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
 TEST_TARGET_NAMES=type.o tokenize.o functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o
 TEST_TARGETS=$(TEST_TARGET_NAMES:%.o=test/self/%.o)
-self: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
+test/self/azcc: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
 	$(CC) -o test/self/azcc $(TEST_TARGETS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS)) $(LDFLAGS)
 
-test/functional/az2/%.out: self $(TEST_TOOL_OBJS) test/functional/%.c
+test/functional/az2/%.out: test/self/azcc $(TEST_TOOL_OBJS) test/functional/%.c
 	cpp -I test/dummylib test/functional/$*.c > test/functional/az2/$*.i
 	test/self/azcc test/functional/az2/$*.i > test/functional/az2/$*.s
 	$(CC) -o $@ test/functional/az2/$*.s $(TEST_TOOL_OBJS)
@@ -113,7 +113,7 @@ clean:
 	-rm -f test/unit/az1cc/*
 	-rm -f test/functional/az1/*
 	-rm -f test/functional/az2/*
-	-rm -f test/self/*.o test/self/*.s test/self/*.i
+	-rm -f test/self/azcc test/self/*.o test/self/*.s test/self/*.i
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 self clean
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 clean
 .SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2
