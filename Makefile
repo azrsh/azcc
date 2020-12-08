@@ -31,7 +31,7 @@ $(OBJS): *.h
 # 1st Generation Old Test
 
 test-old: azcc $(TEST_TOOL_OBJS)
-	./test.sh
+	test/old/test.sh
 
 
 # 1st Generation Test
@@ -108,6 +108,7 @@ test-all: test test2
 clean:
 	-rm -f azcc *.o *~ tmp*
 	-rm -f test/tool/*.o
+	-rm -f test/old/tmp*
 	-rm -f test/unit/cc/*
 	-rm -f test/unit/ccaz1/*
 	-rm -f test/unit/az1cc/*
