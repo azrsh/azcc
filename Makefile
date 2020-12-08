@@ -106,13 +106,14 @@ test-all: test test2
 # Others
 
 clean:
-	rm -f azcc *.o *~ tmp*
-	rm -f test/tool/*.o
-	rm -f test/unit/cc/*
-	rm -f test/unit/ccaz1/*
-	rm -f test/unit/az1cc/*
-	rm -f test/functional/az1/*
-	rm -f test/functional/az2/*
-	rm -f test/self/*.o test/self/*.s test/self/*.i
+	-rm -f azcc *.o *~ tmp*
+	-rm -f test/tool/*.o
+	-rm -f test/unit/cc/*
+	-rm -f test/unit/ccaz1/*
+	-rm -f test/unit/az1cc/*
+	-rm -f test/functional/az1/*
+	-rm -f test/functional/az2/*
+	-rm -f test/self/*.o test/self/*.s test/self/*.i
 
 .PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 self clean
+.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2
