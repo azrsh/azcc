@@ -4,6 +4,7 @@ tmp*
 *.i
 *.s
 *.out
+*.log
 azcc
 test/hsjoihs_tmp/*.c
 

@@ -45,10 +45,10 @@ test/functional/az1/%.out: azcc $(TEST_TOOL_OBJS) test/functional/%.c
 	$(CC) -o $@ test/functional/az1/$*.s $(TEST_TOOL_OBJS)
 
 test-unit: $(UNIT_CC_TESTS)
-	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
+	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test-functional: $(FUNCTIONAL_AZ1_TESTS)
-	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
+	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test: test-unit test-functional
 
@@ -94,10 +94,10 @@ test/functional/az2/%.out: self $(TEST_TOOL_OBJS) test/functional/%.c
 	$(CC) -o $@ test/functional/az2/$*.s $(TEST_TOOL_OBJS)
 
 test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_AZ1AZ1_TESTS) $(UNIT_CCAZ1_TESTS)
-	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
+	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test-functional2: $(FUNCTIONAL_AZ2_TESTS)
-	for i in $^; do echo $$i; ./$$i || exit 1; echo; done
+	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test2: test-unit2 test-functional2
 
