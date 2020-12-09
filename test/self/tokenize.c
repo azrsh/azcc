@@ -55,7 +55,7 @@ Token *tokenize(const char *p) {
     if (start_with(p, "/*")) {
       char *q = strstr(p + 2, "*/");
       if (!q)
-        error_at(p, "コメントが閉じられていません");
+        ERROR_AT(p, "コメントが閉じられていません");
       p = q + 2;
       continue;
     }
@@ -195,7 +195,7 @@ Token *tokenize(const char *p) {
     }
     //----------
 
-    error_at(p, "トークナイズできません");
+    ERROR_AT(p, "トークナイズできません");
   }
 
   new_token(TOKEN_EOF, current, p, 0);

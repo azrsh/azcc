@@ -21,7 +21,7 @@ void generate_value_extension(Node *node);
 
 void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
-    error_at(node->source, "変数ではありません");
+    ERROR_AT(node->source, "変数ではありません");
 
   const Variable *variable = node->variable;
   const char *name = string_to_char(variable->name);
@@ -36,24 +36,24 @@ void generate_variable(Node *node) {
     return;
   case VARIABLE_MEMBER:
   case VARIABLE_ENUMERATOR:
-    error_at(node->source, "予期しない種類の変数です");
+    ERROR_AT(node->source, "予期しない種類の変数です");
     return;
   }
 }
 
 void generate_dot_operator(Node *node, int *labelCount) {
   if (node->kind != NODE_DOT)
-    error_at(node->source, "ドット演算子ではありません");
+    ERROR_AT(node->source, "ドット演算子ではありません");
 
-  insert_comment("dot operator start");
+  INSERT_COMMENT("dot operator start");
   if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
       node->rhs->variable->kind != VARIABLE_MEMBER*/)
-    error_at(node->source, "ドット演算子のオペランドが不正です");
+    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
   generate_assign_lhs(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
   printf("  push rax\n");
-  insert_comment("dot operator end");
+  INSERT_COMMENT("dot operator end");
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -63,9 +63,9 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   }
 
   if (node->kind == NODE_DEREF) {
-    insert_comment("dereference before dot start");
+    INSERT_COMMENT("dereference before dot start");
     generate_expression(node->lhs, labelCount);
-    insert_comment("dereference before dot end");
+    INSERT_COMMENT("dereference before dot end");
     return;
   }
 
@@ -74,16 +74,16 @@ void generate_assign_lhs(Node *node, int *labelCount) {
     return;
   }
 
-  error_at(node->source, "代入の左辺として予期しないノードが指定されました");
+  ERROR_AT(node->source, "代入の左辺として予期しないノードが指定されました");
 }
 
 void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
-    error("関数ではありません");
+    ERROR("関数ではありません");
 
   const char *functionName = string_to_char(node->functionCall->name);
 
-  insert_comment("function call start : %s", functionName);
+  INSERT_COMMENT("function call start : %s", functionName);
 
   Vector *arguments = node->functionCall->arguments;
   const int currentLabel = *labelCount;
@@ -105,10 +105,10 @@ void generate_function_call(Node *node, int *labelCount) {
 
   //引数の評価
   for (int i = vector_length(arguments) - 1; i >= 0; i--) {
-    insert_comment("function %s argument %d start", functionName, i);
+    INSERT_COMMENT("function %s argument %d start", functionName, i);
     Node *argument = vector_get(arguments, i);
     generate_expression(argument, labelCount);
-    insert_comment("function %s argument %d end", functionName, i);
+    INSERT_COMMENT("function %s argument %d end", functionName, i);
   }
 
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
@@ -144,27 +144,27 @@ void generate_function_call(Node *node, int *labelCount) {
   if (node->type->kind != TYPE_VOID)
     generate_value_extension(node);
 
-  insert_comment("function call end : %s", functionName);
+  INSERT_COMMENT("function call end : %s", functionName);
 }
 
 void generate_cast(Node *node) {
-  insert_comment("cast start");
+  INSERT_COMMENT("cast start");
 
   Type *source = node->lhs->type;
   Type *dest = node->type;
   printf("  pop rax\n");
 
   if (source->kind == TYPE_CHAR && dest->kind == TYPE_INT) {
-    insert_comment("cast char to int");
+    INSERT_COMMENT("cast char to int");
     printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
     // 上位56bitを破棄すればよいのでなにもしない
-    insert_comment("cast int to char");
+    INSERT_COMMENT("cast int to char");
   } else if (source->kind == TYPE_BOOL && dest->kind == TYPE_INT) {
-    insert_comment("cast bool to int");
+    INSERT_COMMENT("cast bool to int");
     printf("  movsx rax, al\n");
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_BOOL) {
-    insert_comment("cast int to bool");
+    INSERT_COMMENT("cast int to bool");
     printf("  cmp rax, 0\n");
     printf("  setne al\n");
     printf("  movzb rax, al\n");
@@ -178,7 +178,7 @@ void generate_cast(Node *node) {
 
   printf("  push rax\n");
 
-  insert_comment("cast end");
+  INSERT_COMMENT("cast end");
 }
 
 void generate_assign_i64() {
@@ -225,7 +225,7 @@ void generate_rhs_extension(Node *node) {
   case TYPE_ARRAY:
     break; //配列はポインタのままにする
   case TYPE_VOID:
-    error_at(node->source, "許可されていない型の値です");
+    ERROR_AT(node->source, "許可されていない型の値です");
   }
   printf("  push rax\n");
 }
@@ -235,11 +235,11 @@ void generate_value_extension(Node *node) {
   printf("  pop rax\n");
   switch (node->type->kind) {
   case TYPE_CHAR:
-    insert_comment("extension char to i64");
+    INSERT_COMMENT("extension char to i64");
     printf("  movsx rax, al\n");
     break;
   case TYPE_BOOL:
-    insert_comment("extension bool to i64");
+    INSERT_COMMENT("extension bool to i64");
     printf("  movzx rax, al\n");
     break;
   case TYPE_INT:
@@ -251,7 +251,7 @@ void generate_value_extension(Node *node) {
   case TYPE_STRUCT:
   case TYPE_ARRAY:
   case TYPE_VOID:
-    error_at(node->source, "許可されていない型の値です");
+    ERROR_AT(node->source, "許可されていない型の値です");
   }
   printf("  push rax\n");
 }
@@ -268,29 +268,29 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     return;
   case NODE_ARRAY:
-    error_at(node->source,
+    ERROR_AT(node->source,
              "ローカル変数の配列による初期化はサポートされていません");
     return;
   case NODE_LNOT:
-    insert_comment("logic not start");
+    INSERT_COMMENT("logic not start");
     generate_expression(node->lhs, labelCount);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
     printf("  sete al\n");
     printf("  movzb rax, al\n");
     printf("  push rax\n");
-    insert_comment("logic not end");
+    INSERT_COMMENT("logic not end");
     return;
   case NODE_REF:
-    insert_comment("reference start");
+    INSERT_COMMENT("reference start");
     generate_assign_lhs(node->lhs, labelCount);
-    insert_comment("reference start");
+    INSERT_COMMENT("reference start");
     return;
   case NODE_DEREF:
-    insert_comment("dereference start");
+    INSERT_COMMENT("dereference start");
     generate_expression(node->lhs, labelCount);
     generate_rhs_extension(node);
-    insert_comment("dereference end");
+    INSERT_COMMENT("dereference end");
     return;
   case NODE_VAR:
     generate_variable(node);
@@ -304,19 +304,19 @@ void generate_expression(Node *node, int *labelCount) {
     generate_function_call(node, labelCount);
     return;
   case NODE_ASSIGN:
-    insert_comment("assign start");
+    INSERT_COMMENT("assign start");
 
-    insert_comment("assign lhs start");
+    INSERT_COMMENT("assign lhs start");
     generate_assign_lhs(node->lhs, labelCount);
-    insert_comment("assign lhs end");
-    insert_comment("assign rhs start");
+    INSERT_COMMENT("assign lhs end");
+    INSERT_COMMENT("assign rhs start");
     generate_expression(node->rhs, labelCount);
-    insert_comment("assign rhs end");
+    INSERT_COMMENT("assign rhs end");
 
     size_t lhsSize = type_to_size(node->lhs->type);
     size_t rhsSize = type_to_size(node->rhs->type);
     // if (lhsSize != rhsSize)
-    //  error("右辺を左辺と同じ型にキャストできない不正な代入です");
+    //  ERROR("右辺を左辺と同じ型にキャストできない不正な代入です");
 
     if (lhsSize == 1 && rhsSize == 1)
       generate_assign_i8();
@@ -325,16 +325,16 @@ void generate_expression(Node *node, int *labelCount) {
     else if (lhsSize == 8 && rhsSize == 8)
       generate_assign_i64();
     else
-      error_at(node->source, "予期しない代入");
+      ERROR_AT(node->source, "予期しない代入");
 
-    insert_comment("assign end");
+    INSERT_COMMENT("assign end");
     return;
   case NODE_CAST:
     generate_expression(node->lhs, labelCount);
     generate_cast(node);
     return;
   case NODE_LAND:
-    insert_comment("logic and start");
+    INSERT_COMMENT("logic and start");
     int landLabel = *labelCount;
     *labelCount += 1;
     generate_expression(node->lhs, labelCount);
@@ -348,10 +348,10 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  setne al\n");
     printf("  movzb rax, al\n");
     printf("  push rax\n");
-    insert_comment("logic and end");
+    INSERT_COMMENT("logic and end");
     return;
   case NODE_LOR:
-    insert_comment("logic or start");
+    INSERT_COMMENT("logic or start");
     int lorLabel = *labelCount;
     *labelCount += 1;
     generate_expression(node->lhs, labelCount);
@@ -365,7 +365,7 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  setne al\n");
     printf("  movzb rax, al\n");
     printf("  push rax\n");
-    insert_comment("logic or end");
+    INSERT_COMMENT("logic or end");
     return;
   case NODE_ADD:
   case NODE_SUB:
@@ -387,7 +387,7 @@ void generate_expression(Node *node, int *labelCount) {
 
   switch (node->kind) {
   case NODE_ADD: {
-    insert_comment("start add node");
+    INSERT_COMMENT("start add node");
 
     // int+int、pointer+intのみを許可する
     Type *lhsBase = node->lhs->type->base;
@@ -396,11 +396,11 @@ void generate_expression(Node *node, int *labelCount) {
     }
 
     printf("  add rax, rdi\n");
-    insert_comment("end add node");
+    INSERT_COMMENT("end add node");
     break;
   }
   case NODE_SUB: {
-    insert_comment("start sub node");
+    INSERT_COMMENT("start sub node");
 
     // int-int、pointer-int、pointer-pointerのみを許可する
     Type *lhsBase = node->lhs->type->base;
@@ -471,7 +471,7 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_ARRAY:
   case NODE_CAST:
   case NODE_DOT:
-    error("コンパイラの内部エラー");
+    ERROR("コンパイラの内部エラー");
   }
 
   printf("  push rax\n");
@@ -492,7 +492,7 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
       if (type->kind == TYPE_PTR && type->base->kind == TYPE_CHAR)
         printf("  .quad .LC%d\n", initializer->val);
       else
-        error("指定された型のグローバル変数は初期化できません");
+        ERROR("指定された型のグローバル変数は初期化できません");
       return;
     case NODE_ARRAY: {
       Vector *elements = initializer->elements;
@@ -513,10 +513,10 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
         printf("  .long %d\n", initializer->val);
         return;
       default:
-        error("指定された型のグローバル変数は初期化できません");
+        ERROR("指定された型のグローバル変数は初期化できません");
       }
     default:
-      error("グローバル変数の初期化に失敗しました");
+      ERROR("グローバル変数の初期化に失敗しました");
     }
   } else {
     printf("  .zero %zu\n", typeSize);
@@ -525,7 +525,7 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
 
 void generate_global_variable(const Variable *variable) {
   if (variable->kind != VARIABLE_GLOBAL)
-    error("グローバル変数ではありません");
+    ERROR("グローバル変数ではありません");
 
   const char *name = string_to_char(variable->name);
   printf("  .globl %s\n", name);
@@ -597,7 +597,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
                    constantExpression->variable->initialization)
             value = constantExpression->variable->initialization->val;
           else
-            error_at(constantExpression->source, "定数式ではありません");
+            ERROR_AT(constantExpression->source, "定数式ではありません");
           printf("  cmp rax, %d\n", value);
           printf("  je .Lcase%d.%d\n", switchLabel, value);
         } else { // defaultラベルの場合
@@ -631,7 +631,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
                  constantExpression->variable->initialization)
           value = constantExpression->variable->initialization->val;
         else
-          error_at(constantExpression->source, "定数式ではありません");
+          ERROR_AT(constantExpression->source, "定数式ではありません");
         printf(".Lcase%d.%d:\n", latestSwitch, value);
       } else // defaultラベルの場合
         printf(".Ldefault%d:\n", latestSwitch);
@@ -771,7 +771,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     BreakStatement *breakPattern = statement_union_take_break(statementUnion);
     if (breakPattern) {
       printf("  jmp .Lend%d    ", latestBreakTarget);
-      insert_comment("break statement");
+      INSERT_COMMENT("break statement");
       return;
     }
   }
@@ -782,7 +782,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         statement_union_take_continue(statementUnion);
     if (continuePattern) {
       printf("  jmp .Lcontinueloop%d    ", latestBreakTarget);
-      insert_comment("continue statement");
+      INSERT_COMMENT("continue statement");
       return;
     }
   }
@@ -791,7 +791,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
   {
     NullStatement *nullPattern = statement_union_take_null(statementUnion);
     if (nullPattern) {
-      insert_comment("null statement");
+      INSERT_COMMENT("null statement");
       return;
     }
   }
@@ -824,14 +824,14 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
 
   //プロローグ
   //定義された変数の分の領域を確保
-  insert_comment("function prologue start : %s", functionName);
+  INSERT_COMMENT("function prologue start : %s", functionName);
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %zu\n", functionDefinition->stackSize);
-  insert_comment("function prologue end : %s", functionName);
+  INSERT_COMMENT("function prologue end : %s", functionName);
 
   //引数の代入処理
-  insert_comment("function arguments assign start : %s", functionName);
+  INSERT_COMMENT("function arguments assign start : %s", functionName);
   int argumentStackOffset = 0;
   for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
     Node *node = vector_get(functionDefinition->arguments, i);
@@ -848,29 +848,29 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
       printf("  mov [rax], r11\n");
     }
   }
-  insert_comment("function arguments assign end : %s", functionName);
+  INSERT_COMMENT("function arguments assign end : %s", functionName);
 
-  insert_comment("function body start : %s", functionName);
+  INSERT_COMMENT("function body start : %s", functionName);
   ListNode *statementList = functionDefinition->body->statementHead;
   while (statementList) {
-    insert_comment("statement start");
+    INSERT_COMMENT("statement start");
 
     //抽象構文木を降りながらコード生成
     // loopNestを無効な値にする(ループ外でbreakしないように)
     generate_statement(statementList->body, labelCount, -1, -1);
     statementList = statementList->next;
 
-    insert_comment("statement end");
+    INSERT_COMMENT("statement end");
   }
-  insert_comment("function body end : %s", functionName);
+  INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
-  insert_comment("function epilogue start : %s", functionName);
+  INSERT_COMMENT("function epilogue start : %s", functionName);
   printf("  mov rsp, rbp\n");
   printf("  pop rbp\n");
   printf("  ret\n");
-  insert_comment("function epilogue end : %s", functionName);
+  INSERT_COMMENT("function epilogue end : %s", functionName);
 }
 
 //抽象構文木をもとにコード生成を行う

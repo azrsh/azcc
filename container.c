@@ -92,14 +92,14 @@ void vector_push_back(Vector *vector, void *element) {
 
 void *vector_get(Vector *vector, int index) {
   if (index < 0 || index >= vector->length) {
-    error("配列外参照エラー");
+    ERROR("配列外参照エラー");
   }
 
   return vector->head[index];
 }
 void vector_set(Vector *vector, int index, void *element) {
   if (index < 0 || index >= vector->length) {
-    error("配列外参照エラー");
+    ERROR("配列外参照エラー");
   }
 
   vector->head[index] = element;

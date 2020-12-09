@@ -25,7 +25,7 @@ bool type_is_primitive(Type *type) {
     return false;
   }
 
-  error("予期しない型が指定されました");
+  ERROR("予期しない型が指定されました");
   return false;
 }
 
@@ -46,7 +46,7 @@ int type_to_size(Type *type) {
     return member_container_aligned_size(type->members);
   }
 
-  error("予期しない型が指定されました");
+  ERROR("予期しない型が指定されました");
   return 0;
 }
 
@@ -67,7 +67,7 @@ int type_to_align(Type *type) {
     return member_container_align(type->members);
   }
 
-  error("予期しない型が指定されました");
+  ERROR("予期しない型が指定されました");
   return 0;
 }
 
@@ -96,7 +96,7 @@ char *type_kind_to_char(TypeKind kind) {
     return "Array";
   }
 
-  error("予期しない型が指定されました");
+  ERROR("予期しない型が指定されました");
   return NULL;
 }
 

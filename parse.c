@@ -72,14 +72,14 @@ Token *consume_identifier() {
 //それ以外の場合にはエラーを報告する
 void expect(char *op) {
   if (!consume(op))
-    error_at(token->string->head, "'%s'ではありません", op);
+    ERROR_AT(token->string->head, "'%s'ではありません", op);
 }
 
 //次のトークンが数値のときには、トークンを1つ読み進めてその数値を返す
 //それ以外の場合にはエラーを報告する
 int expect_number() {
   if (token->kind != TOKEN_NUMBER)
-    error_at(token->string->head, "数ではありません");
+    ERROR_AT(token->string->head, "数ではありません");
   const int value = token->value;
   token = token->next;
   return value;
@@ -89,7 +89,7 @@ int expect_number() {
 //それ以外の場合にはエラーを報告する
 Token *expect_identifier() {
   if (token->kind != TOKEN_IDENTIFIER)
-    error_at(token->string->head, "識別子ではありません");
+    ERROR_AT(token->string->head, "識別子ではありません");
   Token *current = token;
   token = token->next;
   return current;
@@ -134,7 +134,7 @@ FunctionCall *new_function_call(Token *token) {
 
 TypeKind map_token_to_kind(Token *token) {
   if (token->kind != TOKEN_RESERVED)
-    error_at(token->string->head, "組み込み型ではありません");
+    ERROR_AT(token->string->head, "組み込み型ではありません");
 
   if (string_compare(token->string, char_to_string("int")))
     return TYPE_INT;
@@ -148,7 +148,7 @@ TypeKind map_token_to_kind(Token *token) {
   if (string_compare(token->string, char_to_string("_Bool")))
     return TYPE_BOOL;
 
-  error_at(token->string->head, "組み込み型ではありません");
+  ERROR_AT(token->string->head, "組み込み型ではありません");
   return 0;
 }
 
@@ -209,7 +209,7 @@ Node *new_node_variable_definition(Variable *variable,
 
   Variable *localVariable = variable_to_local(variable);
   if (!variable_container_push(variableContainer, localVariable))
-    error_at(variable->name->head, "同名の変数が既に定義されています");
+    ERROR_AT(variable->name->head, "同名の変数が既に定義されています");
 
   node->variable = localVariable;
   node->source = source->string->head;
@@ -224,7 +224,7 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
   const String *variableName = token->string;
   Variable *variable = variable_container_get(container, variableName);
   if (!variable) {
-    error_at(variableName->head, "変数%sは定義されていません",
+    ERROR_AT(variableName->head, "変数%sは定義されていません",
              string_to_char(variableName));
   }
 
@@ -414,7 +414,7 @@ Program *program() {
           continue;
       }
 
-      error_at(token->string->head, "型指定子のあとに続くトークンが不正です");
+      ERROR_AT(token->string->head, "型指定子のあとに続くトークンが不正です");
     }
 
     {
@@ -425,7 +425,7 @@ Program *program() {
       }
     }
 
-    error_at(token->string->head, "認識できない構文です");
+    ERROR_AT(token->string->head, "認識できない構文です");
   }
 
   return result;
@@ -469,7 +469,7 @@ Vector *function_declaration_argument(VariableContainer *variableContainer) {
   do {
     Type *type = type_specifier(variableContainer);
     if (!type)
-      error_at(token->string->head, "型指定子ではありません");
+      ERROR_AT(token->string->head, "型指定子ではありません");
 
     consume_identifier();
 
@@ -525,7 +525,8 @@ FunctionDefinition *function_definition(Type *type,
       //宣言に引数がなければ引数チェックをスキップ
       if (vector_length(declaration->arguments) > 0) {
         if (!type_vector_compare(declaration->arguments, argumentTypes))
-          error("関数の定義と前方宣言の引数が一致しません");
+          ERROR_AT(identifier->string->head,
+                   "関数の定義と前方宣言の引数が一致しません");
       }
     } else {
       FunctionDeclaration *declaration =
@@ -586,10 +587,10 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Token *source = token;
     Type *type = type_specifier(variableContainer);
     if (!type)
-      error_at(source->string->head, "関数定義の引数の宣言が不正です");
+      ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
     Variable *declaration = variable_declaration(type, variableContainer);
     if (!declaration)
-      error_at(source->string->head, "関数定義の引数の宣言が不正です");
+      ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
 
     Node *node =
         new_node_variable_definition(declaration, variableContainer, source);
@@ -619,9 +620,22 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
     return NULL;
   }
 
+  bool isDefined = false;
+  for (int i = 0; i < vector_length(globalVariables); i++) {
+    Variable *variable = vector_get(globalVariables, i);
+    if (string_compare(variable->name, declaration->name)) {
+      isDefined = true;
+      break;
+    }
+  }
+
+  if (!isExtern && isDefined)
+    ERROR_AT(token->string->head, "同名の変数が既に定義されています");
+
   Variable *globalVariable = variable_to_global(declaration, initialization);
-  if (!variable_container_push(variableContainer, globalVariable))
-    error_at(token->string->head, "同名の変数が既に宣言されています");
+  bool isDeclared = !variable_container_push(variableContainer, globalVariable);
+  if (isExtern && isDeclared)
+    ERROR_AT(token->string->head, "同名の変数が既に宣言されています");
 
   if (!isExtern)
     vector_push_back(globalVariables, globalVariable);
@@ -636,7 +650,7 @@ Typedef *type_definition(VariableContainer *variableContainer) {
 
   Type *type = type_specifier(variableContainer);
   if (!type) {
-    error_at(token->string->head, "型指定子ではありません");
+    ERROR_AT(token->string->head, "型指定子ではありません");
   }
 
   Token *identifier = expect_identifier();
@@ -833,7 +847,7 @@ LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
     if (switchStatement)
       vector_push_back(switchStatement->labeledStatements, result);
     else
-      error_at(tokenHead->string->head,
+      ERROR_AT(tokenHead->string->head,
                "switch文の外でcaseまたはdefaultラベルが定義されました");
 
     result->statement = statement(variableContainer);
@@ -842,7 +856,7 @@ LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
 
   Token *identifier = consume_identifier();
   if (identifier && consume(":")) {
-    error_at(identifier->string->head,
+    ERROR_AT(identifier->string->head,
              "caseまたはdefaultラべル以外はサポートされていません");
   }
 
@@ -1117,13 +1131,13 @@ Type *enum_specifier(VariableContainer *variableContainer) {
       Variable *enumeratorVariable =
           variable_to_enumerator(variable, constantExpression);
       if (!variable_container_push(variableContainer, enumeratorVariable))
-        error_at(enumeratorIdentifier->string->head,
+        ERROR_AT(enumeratorIdentifier->string->head,
                  "列挙子%sと同名の識別子が既に定義されています",
                  string_to_char(enumeratorIdentifier->string));
     } while (consume(","));
     expect("}");
   } else if (!identifier) {
-    error_at(tokenHead->string->head,
+    ERROR_AT(tokenHead->string->head,
              "列挙体の名称または列挙子を指定してください");
   }
 
@@ -1166,10 +1180,10 @@ Type *struct_specifier(VariableContainer *variableContainer) {
     while (!consume("}")) {
       Type *type = type_specifier(variableContainer);
       if (!type)
-        error_at(token->string->head, "構造体のメンバの定義が不正です");
+        ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
       Variable *member = variable_declaration(type, variableContainer);
       if (!member)
-        error_at(token->string->head, "構造体のメンバの定義が不正です");
+        ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
 
       member->kind = VARIABLE_LOCAL;
       size_t memberAlignment = type_to_align(member->type);
@@ -1179,11 +1193,11 @@ Type *struct_specifier(VariableContainer *variableContainer) {
       memberOffset += type_to_size(member->type);
 
       if (!member_container_push(result->members, member))
-        error(member->name->head, "同名のメンバが既に定義されています");
+        ERROR_AT(member->name->head, "同名のメンバが既に定義されています");
       expect(";");
     }
   } else if (!identifier) {
-    error_at(token->string->head,
+    ERROR_AT(token->string->head,
              "無名構造体を定義なしで使用することはできません");
   }
 
@@ -1338,7 +1352,7 @@ Node *unary(VariableContainer *variableContainer) {
     Token *identifier = consume_identifier();
     // postfix(variableContainer);
     if (!identifier) {
-      error("式に対するsizeof演算は未実装です");
+      ERROR_AT(identifier->string->head, "式に対するsizeof演算は未実装です");
     }
     if (parentheses)
       expect(")");
@@ -1346,7 +1360,7 @@ Node *unary(VariableContainer *variableContainer) {
     Type *type =
         new_node_variable(identifier, variableContainer)->variable->type;
     if (!type)
-      error_at(token->string->head, "sizeof演算子のオペランドが不正です");
+      ERROR_AT(token->string->head, "sizeof演算子のオペランドが不正です");
     return new_node_num(type_to_size(type));
   }
   if (consume("_Alignof")) {
@@ -1354,7 +1368,7 @@ Node *unary(VariableContainer *variableContainer) {
 
     Type *type = type_specifier(variableContainer);
     if (!type)
-      error_at(token->string->head, "型指定子ではありません");
+      ERROR_AT(token->string->head, "型指定子ではありません");
 
     expect(")");
     return new_node_num(type_to_align(type));
@@ -1388,7 +1402,7 @@ Node *postfix(VariableContainer *variableContainer) {
       if (declaration)
         function->functionCall->type = declaration->returnType;
       else
-        error_at(identifier->string->head, "関数宣言がみつかりません");
+        ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
 
       function->functionCall->arguments = arguments;
     }
@@ -1504,7 +1518,7 @@ Node *literal() {
         node->val = character->string->head[1];
         break;
       default:
-        error_at(character->string->head,
+        ERROR_AT(character->string->head,
                  "予期しない文字のエスケープシーケンスです");
         break;
       }

@@ -2,22 +2,53 @@
 #define UTIL_H
 
 #include <stdbool.h>
+#include <stdio.h>
 
-bool start_with(const char *p, const char *q);
+#define ERROR(...)                                                             \
+  {                                                                            \
+    fprintf(stderr, __VA_ARGS__);                                              \
+    fprintf(stderr, "\n");                                                     \
+    exit(EXIT_FAILURE);                                                        \
+  }
 
-//エラーを報告するための関数
-// printfと同じ引数をとる
-void error();
+#define ERROR_AT(location, ...)                                                \
+  {                                                                            \
+    const char *line = location;                                               \
+    while (user_input < line && line[-1] != '\n')                              \
+      line--;                                                                  \
+                                                                               \
+    const char *end = location;                                                \
+    while (*end != '\n')                                                       \
+      end++;                                                                   \
+                                                                               \
+    int line_num = 1;                                                          \
+    for (const char *p = user_input; p < line; p++)                            \
+      if (*p == '\n')                                                          \
+        line_num++;                                                            \
+                                                                               \
+    const int indent = fprintf(stderr, "%s:%d: ", filename, line_num);         \
+    const int line_width = end - line;                                         \
+    fprintf(stderr, "%.*s\n", line_width, line);                               \
+                                                                               \
+    const int pos = location - line + indent;                                  \
+    fprintf(stderr, "%*s", pos, " ");                                          \
+    fprintf(stderr, "^ ");                                                     \
+    fprintf(stderr, __VA_ARGS__);                                              \
+    fprintf(stderr, "\n");                                                     \
+    exit(EXIT_FAILURE);                                                        \
+  }
+
+#define INSERT_COMMENT(...)                                                    \
+  {                                                                            \
+    printf("# ");                                                              \
+    printf(__VA_ARGS__);                                                       \
+    printf("\n");                                                              \
+  }
 
 extern const char *user_input;
 extern const char *filename; // 入力ファイル名
 
-//エラーを報告するための関数
-// printfと同じ引数に加えてエラーの位置をとる
-void error_at();
-
+bool start_with(const char *p, const char *q);
 const char *read_file(const char *path);
-
-void insert_comment();
 
 #endif
