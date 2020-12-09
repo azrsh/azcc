@@ -3,11 +3,13 @@ CFLAGS=-std=c11 -g -static -Wall -Wextra
 SRCS=$(wildcard *.c)
 OBJS=$(SRCS:.c=.o)
 
+UNIT_TEST_DIRS=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1
 UNIT_TEST_SRCS=$(wildcard test/unit/*.c)
 UNIT_CC_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/cc/%.out)
 UNIT_AZ1CC_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/az1cc/%.out)
 UNIT_CCAZ1_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/ccaz1/%.out)
 UNIT_AZ1AZ1_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/az1az1/%.out)
+FUNCTIONAL_TEST_DIRS=test/functional/az1 test/functional/az2
 FUNCTIONAL_TEST_SRCS=$(wildcard test/functional/*.c)
 FUNCTIONAL_AZ1_TESTS=$(FUNCTIONAL_TEST_SRCS:test/functional/%.c=test/functional/az1/%.out)
 FUNCTIONAL_AZ2_TESTS=$(FUNCTIONAL_TEST_SRCS:test/functional/%.c=test/functional/az2/%.out)
@@ -44,10 +46,10 @@ test/functional/az1/%.out: azcc $(TEST_TOOL_OBJS) test/functional/%.c
 	./azcc test/functional/az1/$*.i > test/functional/az1/$*.s
 	$(CC) -o $@ test/functional/az1/$*.s $(TEST_TOOL_OBJS)
 
-test-unit: $(UNIT_CC_TESTS)
+test-unit: $(UNIT_TEST_DIRS) $(UNIT_CC_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
-test-functional: $(FUNCTIONAL_AZ1_TESTS)
+test-functional: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ1_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test: test-unit test-functional
@@ -113,6 +115,12 @@ clean:
 	-rm -f test/functional/az1/*
 	-rm -f test/functional/az2/*
 	-rm -f test/self/azcc test/self/*.o test/self/*.s test/self/*.i
+
+$(UNIT_TEST_DIRS):
+	mkdir $@
+
+$(FUNCTIONAL_TEST_DIRS):
+	mkdir $@
 
 .PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 clean sandbox
 .SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2
