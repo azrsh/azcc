@@ -6,7 +6,7 @@
 
 typedef struct VariableContainer VariableContainer;
 VariableContainer *new_variable_container(ListNode *tableHead);
-Variable *variable_container_get(VariableContainer *container, String name);
+Variable *variable_container_get(VariableContainer *container, const String *name);
 bool variable_container_push(VariableContainer *container, Variable *varibale);
 VariableContainer *variable_container_push_table(VariableContainer *container,
                                                  HashTable *table);

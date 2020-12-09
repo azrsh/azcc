@@ -12,10 +12,11 @@ VariableContainer *new_variable_container(ListNode *tableHead) {
   return container;
 }
 
-Variable *variable_container_get(VariableContainer *container, String name) {
+Variable *variable_container_get(VariableContainer *container,
+                                 const String *name) {
   ListNode *list = container->tableHead;
   while (list) {
-    Variable *variable = hash_table_find(list->body, &name);
+    Variable *variable = hash_table_find(list->body, name);
     if (variable)
       return variable;
 

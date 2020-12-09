@@ -222,7 +222,7 @@ Node *new_node_variable(Token *token, VariableContainer *container) {
   node->kind = NODE_VAR;
 
   const String *variableName = token->string;
-  Variable *variable = variable_container_get(container, *variableName);
+  Variable *variable = variable_container_get(container, variableName);
   if (!variable) {
     error_at(variableName->head, "変数%sは定義されていません",
              string_to_char(variableName));
