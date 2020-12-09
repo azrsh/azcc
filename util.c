@@ -84,3 +84,18 @@ const char *read_file(const char *path) {
   fclose(fp);
   return buf;
 }
+
+#define INSERT_COMMENT
+
+void insert_comment(char *fmt, ...) {
+#ifdef INSERT_COMMENT
+  va_list ap;
+  va_start(ap, fmt);
+
+  printf("# ");
+  vprintf(fmt, ap);
+  printf("\n");
+
+  va_end(ap);
+#endif
+}

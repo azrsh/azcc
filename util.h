@@ -18,4 +18,6 @@ _Noreturn void error_at(const char *location, const char *fmt, ...);
 
 const char *read_file(const char *path);
 
+void insert_comment(char *fmt, ...);
+
 #endif
