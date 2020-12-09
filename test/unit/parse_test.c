@@ -1,0 +1,25 @@
+#include "container.h"
+#include "parse.h"
+#include "tokenize.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+void assert(int, int, char *);
+
+int main() {
+  user_input =
+      "_Bool test6(int x) { if (x == 10) { return x; } return x == 0; }";
+
+  Token *head = tokenize(user_input);
+  Token *token = head;
+
+  // assert(1, string_compare(token->string, char_to_string("_Bool")), "_Bool");
+  // token = token->next;
+
+  // assert(1, string_compare(token->string, char_to_string("test6")), "test6");
+  // token = token->next;
+
+  Program *program = parse(head);
+
+  return 0;
+}
