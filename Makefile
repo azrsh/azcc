@@ -81,12 +81,8 @@ test/unit/az1az1/%.out: azcc $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)
 	$(CC) -o $@ test/unit/az1az1/$*.s $(filter-out main.o $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(filter-out test/self/main.o, $(TEST_SELF_OBJS)) $(TEST_TOOL_OBJS)
 	test/unit/makelink.sh
 
-#self: $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS))
-#	$(CC) -o test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
-TEST_TARGET_NAMES=codegen.o type.o tokenize.o functioncontainer.o statement.o typecheck.o main.o container.o membercontainer.o variablecontainer.o parse.o
-TEST_TARGETS=$(TEST_TARGET_NAMES:%.o=test/self/%.o)
-test/self/azcc: $(TEST_SELF_OBJS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS))
-	$(CC) -o test/self/azcc $(TEST_TARGETS) $(filter-out $(TEST_TARGET_NAMES), $(OBJS)) $(LDFLAGS)
+test/self/azcc: $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS))
+	$(CC) -o test/self/azcc $(TEST_SELF_OBJS) $(filter-out $(TEST_SELF_OBJ_NAMES), $(OBJS)) $(LDFLAGS)
 
 test/functional/az2/%.out: test/self/azcc $(TEST_TOOL_OBJS) test/functional/%.c
 	cpp -I test/dummylib test/functional/$*.c > test/functional/az2/$*.i
@@ -100,6 +96,8 @@ test-functional2: $(FUNCTIONAL_AZ2_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test2: test-unit2 test-functional2
+
+
 
 test-all: test test2
 
