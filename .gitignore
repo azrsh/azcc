@@ -6,5 +6,7 @@ tmp*
 *.out
 *.log
 azcc
+test/unit/*.h
+temp/*
 test/hsjoihs_tmp/*.c
 
