@@ -267,19 +267,6 @@ FunctionDefinition *new_function_definition() {
   return definition;
 }
 
-FunctionDeclaration *
-function_definition_to_declaration(FunctionDefinition *definition) {
-  Vector *arguments = new_vector(16); // Type vector
-  for (int i = 0; i < vector_length(definition->arguments); i++) {
-    Node *node = vector_get(definition->arguments, i);
-    Variable *variable = node->variable;
-    vector_push_back(arguments, variable->type);
-  }
-
-  return new_function_declaration(definition->returnType, definition->name,
-                                  arguments);
-}
-
 // EBNFパーサ
 Program *program();
 FunctionDeclaration *function_declaration(Type *returnType,
@@ -412,29 +399,6 @@ Program *program() {
         FunctionDefinition *functionDefinition =
             function_definition(type, variableContainer);
         if (functionDefinition) {
-          FunctionDeclaration *declaration = function_container_get(
-              functionContainer, functionDefinition->name);
-          if (declaration) {
-            //宣言に引数がなければ引数チェックをスキップ
-            if (vector_length(declaration->arguments) > 0) {
-              // 関数定義の引数をTypeのvectorに変換
-              Vector *definitionArguments = new_vector(16);
-              for (int i = 0; i < vector_length(functionDefinition->arguments);
-                   i++) {
-                Node *node = vector_get(functionDefinition->arguments, i);
-                Variable *variable = node->variable;
-                vector_push_back(definitionArguments, variable->type);
-              }
-
-              if (!type_vector_compare(declaration->arguments,
-                                       definitionArguments))
-                error("関数の定義と前方宣言の引数が一致しません");
-            }
-          } else {
-            FunctionDeclaration *declaration =
-                function_definition_to_declaration(functionDefinition);
-            function_container_push(functionContainer, declaration);
-          }
           vector_push_back(result->functionDefinitions, functionDefinition);
           continue;
         }
@@ -544,6 +508,32 @@ FunctionDefinition *function_definition(Type *type,
     arguments = function_definition_argument(mergedContainer);
     expect(")");
   }
+
+  //-----関数宣言との対応づけ-------
+  //再帰関数に対応するためにここでやる
+  {
+    FunctionDeclaration *declaration =
+        function_container_get(functionContainer, identifier->string);
+    // 関数定義の引数をTypeのvectorに変換
+    Vector *argumentTypes = new_vector(16);
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      Variable *variable = node->variable;
+      vector_push_back(argumentTypes, variable->type);
+    }
+    if (declaration) {
+      //宣言に引数がなければ引数チェックをスキップ
+      if (vector_length(declaration->arguments) > 0) {
+        if (!type_vector_compare(declaration->arguments, argumentTypes))
+          error("関数の定義と前方宣言の引数が一致しません");
+      }
+    } else {
+      FunctionDeclaration *declaration =
+          new_function_declaration(type, identifier->string, argumentTypes);
+      function_container_push(functionContainer, declaration);
+    }
+  }
+  //--------------------------------
 
   if (!consume("{")) {
     token = tokenHead;

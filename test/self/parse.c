@@ -267,19 +267,6 @@ FunctionDefinition *new_function_definition() {
   return definition;
 }
 
-FunctionDeclaration *
-function_definition_to_declaration(FunctionDefinition *definition) {
-  Vector *arguments = new_vector(16); // Type vector
-  for (int i = 0; i < vector_length(definition->arguments); i++) {
-    Node *node = vector_get(definition->arguments, i);
-    Variable *variable = node->variable;
-    vector_push_back(arguments, variable->type);
-  }
-
-  return new_function_declaration(definition->returnType, definition->name,
-                                  arguments);
-}
-
 // EBNFパーサ
 Program *program();
 FunctionDeclaration *function_declaration(Type *returnType,
@@ -297,6 +284,7 @@ Type *enum_specifier(VariableContainer *variableContainer);
 Type *struct_specifier(VariableContainer *variableContainer);
 Variable *variable_declaration(Type *type,
                                VariableContainer *variableContainer);
+Node *initializer();
 
 StatementUnion *statement(VariableContainer *variableContainer);
 NullStatement *null_statement(VariableContainer *variableContainer);
@@ -336,7 +324,7 @@ Node *literal();
 // function_definition_argument? ")" compound_statement
 // function_definition_argument = type_specifier identity ("," type_specifier
 // identity)*
-// global_variable_definition = variable_definition ";"
+// global_variable_definition = variable_definition ("=" initializer)? ";"
 // struct_definition = "struct" identifier "{" (type_specifier identifier ";")*
 // "}" ";"
 // type_definition = "typedef" type_specifier identifier
@@ -411,29 +399,6 @@ Program *program() {
         FunctionDefinition *functionDefinition =
             function_definition(type, variableContainer);
         if (functionDefinition) {
-          FunctionDeclaration *declaration = function_container_get(
-              functionContainer, functionDefinition->name);
-          if (declaration) {
-            //宣言に引数がなければ引数チェックをスキップ
-            if (vector_length(declaration->arguments) > 0) {
-              // 関数定義の引数をTypeのvectorに変換
-              Vector *definitionArguments = new_vector(16);
-              for (int i = 0; i < vector_length(functionDefinition->arguments);
-                   i++) {
-                Node *node = vector_get(functionDefinition->arguments, i);
-                Variable *variable = node->variable;
-                vector_push_back(definitionArguments, variable->type);
-              }
-
-              if (!type_vector_compare(declaration->arguments,
-                                       definitionArguments))
-                error("関数の定義と前方宣言の引数が一致しません");
-            }
-          } else {
-            FunctionDeclaration *declaration =
-                function_definition_to_declaration(functionDefinition);
-            function_container_push(functionContainer, declaration);
-          }
           vector_push_back(result->functionDefinitions, functionDefinition);
           continue;
         }
@@ -544,6 +509,32 @@ FunctionDefinition *function_definition(Type *type,
     expect(")");
   }
 
+  //-----関数宣言との対応づけ-------
+  //再帰関数に対応するためにここでやる
+  {
+    FunctionDeclaration *declaration =
+        function_container_get(functionContainer, identifier->string);
+    // 関数定義の引数をTypeのvectorに変換
+    Vector *argumentTypes = new_vector(16);
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      Variable *variable = node->variable;
+      vector_push_back(argumentTypes, variable->type);
+    }
+    if (declaration) {
+      //宣言に引数がなければ引数チェックをスキップ
+      if (vector_length(declaration->arguments) > 0) {
+        if (!type_vector_compare(declaration->arguments, argumentTypes))
+          error("関数の定義と前方宣言の引数が一致しません");
+      }
+    } else {
+      FunctionDeclaration *declaration =
+          new_function_declaration(type, identifier->string, argumentTypes);
+      function_container_push(functionContainer, declaration);
+    }
+  }
+  //--------------------------------
+
   if (!consume("{")) {
     token = tokenHead;
     return NULL;
@@ -620,7 +611,7 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
 
   Node *initialization = NULL;
   if (!isExtern && consume("=")) {
-    initialization = literal();
+    initialization = initializer();
   }
 
   if (!consume(";")) {
@@ -676,6 +667,22 @@ Variable *variable_declaration(Type *type,
   }
 
   return new_variable(type, identifier->string);
+}
+
+Node *initializer() {
+  if (consume("{")) {
+    Vector *elements = new_vector(16);
+    do {
+      vector_push_back(elements, literal());
+    } while (consume(","));
+    expect("}");
+
+    Node *result = new_node(NODE_ARRAY, NULL, NULL);
+    result->elements = elements;
+    return result;
+  }
+
+  return literal();
 }
 
 //文をパースする
@@ -1386,9 +1393,9 @@ Node *postfix(VariableContainer *variableContainer) {
       function->functionCall->arguments = arguments;
     }
     node = function;
-
-  } else
+  } else {
     token = head;
+  }
 
   if (!node)
     node = primary(variableContainer);
