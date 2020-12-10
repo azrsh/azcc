@@ -166,5 +166,7 @@ clean:
 	-rm -f test/functional/*/*.i test/functional/*/*.s test/functional/*/*.o test/functional/*/*.out
 	-rm -f bin/*/azcc bin/*/*.o bin/*/*.s bin/*/*.i
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean
+all: clean test-all
+
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean all
 .SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3
