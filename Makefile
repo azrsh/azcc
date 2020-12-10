@@ -26,6 +26,8 @@ UNIT_AZ2AZ2_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/az2az2/%.out)
 FUNCTIONAL_AZ3_TESTS=$(FUNCTIONAL_TEST_SRCS:test/functional/%.c=test/functional/az3/%.out)
 GEN3_OBJS=$(SRCS:%.c=bin/gen3/%.o)
 GEN3_BIN:=bin/gen3/azcc
+GEN2_GEN3_DIFF_DUMMIES=$(SRCS:%.c=bin/gen2-gen3-diff/%.diff)
+
 
 # 1st Generation Compile
 
@@ -142,7 +144,12 @@ test-unit3: $(UNIT_AZ2CC_TESTS) $(UNIT_AZ2AZ2_TESTS) $(UNIT_CCAZ2_TESTS)
 test-functional3: $(FUNCTIONAL_AZ3_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
-test3: test-unit3 test-functional3
+bin/gen2-gen3-diff/%.diff: bin/gen2/%.s bin/gen3/%.s
+	diff bin/gen2/$*.s bin/gen3/$*.s
+
+test-gen2-gen3-diff: $(GEN_GEN3_DIFF_DUMMIES)
+
+test3: test-unit3 test-functional3 test-gen2-gen3-diff
 
 
 test-all: test test2 test3
@@ -159,5 +166,5 @@ clean:
 	-rm -f test/functional/*/*.i test/functional/*/*.s test/functional/*/*.o test/functional/*/*.out
 	-rm -f bin/*/azcc bin/*/*.o bin/*/*.s bin/*/*.i
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 clean sandbox
-.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean
+.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3
