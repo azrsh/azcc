@@ -333,7 +333,7 @@ void generate_expression(Node *node, int *labelCount) {
     generate_expression(node->lhs, labelCount);
     generate_cast(node);
     return;
-  case NODE_LAND:
+  case NODE_LAND: {
     INSERT_COMMENT("logic and start");
     int landLabel = *labelCount;
     *labelCount += 1;
@@ -350,7 +350,8 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     INSERT_COMMENT("logic and end");
     return;
-  case NODE_LOR:
+  }
+  case NODE_LOR: {
     INSERT_COMMENT("logic or start");
     int lorLabel = *labelCount;
     *labelCount += 1;
@@ -367,6 +368,23 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     INSERT_COMMENT("logic or end");
     return;
+  }
+  case NODE_COND: {
+    INSERT_COMMENT("conditional start");
+    int condLabel = *labelCount;
+    *labelCount += 1;
+    generate_expression(node->condition, labelCount);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je .Lsecondcond%d\n", condLabel);
+    generate_expression(node->lhs, labelCount);
+    printf("  jmp .Lendcond%d\n", condLabel);
+    printf(".Lsecondcond%d:\n", condLabel);
+    generate_expression(node->rhs, labelCount);
+    printf(".Lendcond%d:\n", condLabel);
+    INSERT_COMMENT("conditional end");
+    return;
+  }
   case NODE_ADD:
   case NODE_SUB:
   case NODE_MUL:
@@ -460,6 +478,7 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_LAND:
   case NODE_LOR:
   case NODE_LNOT:
+  case NODE_COND:
   case NODE_REF:
   case NODE_DEREF:
   case NODE_ASSIGN:

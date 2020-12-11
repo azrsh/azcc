@@ -81,7 +81,7 @@ Token *tokenize(const char *p) {
       continue;
     }
 
-    if (strchr("+-*/%()<>=;{},&[].!:", *p)) {
+    if (strchr("+-*/%()<>=;{},&[].!:?", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }

@@ -302,6 +302,7 @@ ContinueStatement *continue_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
 Node *assign(VariableContainer *variableContainer);
+Node *conditional(VariableContainer *variableContainer);
 Node *logic_or(VariableContainer *variableContainer);
 Node *logic_and(VariableContainer *variableContainer);
 Node *equality(VariableContainer *variableContainer);
@@ -328,6 +329,7 @@ Node *literal();
 // struct_definition = "struct" identifier "{" (type_specifier identifier ";")*
 // "}" ";"
 // type_definition = "typedef" type_specifier identifier
+
 // statement = null_statement | expression_statement | return_statement |
 // if_statement | switch_statement | labeled_statement | while_statementa |
 // do_while_statement | break_statement | continue_statement
@@ -348,9 +350,10 @@ Node *literal();
 // expression = assign | variable_definition
 // variable_definition = type_specifier identity
 // type_specifier = ("int" | "char" | "void" | "_Bool") "*"*
-// assign = logic_or (("=" | "+=" | "-=" | "*=" | "/=") assign)?
-// logic_or = logic_and ("||" logic_and)*
-// logic_and = equality ("&&" equality)*
+// assign = (unary (("=" | "+=" | "-=" | "*=" | "/=") assign)? | conditional)
+// conditional = logic_or ("?" expression ":" conditional)?
+// logical_or = logic_and ("||" logic_and)*
+// logical_and = equality ("&&" equality)*
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
@@ -1206,30 +1209,46 @@ Type *struct_specifier(VariableContainer *variableContainer) {
 
 //代入をパースする
 Node *assign(VariableContainer *variableContainer) {
-  Node *node = logic_or(variableContainer);
+  Node *node = conditional(variableContainer);
 
   for (;;) {
     if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, logic_or(variableContainer));
+      node = new_node(NODE_ASSIGN, node, conditional(variableContainer));
     } else if (consume("+=")) {
-      Node *addNode = new_node(NODE_ADD, node, logic_or(variableContainer));
+      Node *addNode = new_node(NODE_ADD, node, conditional(variableContainer));
       node = new_node(NODE_ASSIGN, node, addNode);
     } else if (consume("-=")) {
-      Node *subNode = new_node(NODE_SUB, node, logic_or(variableContainer));
+      Node *subNode = new_node(NODE_SUB, node, conditional(variableContainer));
       node = new_node(NODE_ASSIGN, node, subNode);
     } else if (consume("*=")) {
-      Node *mulNode = new_node(NODE_MUL, node, logic_or(variableContainer));
+      Node *mulNode = new_node(NODE_MUL, node, conditional(variableContainer));
       node = new_node(NODE_ASSIGN, node, mulNode);
     } else if (consume("/=")) {
-      Node *divNode = new_node(NODE_DIV, node, logic_or(variableContainer));
+      Node *divNode = new_node(NODE_DIV, node, conditional(variableContainer));
       node = new_node(NODE_ASSIGN, node, divNode);
     } else if (consume("%=")) {
-      Node *modNode = new_node(NODE_MOD, node, logic_or(variableContainer));
+      Node *modNode = new_node(NODE_MOD, node, conditional(variableContainer));
       node = new_node(NODE_ASSIGN, node, modNode);
     } else {
       return node;
     }
   }
+}
+
+Node *conditional(VariableContainer *variableContainer) {
+  Node *node = logic_or(variableContainer);
+
+  if (consume("?")) {
+    Node *lhs = expression(variableContainer);
+    expect(":");
+    Node *rhs = conditional(variableContainer);
+
+    Node *conditionalNode = new_node(NODE_COND, lhs, rhs);
+    conditionalNode->condition = node;
+    node = conditionalNode;
+  }
+
+  return node;
 }
 
 Node *logic_or(VariableContainer *variableContainer) {
@@ -1242,6 +1261,7 @@ Node *logic_or(VariableContainer *variableContainer) {
       return node;
   }
 }
+
 Node *logic_and(VariableContainer *variableContainer) {
   Node *node = equality(variableContainer);
 
