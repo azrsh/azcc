@@ -1209,29 +1209,28 @@ Type *struct_specifier(VariableContainer *variableContainer) {
 
 //代入をパースする
 Node *assign(VariableContainer *variableContainer) {
+  //本来代入の左辺にとれるのはunaryだけなのでフィルタリングする必要があるがやっていない
   Node *node = conditional(variableContainer);
 
-  for (;;) {
-    if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, conditional(variableContainer));
-    } else if (consume("+=")) {
-      Node *addNode = new_node(NODE_ADD, node, conditional(variableContainer));
-      node = new_node(NODE_ASSIGN, node, addNode);
-    } else if (consume("-=")) {
-      Node *subNode = new_node(NODE_SUB, node, conditional(variableContainer));
-      node = new_node(NODE_ASSIGN, node, subNode);
-    } else if (consume("*=")) {
-      Node *mulNode = new_node(NODE_MUL, node, conditional(variableContainer));
-      node = new_node(NODE_ASSIGN, node, mulNode);
-    } else if (consume("/=")) {
-      Node *divNode = new_node(NODE_DIV, node, conditional(variableContainer));
-      node = new_node(NODE_ASSIGN, node, divNode);
-    } else if (consume("%=")) {
-      Node *modNode = new_node(NODE_MOD, node, conditional(variableContainer));
-      node = new_node(NODE_ASSIGN, node, modNode);
-    } else {
-      return node;
-    }
+  if (consume("=")) {
+    return new_node(NODE_ASSIGN, node, assign(variableContainer));
+  } else if (consume("+=")) {
+    Node *addNode = new_node(NODE_ADD, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, addNode);
+  } else if (consume("-=")) {
+    Node *subNode = new_node(NODE_SUB, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, subNode);
+  } else if (consume("*=")) {
+    Node *mulNode = new_node(NODE_MUL, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, mulNode);
+  } else if (consume("/=")) {
+    Node *divNode = new_node(NODE_DIV, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, divNode);
+  } else if (consume("%=")) {
+    Node *modNode = new_node(NODE_MOD, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else {
+    return node;
   }
 }
 
