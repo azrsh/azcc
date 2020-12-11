@@ -31,7 +31,7 @@ $ gcc -o source.out source.s
 
 ## Reference
 + https://www.sigbus.info/compilerbook
-  + An online textbook for scratching c compiler, written by rui314.
+  + An online textbook for scratching c compiler, written by Rui Ueyama.
 + https://github.com/rui314/chibicc
   + A C compiler, developed by Rui Ueyama.
 + https://github.com/hsjoihs/c-compiler
