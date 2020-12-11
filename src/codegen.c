@@ -247,9 +247,9 @@ void generate_value_extension(Node *node) {
     printf("  movsx rax, eax\n");
     break;
   case TYPE_PTR:
+  case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
     break;
   case TYPE_STRUCT:
-  case TYPE_ARRAY:
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
   }
