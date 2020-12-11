@@ -5,8 +5,8 @@ CFLAGS:=-std=c11 -g -static -Wall -Wextra
 SRCS=$(wildcard src/*.c)
 UNIT_TEST_SRCS=$(wildcard test/unit/*.c)
 FUNCTIONAL_TEST_SRCS=$(wildcard test/functional/*.c)
-UNIT_TEST_DIRS=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1
-FUNCTIONAL_TEST_DIRS=test/functional/az1 test/functional/az2
+UNIT_TEST_DIRS=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1 test/unit/az2cc test/unit/ccaz2 test/unit/az2az2
+FUNCTIONAL_TEST_DIRS=test/functional/az1 test/functional/az2 test/functional/az3
 TEST_TOOL_SRCS=$(wildcard test/tool/*.c)
 TEST_TOOL_OBJS=$(TEST_TOOL_SRCS:.c=.o)
 
@@ -30,6 +30,7 @@ GEN3_OBJS=$(SRCS:src/%.c=bin/gen3/%.o)
 GEN3_BIN:=bin/gen3/azcc
 GEN2_GEN3_DIFF_DUMMIES=$(SRCS:%.c=bin/gen2-gen3-diff/%.diff)
 
+RUN_TESTS=for i in $^; do if [ ! -d $$i ]; then echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); fi done
 
 # 1st Generation Compile
 
@@ -57,10 +58,10 @@ test/functional/az1/%.out: $(GEN1_BIN) $(TEST_TOOL_OBJS) test/functional/%.c
 	$(CC) -o $@ test/functional/az1/$*.s $(TEST_TOOL_OBJS)
 
 test-unit: $(UNIT_TEST_DIRS) $(UNIT_CC_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+	$(RUN_TESTS)
 
 test-functional: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ1_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+	$(RUN_TESTS)
 
 test: test-unit test-functional
 
@@ -101,11 +102,11 @@ test/functional/az2/%.out: $(GEN2_BIN) $(TEST_TOOL_OBJS) test/functional/%.c
 	$(GEN2_BIN) test/functional/az2/$*.i > test/functional/az2/$*.s
 	$(CC) -o $@ test/functional/az2/$*.s $(TEST_TOOL_OBJS)
 
-test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_AZ1AZ1_TESTS) $(UNIT_CCAZ1_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+test-unit2: $(UNIT_TEST_DIRS) $(UNIT_AZ1CC_TESTS) $(UNIT_AZ1AZ1_TESTS) $(UNIT_CCAZ1_TESTS)
+	$(RUN_TESTS)
 
-test-functional2: $(FUNCTIONAL_AZ2_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+test-functional2: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ2_TESTS)
+	$(RUN_TESTS)
 
 test2: test-unit2 test-functional2
 
@@ -140,11 +141,11 @@ test/functional/az3/%.out: $(GEN3_BIN) $(TEST_TOOL_OBJS) test/functional/%.c
 	$(GEN3_BIN) test/functional/az3/$*.i > test/functional/az3/$*.s
 	$(CC) -o $@ test/functional/az3/$*.s $(TEST_TOOL_OBJS)
 
-test-unit3: $(UNIT_AZ2CC_TESTS) $(UNIT_AZ2AZ2_TESTS) $(UNIT_CCAZ2_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+test-unit3: $(UNIT_TEST_DIRS) $(UNIT_AZ2CC_TESTS) $(UNIT_AZ2AZ2_TESTS) $(UNIT_CCAZ2_TESTS)
+	$(RUN_TESTS)
 
-test-functional3: $(FUNCTIONAL_AZ3_TESTS)
-	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
+test-functional3: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ3_TESTS)
+	$(RUN_TESTS)
 
 bin/gen2-gen3-diff/%.diff: bin/gen2/%.s bin/gen3/%.s
 	diff bin/gen2/$*.s bin/gen3/$*.s
@@ -171,10 +172,10 @@ clean:
 all: clean test-all
 
 $(UNIT_TEST_DIRS):
-	mkdir $@
+	if [ ! -d $@ ]; then mkdir $@; fi
 
 $(FUNCTIONAL_TEST_DIRS):
-	mkdir $@
+	if [ ! -d $@ ]; then mkdir $@; fi
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean all
-.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) clean all
+.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
