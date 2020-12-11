@@ -1,4 +1,7 @@
 # azcc: Azarashi2931's C Compiler
+![C/C++ CI](https://github.com/azarashi2931/azcc/workflows/C/C++%20CI/badge.svg?branch=master)
+![license](https://img.shields.io/github/license/azarashi2931/azcc)
+
 This is a toy C compiler, developed at seccamp2020.
 
 ## How to Build and Test
