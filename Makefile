@@ -5,6 +5,8 @@ CFLAGS:=-std=c11 -g -static -Wall -Wextra
 SRCS=$(wildcard src/*.c)
 UNIT_TEST_SRCS=$(wildcard test/unit/*.c)
 FUNCTIONAL_TEST_SRCS=$(wildcard test/functional/*.c)
+UNIT_TEST_DIRS=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1
+FUNCTIONAL_TEST_DIRS=test/functional/az1 test/functional/az2
 TEST_TOOL_SRCS=$(wildcard test/tool/*.c)
 TEST_TOOL_OBJS=$(TEST_TOOL_SRCS:.c=.o)
 
@@ -54,10 +56,10 @@ test/functional/az1/%.out: $(GEN1_BIN) $(TEST_TOOL_OBJS) test/functional/%.c
 	$(GEN1_BIN) test/functional/az1/$*.i > test/functional/az1/$*.s
 	$(CC) -o $@ test/functional/az1/$*.s $(TEST_TOOL_OBJS)
 
-test-unit: $(UNIT_CC_TESTS)
+test-unit: $(UNIT_TEST_DIRS) $(UNIT_CC_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
-test-functional: $(FUNCTIONAL_AZ1_TESTS)
+test-functional: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ1_TESTS)
 	for i in $^; do echo -n "$$i => "; (./$$i > ./$$i.log && echo "\033[32mPASS\033[m") || (echo "\033[31mFAIL\033[m For more information, see $$i.log" && exit 1); done
 
 test: test-unit test-functional
@@ -167,6 +169,12 @@ clean:
 	-rm -f bin/*/azcc bin/*/*.o bin/*/*.s bin/*/*.i
 
 all: clean test-all
+
+$(UNIT_TEST_DIRS):
+	mkdir $@
+
+$(FUNCTIONAL_TEST_DIRS):
+	mkdir $@
 
 .PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean all
 .SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3
