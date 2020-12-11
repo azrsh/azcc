@@ -18,6 +18,7 @@ typedef enum {
   NODE_LAND,   // &&
   NODE_LOR,    // ||
   NODE_LNOT,   // !
+  NODE_COND,   // cond ? res : res
   NODE_REF,    // &
   NODE_DEREF,  // *
   NODE_ASSIGN, // 代入
@@ -37,6 +38,7 @@ struct Node {
   Type *type;                 //ノードの型
   Node *lhs;                  //左辺
   Node *rhs;                  //右辺
+  Node *condition;            // kindがNODE_CONDのときのみ使う
   const char *source;         //エラー出力のための情報
   Variable *variable;         // kindがNODE_VARのときのみ使う
   FunctionCall *functionCall; // kindがNODE_FUNCのときのみ使う

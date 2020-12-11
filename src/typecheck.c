@@ -215,6 +215,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LE:
   case NODE_LAND:
   case NODE_LOR:
+  case NODE_COND:
     break; //次のswitch文で判定する
   }
 
@@ -306,6 +307,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LOR:
     node->type = new_type(TYPE_INT);
     return;
+  case NODE_COND:
+    tag_type_to_node(node->condition, context);
+    if (type_compare_deep_with_implicit_cast(lhs, rhs)) {
+      node->type = lhs;
+      node->rhs = new_node_cast(lhs, node->rhs);
+      return;
+    }
+    ERROR_AT(node->source, "条件演算子のオペランド型が不正です");
   case NODE_LNOT:
   case NODE_REF:
   case NODE_DEREF:
