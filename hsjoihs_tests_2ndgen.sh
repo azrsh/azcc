@@ -1,7 +1,7 @@
 #!/bin/bash
 run_test() {
 	echo -e $2 > test/hsjoihs_tmp/task$1.c 
-    test/self/azcc test/hsjoihs_tmp/task$1.c > test/hsjoihs_tmp/task$1.s 2> /dev/null
+    bin/gen2/azcc test/hsjoihs_tmp/task$1.c > test/hsjoihs_tmp/task$1.s 2> /dev/null
     d=$?
     if [ $d -ne 0 ]; then { echo -e "compile FAIL, at test case" $1: $2; return 0; }; else echo -e "\033[32mcompile PASS\033[m"; fi
     gcc test/hsjoihs_tmp/task$1.s -o test/hsjoihs_tmp/task$1.out
