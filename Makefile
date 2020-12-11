@@ -30,10 +30,11 @@ GEN3_OBJS=$(SRCS:src/%.c=bin/gen3/%.o)
 GEN3_BIN:=bin/gen3/azcc
 GEN2_GEN3_DIFF_DUMMIES=$(SRCS:%.c=bin/gen2-gen3-diff/%.diff)
 
-RUN_TESTS_CONTINUE_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i" || echo "\033[31mFAIL\033[m $$i For more information, see $$i.log"; fi done
-RUN_TESTS_STOP_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i" || echo "\033[31mFAIL\033[m $$i For more information, see $$i.log" && exit 1; fi done
+RUN_TESTS_CONTINUE_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then { ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i";} || { echo "\033[31mFAIL\033[m $$i For more information, see $$i.log";}; fi done
+RUN_TESTS_STOP_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then { ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i";} || { echo "\033[31mFAIL\033[m $$i For more information, see $$i.log" && exit 1;}; fi done
 
 RUN_TESTS=$(RUN_TESTS_CONTINUE_ON_FAIL)
+#RUN_TESTS=$(RUN_TESTS_STOP_ON_FAIL)
 
 # 1st Generation Compile
 
