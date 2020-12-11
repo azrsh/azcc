@@ -77,6 +77,21 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     node->type = new_type(TYPE_PTR);
     node->type->base = new_type(TYPE_CHAR);
     return;
+  case NODE_ARRAY: {
+    //ここでいちおう型付けしているが、グローバル変数の初期化のときには強制的に宣言の型に上書きされる
+    node->type = new_type(TYPE_ARRAY);
+    Type *baseType = NULL;
+    for (int i = 0; i < vector_length(node->elements); i++) {
+      Node *element = vector_get(node->elements, i);
+      tag_type_to_node(element, context);
+      if (baseType)
+        type_compare_deep_with_implicit_cast(baseType, element->type);
+      else
+        baseType = element->type;
+    }
+    node->type->base = baseType;
+    return;
+  }
   case NODE_LNOT:
     tag_type_to_node(node->lhs, context);
     node->type = node->lhs->type;
@@ -300,6 +315,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_NUM:
   case NODE_CHAR:
   case NODE_STRING:
+  case NODE_ARRAY:
   case NODE_CAST:
   case NODE_DOT:
     ERROR("コンパイラの内部エラー");
