@@ -5,8 +5,10 @@ CFLAGS:=-std=c11 -g -static -Wall -Wextra
 SRCS=$(wildcard src/*.c)
 UNIT_TEST_SRCS=$(wildcard test/unit/*.c)
 FUNCTIONAL_TEST_SRCS=$(wildcard test/functional/*.c)
-UNIT_TEST_DIRS=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1 test/unit/az2cc test/unit/ccaz2 test/unit/az2az2
-FUNCTIONAL_TEST_DIRS=test/functional/az1 test/functional/az2 test/functional/az3
+UNIT_TEST_DIRS:=test/unit/cc test/unit/az1cc test/unit/ccaz1 test/unit/az1az1 test/unit/az2cc test/unit/ccaz2 test/unit/az2az2
+FUNCTIONAL_TEST_DIRS:=test/functional/az1 test/functional/az2 test/functional/az3
+BIN_PARENT_DIR:=bin
+BIN_DIRS=bin/gen1 bin/gen2 bin/gen3
 TEST_TOOL_SRCS=$(wildcard test/tool/*.c)
 TEST_TOOL_OBJS=$(TEST_TOOL_SRCS:.c=.o)
 
@@ -41,7 +43,7 @@ RUN_TESTS=$(RUN_TESTS_CONTINUE_ON_FAIL)
 $(GEN1_BIN): $(GEN1_OBJS)
 	$(CC) -o $(GEN1_BIN) $(GEN1_OBJS) $(LDFLAGS)
 
-bin/gen1/%.o: src/*.h src/%.c
+bin/gen1/%.o: $(BIN_DIRS) src/*.h src/%.c
 	$(CC) -c -o $@ src/$*.c
 
 
@@ -72,7 +74,7 @@ test: test-unit test-functional
 
 # 2nd Generation
 
-bin/gen2/%.o: $(GEN1_BIN) src/%.c
+bin/gen2/%.o: $(BIN_DIRS) $(GEN1_BIN) src/%.c
 	cpp -I test/dummylib src/$*.c > bin/gen2/$*.i
 	$(GEN1_BIN) bin/gen2/$*.i > bin/gen2/$*.s
 	$(CC) -c -o $@ bin/gen2/$*.s
@@ -117,7 +119,7 @@ test2: test-unit2 test-functional2
 
 # 3rd Generation
 
-bin/gen3/%.o: $(GEN2_BIN) src/%.c
+bin/gen3/%.o: $(BIN_DIRS) $(GEN2_BIN) src/%.c
 	cpp -I test/dummylib src/$*.c > bin/gen3/$*.i
 	$(GEN2_BIN) bin/gen3/$*.i > bin/gen3/$*.s
 	$(CC) -c -o $@ bin/gen3/$*.s
@@ -176,10 +178,16 @@ clean:
 all: clean test-all
 
 $(UNIT_TEST_DIRS):
-	if [ ! -d $@ ]; then mkdir $@; fi
+	mkdir $@
 
 $(FUNCTIONAL_TEST_DIRS):
-	if [ ! -d $@ ]; then mkdir $@; fi
+	mkdir $@
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) clean all
-.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
+$(BIN_DIRS): $(BIN_PARENT_DIR)
+	mkdir $@
+
+$(BIN_PARENT_DIR):
+	mkdir $@
+
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean all
+.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 $(BIN_PARENT_DIR) $(BIN_DIRS) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
