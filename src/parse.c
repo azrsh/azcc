@@ -1431,11 +1431,7 @@ Node *postfix(VariableContainer *variableContainer) {
 
     //関数宣言との整合性の検証
     {
-      FunctionDeclaration *declaration =
-          function_container_get(functionContainer, identifier->string);
-      if (declaration)
-        function->functionCall->type = declaration->returnType;
-      else
+      if (!function_container_get(functionContainer, identifier->string))
         ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
 
       function->functionCall->arguments = arguments;

@@ -6,10 +6,8 @@
 
 typedef struct FunctionCall FunctionCall;
 struct FunctionCall {
-  Type *type;         //戻り値の型
   const String *name; //名前
   Vector *arguments;  //引数の連結リスト, Node
-  bool isDefined;
 };
 
 #endif

@@ -112,19 +112,19 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     node->type = node->variable->type;
     return;
   case NODE_FUNC: {
-    Type *returnType = node->functionCall->type;
-    Vector *arguments = node->functionCall->arguments;
-    node->type = returnType;
+    //存在確認はパーサが行うので存在確認をスキップ
+    FunctionDeclaration *declaration = function_container_get(
+        context->functionContainer, node->functionCall->name);
+    node->type = declaration->returnType;
 
+    //引数の検証
+    Vector *arguments = node->functionCall->arguments;
     Vector *argumentTypes = new_vector(16);
     for (int i = 0; i < vector_length(arguments); i++) {
       Node *arg = vector_get(arguments, i);
       tag_type_to_node(arg, context);
       vector_push_back(argumentTypes, arg->type);
     }
-    //存在確認はパーサが行う
-    FunctionDeclaration *declaration = function_container_get(
-        context->functionContainer, node->functionCall->name);
     if (!declaration->arguments)
       return;
     if (vector_length(declaration->arguments) != vector_length(argumentTypes))
