@@ -473,6 +473,12 @@ Vector *function_declaration_argument(VariableContainer *variableContainer) {
     Type *type = type_specifier(variableContainer);
     if (!type)
       ERROR_AT(token->string->head, "型指定子ではありません");
+    if (type->kind == TYPE_VOID) {
+      if (!consume_identifier() && !consume(","))
+        return new_vector(0);
+      else
+        ERROR_AT(token->string->head, "関数宣言の引数の宣言が不正です");
+    }
 
     consume_identifier();
 
@@ -591,6 +597,13 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Type *type = type_specifier(variableContainer);
     if (!type)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+    if (type->kind == TYPE_VOID) {
+      if (!consume_identifier() && !consume(","))
+        return new_vector(0);
+      else
+        ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+    }
+
     Variable *declaration = variable_declaration(type, variableContainer);
     if (!declaration)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
