@@ -451,7 +451,7 @@ function_declaration(Type *type, VariableContainer *variableContainer) {
   }
 
   if (consume(")")) {
-    arguments = new_vector(0);
+    arguments = NULL;
   } else {
     arguments = function_declaration_argument(variableContainer);
     expect(")");
@@ -473,6 +473,13 @@ Vector *function_declaration_argument(VariableContainer *variableContainer) {
     Type *type = type_specifier(variableContainer);
     if (!type)
       ERROR_AT(token->string->head, "型指定子ではありません");
+    if (type->kind == TYPE_VOID) {
+      if (vector_length(arguments) == 0 && !consume_identifier() &&
+          !consume(","))
+        return new_vector(0);
+      else
+        ERROR_AT(token->string->head, "関数宣言の引数の宣言が不正です");
+    }
 
     consume_identifier();
 
@@ -515,8 +522,6 @@ FunctionDefinition *function_definition(Type *type,
   //-----関数宣言との対応づけ-------
   //再帰関数に対応するためにここでやる
   {
-    FunctionDeclaration *declaration =
-        function_container_get(functionContainer, identifier->string);
     // 関数定義の引数をTypeのvectorに変換
     Vector *argumentTypes = new_vector(16);
     for (int i = 0; i < vector_length(arguments); i++) {
@@ -524,9 +529,11 @@ FunctionDefinition *function_definition(Type *type,
       Variable *variable = node->variable;
       vector_push_back(argumentTypes, variable->type);
     }
+    FunctionDeclaration *declaration =
+        function_container_get(functionContainer, identifier->string);
     if (declaration) {
       //宣言に引数がなければ引数チェックをスキップ
-      if (vector_length(declaration->arguments) > 0) {
+      if (declaration->arguments) {
         if (!type_vector_compare(declaration->arguments, argumentTypes))
           ERROR_AT(identifier->string->head,
                    "関数の定義と前方宣言の引数が一致しません");
@@ -591,6 +598,14 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     Type *type = type_specifier(variableContainer);
     if (!type)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+    if (type->kind == TYPE_VOID) {
+      if (vector_length(arguments) == 0 && !consume_identifier() &&
+          !consume(","))
+        return new_vector(0);
+      else
+        ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+    }
+
     Variable *declaration = variable_declaration(type, variableContainer);
     if (!declaration)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
@@ -1416,11 +1431,7 @@ Node *postfix(VariableContainer *variableContainer) {
 
     //関数宣言との整合性の検証
     {
-      FunctionDeclaration *declaration =
-          function_container_get(functionContainer, identifier->string);
-      if (declaration)
-        function->functionCall->type = declaration->returnType;
-      else
+      if (!function_container_get(functionContainer, identifier->string))
         ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
 
       function->functionCall->arguments = arguments;
