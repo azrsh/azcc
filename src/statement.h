@@ -36,8 +36,9 @@ struct SwitchStatement {
 
 typedef struct LabeledStatement LabeledStatement;
 struct LabeledStatement {
-  Node *constantExpression;
+  Node *constantExpression; // caseラベルのときのみ使う
   StatementUnion *statement;
+  const String *name; // defaultラベルやcaseラベルでは使わない
 };
 
 typedef struct WhileStatement WhileStatement;
