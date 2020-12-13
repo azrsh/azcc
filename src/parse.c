@@ -875,8 +875,9 @@ LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
 
   Token *identifier = consume_identifier();
   if (identifier && consume(":")) {
-    ERROR_AT(identifier->string->head,
-             "caseまたはdefaultラべル以外はサポートされていません");
+    result->name = identifier->string;
+    result->statement = statement(variableContainer);
+    return result;
   }
 
   token = tokenHead;

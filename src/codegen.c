@@ -658,7 +658,10 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         else
           ERROR_AT(constantExpression->source, "定数式ではありません");
         printf(".Lcase%d.%d:\n", latestSwitch, value);
-      } else // defaultラベルの場合
+      } else if (labeledPattern->name)
+
+        printf(".L%s:\n", string_to_char(labeledPattern->name));
+      else // defaultラベルの場合
         printf(".Ldefault%d:\n", latestSwitch);
 
       generate_statement(labeledPattern->statement, labelCount,
