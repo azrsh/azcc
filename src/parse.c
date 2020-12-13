@@ -301,6 +301,8 @@ BreakStatement *break_statement(VariableContainer *variableContainer);
 ContinueStatement *continue_statement(VariableContainer *variableContainer);
 
 Node *expression(VariableContainer *variableContainer);
+Vector *argument_expression_list(VariableContainer *variableContainer);
+
 Node *assign(VariableContainer *variableContainer);
 Node *conditional(VariableContainer *variableContainer);
 Node *logic_or(VariableContainer *variableContainer);
@@ -312,7 +314,6 @@ Node *multiply(VariableContainer *variableContainer);
 Node *unary(VariableContainer *variableContainer);
 Node *postfix(VariableContainer *variableContainer);
 Node *primary(VariableContainer *variableContainer);
-Vector *function_call_argument(VariableContainer *variableContainer);
 Node *literal();
 
 // program = (function_definition | global_variable_definition |
@@ -347,7 +348,9 @@ Node *literal();
 // break_statement = "break" ";"
 // continue_statement = "continue" ";"
 
-// expression = assign | variable_definition
+// expression = (assign ("," assign)*) | variable_definition
+// argument_expression_list = expression ("," expression)*
+
 // variable_definition = type_specifier identity
 // type_specifier = ("int" | "char" | "void" | "_Bool") "*"*
 // assign = (unary (("=" | "+=" | "-=" | "*=" | "/=") assign)? | conditional)
@@ -360,11 +363,9 @@ Node *literal();
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "&" | "*" | "!" | "sizeof" | "_Alignof")? (primary | "("
 // type_specifier ")" )
-// postfix = primary ("(" function_call_argument? ")" | "[" expression "]" | "."
-// identifier)*
-// primary = literal | identity ("(" function_call_argument? ")" |
-// "[" expression "]")? | "("expression")"
-// function_call_argument = expression ("," expression)*
+// postfix = primary ("(" argument_expression_list? ")" | "[" expression "]" |
+// "." identifier)* primary = literal | identity ("(" argument_expression_list?
+// ")" | "[" expression "]")? | "("expression")"
 // literal = number | "\"" string"\""
 
 //プログラムをパースする
@@ -1005,8 +1006,22 @@ Node *expression(VariableContainer *variableContainer) {
   if (node)
     return node;
 
+  //カンマ演算子
   node = assign(variableContainer);
+  while (consume(",")) {
+    node = new_node(NODE_COMMA, node, assign(variableContainer));
+  }
+
   return node;
+}
+
+// Node Vector
+Vector *argument_expression_list(VariableContainer *variableContainer) {
+  Vector *arguments = new_vector(32);
+  do {
+    vector_push_back(arguments, assign(variableContainer));
+  } while (consume(","));
+  return arguments;
 }
 
 // 変数定義をパースする
@@ -1423,7 +1438,7 @@ Node *postfix(VariableContainer *variableContainer) {
     if (consume(")")) {
       arguments = new_vector(0);
     } else {
-      arguments = function_call_argument(variableContainer);
+      arguments = argument_expression_list(variableContainer);
       expect(")");
     }
 
@@ -1498,15 +1513,6 @@ Node *primary(VariableContainer *variableContainer) {
 
   //そうでなければリテラル
   return literal();
-}
-
-// Node Vector
-Vector *function_call_argument(VariableContainer *variableContainer) {
-  Vector *arguments = new_vector(32);
-  do {
-    vector_push_back(arguments, expression(variableContainer));
-  } while (consume(","));
-  return arguments;
 }
 
 Node *literal() {

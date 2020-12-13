@@ -385,6 +385,11 @@ void generate_expression(Node *node, int *labelCount) {
     INSERT_COMMENT("conditional end");
     return;
   }
+  case NODE_COMMA:
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    generate_expression(node->rhs, labelCount);
+    return;
   case NODE_ADD:
   case NODE_SUB:
   case NODE_MUL:
@@ -479,6 +484,7 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_LOR:
   case NODE_LNOT:
   case NODE_COND:
+  case NODE_COMMA:
   case NODE_REF:
   case NODE_DEREF:
   case NODE_ASSIGN:
