@@ -216,6 +216,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LAND:
   case NODE_LOR:
   case NODE_COND:
+  case NODE_COMMA:
     break; //次のswitch文で判定する
   }
 
@@ -315,6 +316,9 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       return;
     }
     ERROR_AT(node->source, "条件演算子のオペランド型が不正です");
+  case NODE_COMMA:
+    node->type = rhs;
+    return;
   case NODE_LNOT:
   case NODE_REF:
   case NODE_DEREF:

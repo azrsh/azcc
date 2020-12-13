@@ -22,6 +22,7 @@ typedef enum {
   NODE_REF,    // &
   NODE_DEREF,  // *
   NODE_ASSIGN, // 代入
+  NODE_COMMA,  // 代入
   NODE_VAR,    // 変数
   NODE_FUNC,   // 関数
   NODE_NUM,    // 整数
