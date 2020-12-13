@@ -51,7 +51,7 @@ $TEMP.gcc.out > $TEMP.gcc.txt
 
 $AZCC $TEMP.c > $TEMP.azcc.s;
 
-gcc $TEMP.azcc.s -o $TEMP.azcc.out
+gcc $TEMP.azcc.s -o $TEMP.azcc.out -static
 $TEMP.azcc.out > $TEMP.azcc.txt
 
 cat $TEMP.azcc.txt
