@@ -12,6 +12,7 @@ BIN_PARENT_DIR:=bin
 BIN_DIRS:=bin/gen1 bin/gen2 bin/gen3
 TEST_TOOL_SRCS=$(wildcard test/tool/*.c)
 TEST_TOOL_OBJS=$(TEST_TOOL_SRCS:.c=.o)
+TEST_SHELL_SCRIPTS=$(wildcard test/yanorei32/*.sh)
 
 UNIT_CC_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/cc/%.out)
 FUNCTIONAL_AZ1_TESTS=$(FUNCTIONAL_TEST_SRCS:test/functional/%.c=test/functional/az1/%.out)
@@ -70,7 +71,10 @@ test-unit: $(UNIT_TEST_DIRS) $(UNIT_CC_TESTS)
 test-functional: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ1_TESTS)
 	$(RUN_TESTS)
 
-test: test-unit test-functional
+test-shell-scripts: $(TEST_SHELL_SCRIPTS)
+	$(RUN_TESTS)
+
+test: test-unit test-functional test-shell-scripts
 
 
 # 2nd Generation
@@ -185,4 +189,4 @@ $(BIN_PARENT_DIR):
 	mkdir $@
 
 .PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff clean all
-.SILENT: test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF) $(BIN_PARENT_DIR) $(BIN_DIRS) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
+.SILENT: test-all test test-unit test-functional test-shell-scripts test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF) $(BIN_PARENT_DIR) $(BIN_DIRS) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
