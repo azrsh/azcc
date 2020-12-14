@@ -8,11 +8,11 @@
 
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
-  const String *name;
-  Type *returnType;
-  Vector *arguments; // Variavble Nodes
-  CompoundStatement *body;
-  size_t stackSize;
+  const String *name;      //常に非NULL
+  Type *returnType;        //常に非NULL
+  Vector *arguments;       // Variavble Nodes、常に非NULL
+  CompoundStatement *body; //定義済みのとき常に非NULL
+  size_t stackSize;        //定義済みのとき常に非NULL
 };
 
 typedef struct Typedef Typedef;

@@ -253,25 +253,27 @@ Node *new_node_function_call(Token *token) {
   return node;
 }
 
-FunctionDeclaration *new_function_declaration(Type *type, const String *name,
-                                              Vector *arguments) {
-  FunctionDeclaration *result = calloc(1, sizeof(FunctionDeclaration));
+FunctionDefinition *new_function_declaration(Type *type, const String *name,
+                                             Vector *arguments) {
+  FunctionDefinition *result = calloc(1, sizeof(FunctionDefinition));
   result->returnType = type;
   result->name = new_string(name->head, name->length);
   result->arguments = arguments;
   return result;
 }
 
-FunctionDefinition *new_function_definition() {
-  FunctionDefinition *definition = calloc(1, sizeof(FunctionDefinition));
-  return definition;
+Vector *node_vector_to_type_vector(Vector *nodes) {
+  Vector *types = new_vector(16);
+  for (int i = 0; i < vector_length(nodes); i++) {
+    Node *node = vector_get(nodes, i);
+    Variable *variable = node->variable;
+    vector_push_back(types, variable->type);
+  }
+  return types;
 }
 
 // EBNFパーサ
 Program *program();
-FunctionDeclaration *function_declaration(Type *returnType,
-                                          VariableContainer *variableContainer);
-Vector *function_declaration_argument(VariableContainer *variableContainer);
 FunctionDefinition *function_definition(Type *returnType,
                                         VariableContainer *variableContainer);
 Vector *function_definition_argument(VariableContainer *variableContainer);
@@ -391,19 +393,11 @@ Program *program() {
     Type *type = type_specifier(variableContainer);
     if (type) {
       {
-        FunctionDeclaration *functionDeclaration =
-            function_declaration(type, variableContainer);
-        if (functionDeclaration) {
-          function_container_push(functionContainer, functionDeclaration);
-          continue;
-        }
-      }
-
-      {
         FunctionDefinition *functionDefinition =
             function_definition(type, variableContainer);
         if (functionDefinition) {
-          vector_push_back(result->functionDefinitions, functionDefinition);
+          if (functionDefinition->body)
+            vector_push_back(result->functionDefinitions, functionDefinition);
           continue;
         }
       }
@@ -435,60 +429,6 @@ Program *program() {
   return result;
 }
 
-FunctionDeclaration *
-function_declaration(Type *type, VariableContainer *variableContainer) {
-  Token *tokenHead = token;
-
-  Token *identifier = consume_identifier();
-  if (!identifier) {
-    token = tokenHead;
-    return NULL;
-  }
-
-  Vector *arguments;
-  if (!consume("(")) {
-    token = tokenHead;
-    return NULL;
-  }
-
-  if (consume(")")) {
-    arguments = NULL;
-  } else {
-    arguments = function_declaration_argument(variableContainer);
-    expect(")");
-  }
-
-  if (!consume(";")) {
-    token = tokenHead;
-    return NULL;
-  }
-
-  FunctionDeclaration *result =
-      new_function_declaration(type, identifier->string, arguments);
-  return result;
-}
-
-Vector *function_declaration_argument(VariableContainer *variableContainer) {
-  Vector *arguments = new_vector(16);
-  do {
-    Type *type = type_specifier(variableContainer);
-    if (!type)
-      ERROR_AT(token->string->head, "型指定子ではありません");
-    if (type->kind == TYPE_VOID) {
-      if (vector_length(arguments) == 0 && !consume_identifier() &&
-          !consume(","))
-        return new_vector(0);
-      else
-        ERROR_AT(token->string->head, "関数宣言の引数の宣言が不正です");
-    }
-
-    consume_identifier();
-
-    vector_push_back(arguments, type);
-  } while (consume(","));
-  return arguments;
-}
-
 ListNode *switchStatementNest; //引数に押し込みたい
 
 //関数の定義をパースする
@@ -514,36 +454,39 @@ FunctionDefinition *function_definition(Type *type,
     return NULL;
   }
   if (consume(")")) {
-    arguments = new_vector(0);
+    arguments = NULL;
   } else {
     arguments = function_definition_argument(mergedContainer);
     expect(")");
   }
 
+  if (consume(";")) {
+    FunctionDefinition *definition =
+        new_function_declaration(type, identifier->string, arguments);
+    function_container_push(functionContainer, definition);
+    return definition;
+  }
+
+  if (!arguments)
+    arguments = new_vector(0);
+
   //-----関数宣言との対応づけ-------
   //再帰関数に対応するためにここでやる
-  {
-    // 関数定義の引数をTypeのvectorに変換
-    Vector *argumentTypes = new_vector(16);
-    for (int i = 0; i < vector_length(arguments); i++) {
-      Node *node = vector_get(arguments, i);
-      Variable *variable = node->variable;
-      vector_push_back(argumentTypes, variable->type);
+  FunctionDefinition *definition =
+      function_container_get(functionContainer, identifier->string);
+  if (definition) {
+    //宣言に引数がなければ引数チェックをスキップ
+    if (definition->arguments) {
+      if (!type_vector_compare(
+              node_vector_to_type_vector(definition->arguments),
+              node_vector_to_type_vector(arguments)))
+        ERROR_AT(identifier->string->head,
+                 "関数の定義と前方宣言の引数が一致しません");
     }
-    FunctionDeclaration *declaration =
-        function_container_get(functionContainer, identifier->string);
-    if (declaration) {
-      //宣言に引数がなければ引数チェックをスキップ
-      if (declaration->arguments) {
-        if (!type_vector_compare(declaration->arguments, argumentTypes))
-          ERROR_AT(identifier->string->head,
-                   "関数の定義と前方宣言の引数が一致しません");
-      }
-    } else {
-      FunctionDeclaration *declaration =
-          new_function_declaration(type, identifier->string, argumentTypes);
-      function_container_push(functionContainer, declaration);
-    }
+    definition->arguments = arguments; //一致が確認できたので上書き
+  } else {
+    definition = new_function_declaration(type, identifier->string, arguments);
+    function_container_push(functionContainer, definition);
   }
   //--------------------------------
 
@@ -581,10 +524,6 @@ FunctionDefinition *function_definition(Type *type,
   //
   //
 
-  FunctionDefinition *definition = new_function_definition();
-  definition->returnType = type;
-  definition->name = identifier->string;
-  definition->arguments = arguments;
   definition->body = body;
   definition->stackSize = currentOffset;
   return definition;
@@ -608,8 +547,11 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
     }
 
     Variable *declaration = variable_declaration(type, variableContainer);
-    if (!declaration)
-      ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+    if (!declaration) {
+      char *disable = calloc(1, sizeof(char));
+      disable[0] = '0' + vector_length(arguments);
+      declaration = new_variable(type, char_to_string(disable));
+    }
 
     Node *node =
         new_node_variable_definition(declaration, variableContainer, source);
@@ -1443,16 +1385,12 @@ Node *postfix(VariableContainer *variableContainer) {
       expect(")");
     }
 
-    Node *function = new_node_function_call(identifier);
-
     //関数宣言との整合性の検証
-    {
-      if (!function_container_get(functionContainer, identifier->string))
-        ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
+    if (!function_container_get(functionContainer, identifier->string))
+      ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
 
-      function->functionCall->arguments = arguments;
-    }
-    node = function;
+    node = new_node_function_call(identifier);
+    node->functionCall->arguments = arguments;
   } else {
     token = head;
   }

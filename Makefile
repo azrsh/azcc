@@ -32,7 +32,7 @@ UNIT_AZ2AZ2_TESTS=$(UNIT_TEST_SRCS:test/unit/%.c=test/unit/az2az2/%.out)
 FUNCTIONAL_AZ3_TESTS=$(FUNCTIONAL_TEST_SRCS:test/functional/%.c=test/functional/az3/%.out)
 GEN3_OBJS=$(SRCS:src/%.c=bin/gen3/%.o)
 GEN3_BIN:=bin/gen3/azcc
-GEN2_GEN3_DIFF_DUMMIES=$(SRCS:%.c=bin/gen2-gen3-diff/%.diff)
+GEN2_GEN3_DIFF=$(SRCS:src/%.c=log/diff-gen2-gen3-%.log)
 
 RUN_TESTS_CONTINUE_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then { ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i";} || { echo "\033[31mFAIL\033[m $$i For more information, see $$i.log";}; fi done
 RUN_TESTS_STOP_ON_FAIL=for i in $^; do if [ ! -d $$i ]; then { ./$$i > ./$$i.log && echo "\033[32mPASS\033[m $$i";} || { echo "\033[31mFAIL\033[m $$i For more information, see $$i.log" && exit 1;}; fi done
@@ -151,10 +151,11 @@ test-unit3: $(UNIT_TEST_DIRS) $(UNIT_AZ2CC_TESTS) $(UNIT_AZ2AZ2_TESTS) $(UNIT_CC
 test-functional3: $(FUNCTIONAL_TEST_DIRS) $(FUNCTIONAL_AZ3_TESTS)
 	$(RUN_TESTS)
 
-bin/gen2-gen3-diff/%.diff: bin/gen2/%.s bin/gen3/%.s
-	diff bin/gen2/$*.s bin/gen3/$*.s
+log/diff-gen2-gen3-%.log: $(GEN2_BIN) $(GEN3_BIN)
+	mkdir -p log
+	{ diff bin/gen2/$*.s bin/gen3/$*.s > $@ && echo "\033[32mPASS\033[m $@";} || { echo "\033[31mFAIL\033[m $@ For more information, see $@";}
 
-test-gen2-gen3-diff: $(GEN_GEN3_DIFF_DUMMIES)
+test-gen2-gen3-diff: $(GEN2_GEN3_DIFF)
 
 test3: test-unit3 test-functional3 test-gen2-gen3-diff
 
@@ -187,5 +188,5 @@ $(BIN_DIRS): $(BIN_PARENT_DIR)
 $(BIN_PARENT_DIR):
 	mkdir $@
 
-.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF_DUMMIES) clean all
-.SILENT: test-all test test-unit test-functional test-shell-scripts test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 $(BIN_PARENT_DIR) $(BIN_DIRS) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 
+.PHONY: test-old test-all test test-unit test-functional test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff clean all
+.SILENT: test-all test test-unit test-functional test-shell-scripts test2 test-unit2 test-functional2 test3 test-unit3 test-functional3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF) $(BIN_PARENT_DIR) $(BIN_DIRS) $(UNIT_TEST_DIRS) $(FUNCTIONAL_TEST_DIRS) 

@@ -4,6 +4,7 @@
 #include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
+#include "parse.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
@@ -113,43 +114,57 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
-    FunctionDeclaration *declaration = function_container_get(
+    FunctionDefinition *declaration = function_container_get(
         context->functionContainer, node->functionCall->name);
     node->type = declaration->returnType;
+    Vector *callingArguments = node->functionCall->arguments;
 
     //引数の検証
-    Vector *arguments = node->functionCall->arguments;
-    Vector *argumentTypes = new_vector(16);
-    for (int i = 0; i < vector_length(arguments); i++) {
-      Node *arg = vector_get(arguments, i);
+    //型付けと同時にType型のVectorを生成
+    Vector *callingTypes = new_vector(16);
+    for (int i = 0; i < vector_length(callingArguments); i++) {
+      Node *arg = vector_get(callingArguments, i);
       tag_type_to_node(arg, context);
-      vector_push_back(argumentTypes, arg->type);
+      vector_push_back(callingTypes, arg->type);
     }
+
+    //引数がNULLならスキップ
     if (!declaration->arguments)
       return;
-    if (vector_length(declaration->arguments) != vector_length(argumentTypes))
+
+    // 関数の宣言の引数のNULLチェック後
+    // Type型のVectorを生成
+    Vector *declarationTypes = new_vector(16);
+    for (int i = 0; i < vector_length(declaration->arguments); i++) {
+      Node *arg = vector_get(declaration->arguments, i);
+      vector_push_back(declarationTypes, arg->type);
+    }
+
+    if (vector_length(declaration->arguments) !=
+        vector_length(callingArguments))
       ERROR_AT(node->source,
                "関数の呼び出しと前方宣言の引数の数が一致しません %s",
                string_to_char(declaration->name));
-    for (int i = 0; i < vector_length(declaration->arguments); i++) {
-      Type *type1 = vector_get(declaration->arguments, i);
-      Type *type2 = vector_get(argumentTypes, i);
+
+    for (int i = 0; i < vector_length(declarationTypes); i++) {
+      Type *type1 = vector_get(declarationTypes, i);
+      Type *type2 = vector_get(callingTypes, i);
       if (type_compare_deep(type1, type2))
         continue;
 
       if (type_compare_deep_with_implicit_cast(type1, type2)) {
-        vector_set(arguments, i,
-                   new_node_cast(type1, vector_get(arguments, i)));
+        Node *castNode = new_node_cast(type1, vector_get(callingArguments, i));
+        vector_set(callingArguments, i, castNode);
         continue;
       }
 
       // 0をNULL扱いすべきか検証する
       {
-        Node *argument = vector_get(arguments, i);
+        Node *argument = vector_get(callingArguments, i);
         bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
                       argument->val == 0;
         if (isNull) {
-          vector_set(arguments, i, new_node_cast(type1, argument));
+          vector_set(callingArguments, i, new_node_cast(type1, argument));
           continue;
         }
       }
