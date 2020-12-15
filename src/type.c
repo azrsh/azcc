@@ -43,6 +43,8 @@ int type_to_size(Type *type) {
   case TYPE_ARRAY:
     return type_to_size(type->base) * type->length;
   case TYPE_STRUCT:
+    if (!type->isDefined)
+      ERROR("未定義の型のサイズは取得できません");
     return member_container_aligned_size(type->members);
   }
 
@@ -64,6 +66,8 @@ int type_to_align(Type *type) {
   case TYPE_ARRAY:
     return type_to_size(type->base);
   case TYPE_STRUCT:
+    if (!type->isDefined)
+      ERROR("未定義の型のサイズは取得できません");
     return member_container_align(type->members);
   }
 
