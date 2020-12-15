@@ -1261,23 +1261,20 @@ Node *assign(ParseContext *context) {
     Node *modNode = new_node(NODE_MOD, node, assign(context));
     return new_node(NODE_ASSIGN, node, modNode);
   } else if (consume("&=")) {
-    Node *modNode = new_node(NODE_BAND, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
+    Node *bandNode = new_node(NODE_BAND, node, assign(context));
+    return new_node(NODE_ASSIGN, node, bandNode);
   } else if (consume("^=")) {
-    Node *modNode = new_node(NODE_BXOR, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
+    Node *bxorNode = new_node(NODE_BXOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, bxorNode);
   } else if (consume("|=")) {
-    Node *modNode = new_node(NODE_BOR, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
-  } else if (consume("~=")) {
-    Node *modNode = new_node(NODE_BNOT, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
+    Node *borNode = new_node(NODE_BOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, borNode);
   } else if (consume("<<=")) {
-    Node *modNode = new_node(NODE_LSHIFT, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
+    Node *lshftNode = new_node(NODE_LSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, lshftNode);
   } else if (consume(">>=")) {
-    Node *modNode = new_node(NODE_RSHIFT, node, assign(context));
-    return new_node(NODE_ASSIGN, node, modNode);
+    Node *rshiftNode = new_node(NODE_RSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, rshiftNode);
   } else {
     return node;
   }

@@ -503,10 +503,12 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  or rax, rdi\n");
     break;
   case NODE_LSHIFT:
-    printf("  shl rax, rdi\n"); //論理シフトのみ
+    printf("  mov rcx, rdi\n");
+    printf("  shl rax, cl\n"); //論理シフトのみ
     break;
   case NODE_RSHIFT:
-    printf("  shr rax, rdi\n"); //論理シフトのみ
+    printf("  mov rcx, rdi\n");
+    printf("  shr rax, cl\n"); //論理シフトのみ
     break;
   case NODE_LAND:
   case NODE_LOR:
