@@ -1002,13 +1002,8 @@ Node *variable_definition(Type *type, ParseContext *context) {
   Node *node = new_node_variable_definition(
       variable, context->variableContainer, tokenHead);
 
-  for (;;) {
-    if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, logic_or(context));
-    } else {
-      return node;
-    }
-  }
+  if (consume("="))
+    node = new_node(NODE_ASSIGN, node, assign(context));
 
   return node;
 }
@@ -1367,12 +1362,12 @@ Node *unary(ParseContext *context) {
   if (consume("*"))
     return new_node(NODE_DEREF, unary(context), NULL);
   if (consume("++")) {
-    Node *source = postfix(context);
+    Node *source = unary(context);
     Node *addNode = new_node(NODE_ADD, source, new_node_num(1));
     return new_node(NODE_ASSIGN, source, addNode);
   }
   if (consume("--")) {
-    Node *source = postfix(context);
+    Node *source = unary(context);
     Node *addNode = new_node(NODE_SUB, source, new_node_num(1));
     return new_node(NODE_ASSIGN, source, addNode);
   }
