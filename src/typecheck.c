@@ -323,14 +323,29 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LOR:
     node->type = new_type(TYPE_INT);
     return;
-  case NODE_COND:
+  case NODE_COND: {
     tag_type_to_node(node->condition, context);
+
+    //ポインタ型と0の比較のときのみ0をNULLポインタと見なす
+    bool isLhsNull = rhs->kind == TYPE_PTR && node->lhs->kind == NODE_NUM &&
+                     node->lhs->val == 0;
+    bool isRhsNull = lhs->kind == TYPE_PTR && node->rhs->kind == NODE_NUM &&
+                     node->rhs->val == 0;
+    if (isLhsNull) {
+      node->lhs = new_node_cast(rhs, node->lhs);
+      lhs = node->lhs->type;
+    } else if (isRhsNull) {
+      node->rhs = new_node_cast(lhs, node->rhs);
+      rhs = node->rhs->type;
+    }
+
     if (type_compare_deep_with_implicit_cast(lhs, rhs)) {
       node->type = lhs;
       node->rhs = new_node_cast(lhs, node->rhs);
       return;
     }
     ERROR_AT(node->source, "条件演算子のオペランド型が不正です");
+  }
   case NODE_COMMA:
     node->type = rhs;
     return;
