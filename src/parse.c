@@ -574,6 +574,8 @@ Vector *function_definition_argument(ParseContext *context) {
     Type *type = type_specifier(context);
     if (!type)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+
+    // func(void)への対応とvoid型の値の排除
     if (type->kind == TYPE_VOID) {
       if (vector_length(arguments) == 0 && !consume_identifier() &&
           !consume(","))
@@ -587,6 +589,12 @@ Vector *function_definition_argument(ParseContext *context) {
       char *disable = calloc(2, sizeof(char));
       disable[0] = '0' + vector_length(arguments);
       declaration = new_variable(type, char_to_string(disable));
+    }
+
+    //関数定義の引数のうち、配列はポインタに読み替え
+    if (declaration->type->kind == TYPE_ARRAY) {
+      declaration->type->kind = TYPE_PTR;
+      declaration->type->length = 0;
     }
 
     Node *node = new_node_variable_definition(
