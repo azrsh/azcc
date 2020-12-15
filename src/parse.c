@@ -4,6 +4,7 @@
 #include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
+#include "tagcontainer.h"
 #include "tokenize.h"
 #include "type.h"
 #include "typecheck.h"
@@ -21,10 +22,9 @@ Token *token;
 int currentOffset;
 Vector *globalVariables; // Variable vector
 Vector *stringLiterals;  // String vector
-Vector *structs;         // Type vector
-Vector *enums;           // Type vector
 Vector *typedefs;        // Typedef vector
 FunctionContainer *functionContainer;
+TagContainer *tagContainer;
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -178,6 +178,12 @@ Type *new_type_array(Type *base, size_t size) {
   array->base = base;
   array->length = size;
   return array;
+}
+
+Tag *type_to_tag(Type *type) {
+  Tag *result = calloc(1, sizeof(Tag));
+  result->type = type;
+  return result;
 }
 
 //抽象構文木の末端をパースする
@@ -382,10 +388,12 @@ Program *program() {
   result->stringLiterals = new_vector(16);
   globalVariables = result->globalVariables;
   stringLiterals = result->stringLiterals;
-  structs = new_vector(16);
-  enums = new_vector(16);
   typedefs = new_vector(16);
   functionContainer = new_function_container();
+
+  HashTable *globalTagTable = new_hash_table();
+  ListNode *tagListHead = new_list_node(globalTagTable);
+  tagContainer = new_tag_container(tagListHead);
 
   while (!at_eof()) {
     //先頭に型指定子がつくもの
@@ -1068,26 +1076,38 @@ Type *enum_specifier(VariableContainer *variableContainer) {
 
   Type *result = NULL;
 
-  // 宣言済み構造体の解決
+  // 宣言済み列挙体の解決
   if (identifier) {
-    for (int i = 0; i < vector_length(structs); i++) {
-      Type *type = vector_get(structs, i);
-      if (type->kind == TYPE_ENUM &&
-          string_compare(identifier->string, type->name)) {
-        result = type;
-        break;
+    Tag *tag = tag_container_get(tagContainer, identifier->string);
+    if (tag) {
+      if (tag->type->kind == TYPE_ENUM) {
+        result = tag->type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
       }
     }
   }
 
+  // 解決できなければ生成
   if (!result) {
     result = new_type(TYPE_ENUM);
-    if (identifier)
+    if (identifier) {
       result->name = identifier->string;
-    vector_push_back(enums, result);
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      tag_container_push(tagContainer, type_to_tag(result));
+    }
   }
 
   if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+    } else {
+      ERROR_AT(identifier->string->head, "列挙体が多重に定義されています")
+    }
+
     int count = 0;
     do {
       Token *enumeratorIdentifier = consume_identifier();
@@ -1132,12 +1152,14 @@ Type *struct_specifier(VariableContainer *variableContainer) {
 
   // 宣言済み構造体の解決
   if (identifier) {
-    for (int i = 0; i < vector_length(structs); i++) {
-      Type *type = vector_get(structs, i);
-      if (type->kind == TYPE_STRUCT &&
-          string_compare(identifier->string, type->name)) {
-        result = type;
-        break;
+    Tag *tag = tag_container_get(tagContainer, identifier->string);
+    if (tag) {
+      if (tag->type->kind == TYPE_STRUCT) {
+        result = tag->type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
       }
     }
   }
@@ -1145,13 +1167,22 @@ Type *struct_specifier(VariableContainer *variableContainer) {
   // 解決できなければ生成
   if (!result) {
     result = new_type(TYPE_STRUCT);
-    if (identifier)
+    if (identifier) {
       result->name = identifier->string;
-    result->members = new_member_container();
-    vector_push_back(structs, result);
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      tag_container_push(tagContainer, type_to_tag(result));
+    }
   }
 
   if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+      result->members = new_member_container();
+    } else {
+      ERROR_AT(identifier->string->head, "構造体が多重に定義されています")
+    }
+
     int memberOffset = 0;
     while (!consume("}")) {
       Type *type = type_specifier(variableContainer);

@@ -19,11 +19,14 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
-  const String *name; //とりあえずはTYPE_STRUCTのときのみ使用
   TypeKind kind;
   Type *base;
-  size_t length;            // TypeKindがTYPE_ARRAYのときのみ使用する
+  size_t length; // TypeKindがTYPE_ARRAYのときのみ使用する
+
+  // strucrt、enum、union
+  const String *name; //とりあえずはTYPE_STRUCT、TYPE_ENUMlのときのみ使用
   MemberContainer *members; // TypeKindがTYPE_STRUCTのときのみ使用する
+  bool isDefined;           // TypeKindがTYPE_STRUCTのときのみ使用する
 };
 
 Type *new_type(TypeKind kind);
