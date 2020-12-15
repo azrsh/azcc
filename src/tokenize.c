@@ -89,7 +89,7 @@ Token *tokenize(const char *p) {
       continue;
     }
 
-    if (strchr("+-*/%()<>=;{},&[].!:?~|", *p)) {
+    if (strchr("+-*/%()<>=;{},&[].!:?~|^", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }
@@ -193,9 +193,12 @@ Token *tokenize(const char *p) {
     if (isdigit(*p)) {
       const char *q = p;
       char *end;
-      int value = strtol(p, &end, 10);
+
+      //最後の引数は基数の指定だが、0を指定すればプレフィックスに応じて自動で処理される
+      int value = strtol(q, &end, 0);
+
       int length = end - q;
-      current = new_token(TOKEN_NUMBER, current, p, length);
+      current = new_token(TOKEN_NUMBER, current, q, length);
       current->value = value;
 
       p += length;
