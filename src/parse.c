@@ -334,11 +334,15 @@ Vector *argument_expression_list(ParseContext *context);
 
 Node *assign(ParseContext *context);
 Node *conditional(ParseContext *context);
-Node *logic_or(ParseContext *context);
-Node *logic_and(ParseContext *context);
+Node *logical_or(ParseContext *context);
+Node *logical_and(ParseContext *context);
+Node *bitwise_inclusive_or(ParseContext *context);
+Node *bitwise_exclusive_or(ParseContext *context);
+Node *bitwise_and(ParseContext *context);
 Node *equality(ParseContext *context);
 Node *relational(ParseContext *context);
 Node *add(ParseContext *context);
+Node *shift(ParseContext *context);
 Node *multiply(ParseContext *context);
 Node *unary(ParseContext *context);
 Node *postfix(ParseContext *context);
@@ -385,7 +389,10 @@ Node *literal();
 // assign = (unary (("=" | "+=" | "-=" | "*=" | "/=") assign)? | conditional)
 // conditional = logic_or ("?" expression ":" conditional)?
 // logical_or = logic_and ("||" logic_and)*
-// logical_and = equality ("&&" equality)*
+// logical_and = bitwise_inclusive_or ("&&" bitwise_inclusive_or)*
+// bitwise_inclusive_or = bitwise_exclusive_or ("&" bitwise_exclusive_or)*
+// bitwise_exclusive_xor = bitwise_and ("^" bitwise_and)*
+// bitwise_and = equality ("&" equality)*
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
@@ -1245,13 +1252,31 @@ Node *assign(ParseContext *context) {
   } else if (consume("%=")) {
     Node *modNode = new_node(NODE_MOD, node, assign(context));
     return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("&=")) {
+    Node *modNode = new_node(NODE_BAND, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("^=")) {
+    Node *modNode = new_node(NODE_BXOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("|=")) {
+    Node *modNode = new_node(NODE_BOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("~=")) {
+    Node *modNode = new_node(NODE_BNOT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("<<=")) {
+    Node *modNode = new_node(NODE_LSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume(">>=")) {
+    Node *modNode = new_node(NODE_RSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, modNode);
   } else {
     return node;
   }
 }
 
 Node *conditional(ParseContext *context) {
-  Node *node = logic_or(context);
+  Node *node = logical_or(context);
 
   if (consume("?")) {
     Node *lhs = expression(context);
@@ -1266,23 +1291,56 @@ Node *conditional(ParseContext *context) {
   return node;
 }
 
-Node *logic_or(ParseContext *context) {
-  Node *node = logic_and(context);
+Node *logical_or(ParseContext *context) {
+  Node *node = logical_and(context);
 
   for (;;) {
     if (consume("||"))
-      node = new_node(NODE_LOR, node, logic_and(context));
+      node = new_node(NODE_LOR, node, logical_and(context));
     else
       return node;
   }
 }
 
-Node *logic_and(ParseContext *context) {
-  Node *node = equality(context);
+Node *logical_and(ParseContext *context) {
+  Node *node = bitwise_inclusive_or(context);
 
   for (;;) {
     if (consume("&&"))
-      node = new_node(NODE_LAND, node, equality(context));
+      node = new_node(NODE_LAND, node, bitwise_inclusive_or(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_inclusive_or(ParseContext *context) {
+  Node *node = bitwise_exclusive_or(context);
+
+  for (;;) {
+    if (consume("|"))
+      node = new_node(NODE_BOR, node, bitwise_exclusive_or(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_exclusive_or(ParseContext *context) {
+  Node *node = bitwise_and(context);
+
+  for (;;) {
+    if (consume("^"))
+      node = new_node(NODE_BXOR, node, bitwise_and(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_and(ParseContext *context) {
+  Node *node = equality(context);
+
+  for (;;) {
+    if (consume("&"))
+      node = new_node(NODE_BAND, node, equality(context));
     else
       return node;
   }
@@ -1304,17 +1362,30 @@ Node *equality(ParseContext *context) {
 
 //不等式をパースする
 Node *relational(ParseContext *context) {
-  Node *node = add(context);
+  Node *node = shift(context);
 
   for (;;) {
     if (consume("<"))
-      node = new_node(NODE_LT, node, add(context));
+      node = new_node(NODE_LT, node, shift(context));
     else if (consume("<="))
-      node = new_node(NODE_LE, node, add(context));
+      node = new_node(NODE_LE, node, shift(context));
     else if (consume(">"))
-      node = new_node(NODE_LT, add(context), node);
+      node = new_node(NODE_LT, shift(context), node);
     else if (consume(">="))
-      node = new_node(NODE_LE, add(context), node);
+      node = new_node(NODE_LE, shift(context), node);
+    else
+      return node;
+  }
+}
+
+Node *shift(ParseContext *context) {
+  Node *node = add(context);
+
+  for (;;) {
+    if (consume("<<"))
+      node = new_node(NODE_LSHIFT, node, add(context));
+    else if (consume(">>"))
+      node = new_node(NODE_RSHIFT, node, add(context));
     else
       return node;
   }
@@ -1357,6 +1428,8 @@ Node *unary(ParseContext *context) {
     return new_node(NODE_SUB, new_node_num(0), postfix(context));
   if (consume("!"))
     return new_node(NODE_LNOT, unary(context), NULL);
+  if (consume("~"))
+    return new_node(NODE_BNOT, unary(context), NULL);
   if (consume("&"))
     return new_node(NODE_REF, unary(context), NULL);
   if (consume("*"))

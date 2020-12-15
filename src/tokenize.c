@@ -73,15 +73,18 @@ Token *tokenize(const char *p) {
     //---記号---
     if (start_with(p, ">=") || start_with(p, "<=") || start_with(p, "==") ||
         start_with(p, "!=") || start_with(p, "->") || start_with(p, "&&") ||
-        start_with(p, "||") || start_with(p, "+=") || start_with(p, "-=") ||
-        start_with(p, "*=") || start_with(p, "/=") || start_with(p, "%=") ||
-        start_with(p, "++") || start_with(p, "--")) {
+        start_with(p, "||") || start_with(p, ">>") || start_with(p, "<<") ||
+        start_with(p, "+=") || start_with(p, "-=") || start_with(p, "*=") ||
+        start_with(p, "/=") || start_with(p, "%=") || start_with(p, "~=") ||
+        start_with(p, "&=") || start_with(p, "^=") || start_with(p, "|=") ||
+        start_with(p, "++") || start_with(p, "--") || start_with(p, ">>=") ||
+        start_with(p, "<<=")) {
       current = new_token(TOKEN_RESERVED, current, p, 2);
       p += 2;
       continue;
     }
 
-    if (strchr("+-*/%()<>=;{},&[].!:?", *p)) {
+    if (strchr("+-*/%()<>=;{},&[].!:?~|", *p)) {
       current = new_token(TOKEN_RESERVED, current, p++, 1);
       continue;
     }

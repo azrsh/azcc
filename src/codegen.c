@@ -281,6 +281,14 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     INSERT_COMMENT("logic not end");
     return;
+  case NODE_BNOT:
+    INSERT_COMMENT("bitwise not start");
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  not rax\n");
+    printf("  push rax\n");
+    INSERT_COMMENT("bitwise not end");
+    return;
   case NODE_REF:
     INSERT_COMMENT("reference start");
     generate_assign_lhs(node->lhs, labelCount);
@@ -399,6 +407,11 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_NE:
   case NODE_LT:
   case NODE_LE:
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT:
     break; //次のswitch文で判定する
   }
 
@@ -480,9 +493,25 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  setle al\n");
     printf("  movzb rax, al\n");
     break;
+  case NODE_BAND:
+    printf("  and rax, rdi\n");
+    break;
+  case NODE_BXOR:
+    printf("  xor rax, rdi\n");
+    break;
+  case NODE_BOR:
+    printf("  or rax, rdi\n");
+    break;
+  case NODE_LSHIFT:
+    printf("  shl rax, rdi\n"); //論理シフトのみ
+    break;
+  case NODE_RSHIFT:
+    printf("  shr rax, rdi\n"); //論理シフトのみ
+    break;
   case NODE_LAND:
   case NODE_LOR:
   case NODE_LNOT:
+  case NODE_BNOT:
   case NODE_COND:
   case NODE_COMMA:
   case NODE_REF:

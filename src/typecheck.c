@@ -95,6 +95,10 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   }
   case NODE_LNOT:
     tag_type_to_node(node->lhs, context);
+    node->type = new_type(TYPE_INT);
+    return;
+  case NODE_BNOT:
+    tag_type_to_node(node->lhs, context);
     node->type = node->lhs->type;
     return;
   case NODE_REF:
@@ -230,6 +234,11 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LE:
   case NODE_LAND:
   case NODE_LOR:
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT:
   case NODE_COND:
   case NODE_COMMA:
     break; //次のswitch文で判定する
@@ -323,6 +332,19 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LOR:
     node->type = new_type(TYPE_INT);
     return;
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
+      insert_implicit_cast_node(node->type, node);
+      return;
+    }
+    ERROR_AT(node->source, "ビット算演算子のオペランド型が不正です");
+  }
   case NODE_COND: {
     tag_type_to_node(node->condition, context);
 
