@@ -584,7 +584,7 @@ Vector *function_definition_argument(ParseContext *context) {
 
     Variable *declaration = variable_declaration(type, context);
     if (!declaration) {
-      char *disable = calloc(1, sizeof(char));
+      char *disable = calloc(2, sizeof(char));
       disable[0] = '0' + vector_length(arguments);
       declaration = new_variable(type, char_to_string(disable));
     }
