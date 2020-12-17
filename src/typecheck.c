@@ -373,6 +373,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     node->type = rhs;
     return;
   case NODE_LNOT:
+  case NODE_BNOT:
   case NODE_REF:
   case NODE_DEREF:
   case NODE_ASSIGN:
