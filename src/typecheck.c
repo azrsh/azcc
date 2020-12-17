@@ -258,7 +258,8 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       return;
     }
     if (lhs->kind == TYPE_INT && rhs->base != NULL) {
-      ERROR_AT(node->source, "未実装の演算です");
+      node->type = rhs;
+      return;
     }
     {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);

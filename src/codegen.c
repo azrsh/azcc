@@ -425,11 +425,13 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_ADD: {
     INSERT_COMMENT("start add node");
 
-    // int+int、pointer+intのみを許可する
+    // int+int、pointer+int、int+pointerのみを許可する
     Type *lhsBase = node->lhs->type->base;
-    if (lhsBase) {
+    Type *rhsBase = node->rhs->type->base;
+    if (lhsBase && !rhsBase)
       printf("  imul rdi, %d\n", type_to_size(lhsBase));
-    }
+    if (!lhsBase && rhsBase)
+      printf("  imul rax, %d\n", type_to_size(rhsBase));
 
     printf("  add rax, rdi\n");
     INSERT_COMMENT("end add node");
@@ -441,9 +443,8 @@ void generate_expression(Node *node, int *labelCount) {
     // int-int、pointer-int、pointer-pointerのみを許可する
     Type *lhsBase = node->lhs->type->base;
     Type *rhsBase = node->rhs->type->base;
-    if (lhsBase && !rhsBase) {
+    if (lhsBase && !rhsBase)
       printf("  imul rdi, %d\n", type_to_size(lhsBase));
-    }
 
     printf("  sub rax, rdi\n");
 
