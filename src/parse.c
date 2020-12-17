@@ -1,5 +1,6 @@
 #include "parse.h"
 #include "container.h"
+#include "declaration.h"
 #include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
@@ -307,13 +308,13 @@ FunctionDefinition *function_definition(Type *returnType,
 Vector *function_definition_argument(ParseContext *context);
 Variable *global_variable_declaration(bool isExtern, Type *type,
                                       ParseContext *context);
+Node *initializer();
+
 Typedef *type_definition(ParseContext *context);
-Node *variable_definition(Type *type, ParseContext *context);
 Type *type_specifier(ParseContext *context);
 Type *enum_specifier(ParseContext *context);
 Type *struct_specifier(ParseContext *context);
 Variable *variable_declaration(Type *type, ParseContext *context);
-Node *initializer();
 
 StatementUnion *statement(ParseContext *context);
 NullStatement *null_statement(ParseContext *context);
@@ -328,6 +329,10 @@ ForStatement *for_statement(ParseContext *context);
 CompoundStatement *compound_statement(ParseContext *context);
 BreakStatement *break_statement(ParseContext *context);
 ContinueStatement *continue_statement(ParseContext *context);
+
+Declaration *declaration(ParseContext *context);
+Vector *init_declarator_list(Type *type, ParseContext *context);
+Node *init_declarator(Type *type, ParseContext *context);
 
 Node *expression(ParseContext *context);
 Vector *argument_expression_list(ParseContext *context);
@@ -503,6 +508,9 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
     return definition;
   }
 
+  //ここまで到達したなら関数定義以外はありえない
+  expect("{");
+
   if (!arguments)
     arguments = new_vector(0);
 
@@ -526,11 +534,6 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
   }
   //--------------------------------
 
-  if (!consume("{")) {
-    token = tokenHead;
-    return NULL;
-  }
-
   // switch文のネスト情報の初期化
   switchStatementNest = new_list_node(NULL);
 
@@ -542,23 +545,25 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
   //新しいスコープの追加を外へ移動
 
   //ブロック内の文をパース
-  ListNode head;
-  head.next = NULL;
-  ListNode *node = &head;
+  body->blockItemList = new_vector(32);
   while (!consume("}")) {
-    StatementUnion *statementUnion = statement(context);
+    BlockItem *blockItem = calloc(1, sizeof(BlockItem));
+    blockItem->declaration = declaration(context);
+    if (!blockItem->declaration)
+      blockItem->statement = statement(context);
+    vector_push_back(body->blockItemList, blockItem);
+  }
+  //
+  //
+  //
 
+  {
+    //型検査
     TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
     context->returnType = type;
     context->functionContainer = functionContainer;
-
-    tag_type_to_statement(statementUnion, context);
-    node = list_push_back(node, statementUnion);
+    tag_type_to_statement(new_statement_union_compound(body), context);
   }
-  body->statementHead = head.next;
-  //
-  //
-  //
 
   definition->body = body;
   definition->stackSize = currentOffset;
@@ -916,14 +921,34 @@ ForStatement *for_statement(ParseContext *context) {
   context = new_scope_context(context);
 
   ForStatement *result = calloc(1, sizeof(ForStatement));
+
+  // initialization
   if (!consume(";")) {
-    result->initialization = expression(context);
-    expect(";");
+    Declaration *initialDeclaration = declaration(context);
+    if (initialDeclaration) {
+      //宣言ならカンマ演算子に読み替え
+      Node *node = NULL;
+      for (int i = 0; i < vector_length(initialDeclaration->declarators); i++) {
+        Node *declarator = vector_get(initialDeclaration->declarators, i);
+        if (node)
+          node = new_node(NODE_COMMA, node, declarator);
+        else
+          node = declarator;
+      }
+      result->initialization = node;
+    } else {
+      result->initialization = expression(context);
+      expect(";");
+    }
   }
+
+  // condition
   if (!consume(";")) {
     result->condition = expression(context);
     expect(";");
   }
+
+  // afterthought
   if (!consume(")")) {
     result->afterthought = expression(context);
     expect(")");
@@ -946,13 +971,14 @@ CompoundStatement *compound_statement(ParseContext *context) {
   context = new_scope_context(context);
 
   //ブロック内の文をパ-ス
-  ListNode head;
-  head.next = NULL;
-  ListNode *node = &head;
+  result->blockItemList = new_vector(32);
   while (!consume("}")) {
-    node = list_push_back(node, statement(context));
+    BlockItem *blockItem = calloc(1, sizeof(BlockItem));
+    blockItem->declaration = declaration(context);
+    if (!blockItem->declaration)
+      blockItem->statement = statement(context);
+    vector_push_back(result->blockItemList, blockItem);
   }
-  result->statementHead = head.next;
 
   return result;
 }
@@ -977,19 +1003,60 @@ ContinueStatement *continue_statement(ParseContext *context) {
   return result;
 }
 
+Declaration *declaration(ParseContext *context) {
+  Declaration *result = calloc(1, sizeof(Declaration));
+
+  Type *type = type_specifier(context); // declaration_specifier
+  if (type) {
+    if (consume(";")) {
+      result->type = type;
+      result->declarators = new_vector(0);
+      return result;
+    }
+
+    Vector *declarators = init_declarator_list(type, context);
+    expect(";");
+
+    result->declarators = declarators;
+    return result;
+  }
+
+  // static assert
+
+  return NULL;
+}
+
+Vector *init_declarator_list(Type *type, ParseContext *context) {
+  Vector *declarators = new_vector(8);
+  do {
+    vector_push_back(declarators, init_declarator(type, context));
+  } while (consume(","));
+  return declarators;
+}
+
+// 変数宣言をパースする
+Node *init_declarator(Type *type, ParseContext *context) {
+  Token *tokenHead = token;
+
+  // declarator
+  Variable *variable = variable_declaration(type, context);
+  if (!variable)
+    return NULL;
+
+  Node *node = new_node_variable_definition(
+      variable, context->variableContainer, tokenHead);
+
+  // initalizer
+  if (consume("="))
+    node = new_node(NODE_ASSIGN, node, assign(context));
+
+  return node;
+}
+
 //式をパースする
 Node *expression(ParseContext *context) {
-  Node *node = NULL;
-
-  Type *type = type_specifier(context);
-  if (type)
-    node = variable_definition(type, context);
-
-  if (node)
-    return node;
-
   //カンマ演算子
-  node = assign(context);
+  Node *node = assign(context);
   while (consume(",")) {
     node = new_node(NODE_COMMA, node, assign(context));
   }
@@ -1004,23 +1071,6 @@ Vector *argument_expression_list(ParseContext *context) {
     vector_push_back(arguments, assign(context));
   } while (consume(","));
   return arguments;
-}
-
-// 変数定義をパースする
-Node *variable_definition(Type *type, ParseContext *context) {
-  Token *tokenHead = token;
-
-  Variable *variable = variable_declaration(type, context);
-  if (!variable)
-    return NULL;
-
-  Node *node = new_node_variable_definition(
-      variable, context->variableContainer, tokenHead);
-
-  if (consume("="))
-    node = new_node(NODE_ASSIGN, node, assign(context));
-
-  return node;
 }
 
 //型指定子をパースする
@@ -1168,8 +1218,6 @@ Type *enum_specifier(ParseContext *context) {
 }
 
 Type *struct_specifier(ParseContext *context) {
-  Token *tokenHead = token;
-
   if (!consume("struct"))
     return NULL;
 

@@ -19,7 +19,7 @@ int main() {
   // assert(1, string_compare(token->string, char_to_string("test6")), "test6");
   // token = token->next;
 
-  Program *program = parse(head);
+  parse(head);
 
   return 0;
 }

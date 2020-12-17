@@ -1,5 +1,6 @@
 #include "typecheck.h"
 #include "container.h"
+#include "declaration.h"
 #include "functioncall.h"
 #include "functioncontainer.h"
 #include "membercontainer.h"
@@ -389,6 +390,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   ERROR_AT(node->source, "予期しないノードが指定されました");
 }
 
+void tag_type_to_declaration(Declaration *declaration,
+                             TypeCheckContext *context) {
+  for (int i = 0; i < vector_length(declaration->declarators); i++) {
+    Node *declarator = vector_get(declaration->declarators, i);
+    tag_type_to_node(declarator, context);
+  }
+}
+
 void tag_type_to_statement(StatementUnion *statementUnion,
                            TypeCheckContext *context) {
   if (!statementUnion) {
@@ -473,11 +482,14 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     CompoundStatement *compoundPattern =
         statement_union_take_compound(statementUnion);
     if (compoundPattern) {
-      ListNode *node = compoundPattern->statementHead;
-      while (node) {
-        tag_type_to_statement(node->body, context);
-        node = node->next;
+      for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
+        BlockItem *item = vector_get(compoundPattern->blockItemList, i);
+        if (item->declaration)
+          tag_type_to_declaration(item->declaration, context);
+        else if (item->statement)
+          tag_type_to_statement(item->statement, context);
       }
+
       return;
     }
   }

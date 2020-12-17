@@ -796,14 +796,20 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     CompoundStatement *compoundPattern =
         statement_union_take_compound(statementUnion);
     if (compoundPattern) {
-      ListNode *node = compoundPattern->statementHead;
-
-      while (node) {
-        generate_statement(node->body, labelCount, latestBreakTarget,
-                           latestSwitch);
-        node = node->next;
+      for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
+        BlockItem *item = vector_get(compoundPattern->blockItemList, i);
+        if (item->declaration) {
+          for (int j = 0; j < vector_length(item->declaration->declarators);
+               j++) {
+            Node *declarator = vector_get(item->declaration->declarators, j);
+            generate_expression(declarator, labelCount);
+            printf("  pop rax\n");
+          }
+        } else {
+          generate_statement(item->statement, labelCount, latestBreakTarget,
+                             latestSwitch);
+        }
       }
-
       return;
     }
   }
@@ -910,17 +916,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   INSERT_COMMENT("function arguments assign end : %s", functionName);
 
   INSERT_COMMENT("function body start : %s", functionName);
-  ListNode *statementList = functionDefinition->body->statementHead;
-  while (statementList) {
-    INSERT_COMMENT("statement start");
-
-    //抽象構文木を降りながらコード生成
-    // loopNestを無効な値にする(ループ外でbreakしないように)
-    generate_statement(statementList->body, labelCount, -1, -1);
-    statementList = statementList->next;
-
-    INSERT_COMMENT("statement end");
-  }
+  generate_statement(new_statement_union_compound(functionDefinition->body),
+                     labelCount, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ
