@@ -281,6 +281,14 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  push rax\n");
     INSERT_COMMENT("logic not end");
     return;
+  case NODE_BNOT:
+    INSERT_COMMENT("bitwise not start");
+    generate_expression(node->lhs, labelCount);
+    printf("  pop rax\n");
+    printf("  not rax\n");
+    printf("  push rax\n");
+    INSERT_COMMENT("bitwise not end");
+    return;
   case NODE_REF:
     INSERT_COMMENT("reference start");
     generate_assign_lhs(node->lhs, labelCount);
@@ -399,6 +407,11 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_NE:
   case NODE_LT:
   case NODE_LE:
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT:
     break; //次のswitch文で判定する
   }
 
@@ -412,11 +425,13 @@ void generate_expression(Node *node, int *labelCount) {
   case NODE_ADD: {
     INSERT_COMMENT("start add node");
 
-    // int+int、pointer+intのみを許可する
+    // int+int、pointer+int、int+pointerのみを許可する
     Type *lhsBase = node->lhs->type->base;
-    if (lhsBase) {
+    Type *rhsBase = node->rhs->type->base;
+    if (lhsBase && !rhsBase)
       printf("  imul rdi, %d\n", type_to_size(lhsBase));
-    }
+    if (!lhsBase && rhsBase)
+      printf("  imul rax, %d\n", type_to_size(rhsBase));
 
     printf("  add rax, rdi\n");
     INSERT_COMMENT("end add node");
@@ -428,9 +443,8 @@ void generate_expression(Node *node, int *labelCount) {
     // int-int、pointer-int、pointer-pointerのみを許可する
     Type *lhsBase = node->lhs->type->base;
     Type *rhsBase = node->rhs->type->base;
-    if (lhsBase && !rhsBase) {
+    if (lhsBase && !rhsBase)
       printf("  imul rdi, %d\n", type_to_size(lhsBase));
-    }
 
     printf("  sub rax, rdi\n");
 
@@ -480,9 +494,27 @@ void generate_expression(Node *node, int *labelCount) {
     printf("  setle al\n");
     printf("  movzb rax, al\n");
     break;
+  case NODE_BAND:
+    printf("  and rax, rdi\n");
+    break;
+  case NODE_BXOR:
+    printf("  xor rax, rdi\n");
+    break;
+  case NODE_BOR:
+    printf("  or rax, rdi\n");
+    break;
+  case NODE_LSHIFT:
+    printf("  mov rcx, rdi\n");
+    printf("  shl rax, cl\n"); //論理シフトのみ
+    break;
+  case NODE_RSHIFT:
+    printf("  mov rcx, rdi\n");
+    printf("  shr rax, cl\n"); //論理シフトのみ
+    break;
   case NODE_LAND:
   case NODE_LOR:
   case NODE_LNOT:
+  case NODE_BNOT:
   case NODE_COND:
   case NODE_COMMA:
   case NODE_REF:
@@ -765,14 +797,20 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     CompoundStatement *compoundPattern =
         statement_union_take_compound(statementUnion);
     if (compoundPattern) {
-      ListNode *node = compoundPattern->statementHead;
-
-      while (node) {
-        generate_statement(node->body, labelCount, latestBreakTarget,
-                           latestSwitch);
-        node = node->next;
+      for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
+        BlockItem *item = vector_get(compoundPattern->blockItemList, i);
+        if (item->declaration) {
+          for (int j = 0; j < vector_length(item->declaration->declarators);
+               j++) {
+            Node *declarator = vector_get(item->declaration->declarators, j);
+            generate_expression(declarator, labelCount);
+            printf("  pop rax\n");
+          }
+        } else {
+          generate_statement(item->statement, labelCount, latestBreakTarget,
+                             latestSwitch);
+        }
       }
-
       return;
     }
   }
@@ -879,17 +917,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   INSERT_COMMENT("function arguments assign end : %s", functionName);
 
   INSERT_COMMENT("function body start : %s", functionName);
-  ListNode *statementList = functionDefinition->body->statementHead;
-  while (statementList) {
-    INSERT_COMMENT("statement start");
-
-    //抽象構文木を降りながらコード生成
-    // loopNestを無効な値にする(ループ外でbreakしないように)
-    generate_statement(statementList->body, labelCount, -1, -1);
-    statementList = statementList->next;
-
-    INSERT_COMMENT("statement end");
-  }
+  generate_statement(new_statement_union_compound(functionDefinition->body),
+                     labelCount, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ

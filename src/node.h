@@ -11,13 +11,19 @@ typedef enum {
   NODE_MUL,    // *
   NODE_DIV,    // /
   NODE_MOD,    // %
+  NODE_LSHIFT, // <<
+  NODE_RSHIFT, // >>
   NODE_EQ,     // ==
   NODE_NE,     // !=
   NODE_LT,     // <
   NODE_LE,     // <=
   NODE_LAND,   // &&
   NODE_LOR,    // ||
+  NODE_BAND,   // &
+  NODE_BXOR,   // ^
+  NODE_BOR,    // |
   NODE_LNOT,   // !
+  NODE_BNOT,   // ~
   NODE_COND,   // cond ? res : res
   NODE_REF,    // &
   NODE_DEREF,  // *

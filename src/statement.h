@@ -1,6 +1,7 @@
 #ifndef STATEMENT_H
 #define STATEMENT_H
 
+#include "declaration.h"
 #include "node.h"
 
 typedef struct StatementUnion StatementUnion;
@@ -61,9 +62,14 @@ struct ForStatement {
   StatementUnion *statement;
 };
 
+typedef struct BlockItem BlockItem;
+struct BlockItem {
+  StatementUnion *statement;
+  Declaration *declaration;
+};
 typedef struct CompoundStatement CompoundStatement;
 struct CompoundStatement {
-  ListNode *statementHead;
+  Vector *blockItemList; // BlockItem
 };
 
 typedef struct BreakStatement BreakStatement;

@@ -1,9 +1,11 @@
 #include "parse.h"
 #include "container.h"
+#include "declaration.h"
 #include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
+#include "tagcontainer.h"
 #include "tokenize.h"
 #include "type.h"
 #include "typecheck.h"
@@ -21,10 +23,31 @@ Token *token;
 int currentOffset;
 Vector *globalVariables; // Variable vector
 Vector *stringLiterals;  // String vector
-Vector *structs;         // Type vector
-Vector *enums;           // Type vector
 Vector *typedefs;        // Typedef vector
 FunctionContainer *functionContainer;
+
+typedef struct ParseContext ParseContext;
+struct ParseContext {
+  TagContainer *tagContainer;
+  VariableContainer *variableContainer;
+};
+
+ParseContext *new_scope_context(ParseContext *context) {
+  ParseContext *result = calloc(1, sizeof(ParseContext));
+
+  {
+    HashTable *localVariableTable = new_hash_table();
+    result->variableContainer = variable_container_push_table(
+        context->variableContainer, localVariableTable);
+  }
+  {
+    HashTable *localTagTable = new_hash_table();
+    result->tagContainer =
+        tag_container_push_table(context->tagContainer, localTagTable);
+  }
+
+  return result;
+}
 
 bool at_eof() { return token->kind == TOKEN_EOF; }
 
@@ -180,6 +203,12 @@ Type *new_type_array(Type *base, size_t size) {
   return array;
 }
 
+Tag *type_to_tag(Type *type) {
+  Tag *result = calloc(1, sizeof(Tag));
+  result->type = type;
+  return result;
+}
+
 //抽象構文木の末端をパースする
 //抽象構文木の数値以外のノードを新しく生成する
 Node *new_node(NodeKind kind, Node *lhs, Node *rhs) {
@@ -275,47 +304,54 @@ Vector *node_vector_to_type_vector(Vector *nodes) {
 // EBNFパーサ
 Program *program();
 FunctionDefinition *function_definition(Type *returnType,
-                                        VariableContainer *variableContainer);
-Vector *function_definition_argument(VariableContainer *variableContainer);
+                                        ParseContext *context);
+Vector *function_definition_argument(ParseContext *context);
 Variable *global_variable_declaration(bool isExtern, Type *type,
-                                      VariableContainer *variableContainer);
-Typedef *type_definition(VariableContainer *variableContainer);
-Node *variable_definition(Type *type, VariableContainer *variableContainer);
-Type *type_specifier(VariableContainer *variableContainer);
-Type *enum_specifier(VariableContainer *variableContainer);
-Type *struct_specifier(VariableContainer *variableContainer);
-Variable *variable_declaration(Type *type,
-                               VariableContainer *variableContainer);
+                                      ParseContext *context);
 Node *initializer();
 
-StatementUnion *statement(VariableContainer *variableContainer);
-NullStatement *null_statement(VariableContainer *variableContainer);
-ExpressionStatement *expression_statement(VariableContainer *variableContainer);
-ReturnStatement *return_statement(VariableContainer *variableContainer);
-IfStatement *if_statement(VariableContainer *variableContainer);
-SwitchStatement *switch_statement(VariableContainer *variableContainer);
-LabeledStatement *labeled_statement(VariableContainer *variableContainer);
-WhileStatement *while_statement(VariableContainer *variableContainer);
-DoWhileStatement *do_while_statement(VariableContainer *variableContainer);
-ForStatement *for_statement(VariableContainer *variableContainer);
-CompoundStatement *compound_statement(VariableContainer *variableContainer);
-BreakStatement *break_statement(VariableContainer *variableContainer);
-ContinueStatement *continue_statement(VariableContainer *variableContainer);
+Typedef *type_definition(ParseContext *context);
+Type *type_specifier(ParseContext *context);
+Type *enum_specifier(ParseContext *context);
+Type *struct_specifier(ParseContext *context);
+Variable *variable_declaration(Type *type, ParseContext *context);
 
-Node *expression(VariableContainer *variableContainer);
-Vector *argument_expression_list(VariableContainer *variableContainer);
+StatementUnion *statement(ParseContext *context);
+NullStatement *null_statement(ParseContext *context);
+ExpressionStatement *expression_statement(ParseContext *context);
+ReturnStatement *return_statement(ParseContext *context);
+IfStatement *if_statement(ParseContext *context);
+SwitchStatement *switch_statement(ParseContext *context);
+LabeledStatement *labeled_statement(ParseContext *context);
+WhileStatement *while_statement(ParseContext *context);
+DoWhileStatement *do_while_statement(ParseContext *context);
+ForStatement *for_statement(ParseContext *context);
+CompoundStatement *compound_statement(ParseContext *context);
+BreakStatement *break_statement(ParseContext *context);
+ContinueStatement *continue_statement(ParseContext *context);
 
-Node *assign(VariableContainer *variableContainer);
-Node *conditional(VariableContainer *variableContainer);
-Node *logic_or(VariableContainer *variableContainer);
-Node *logic_and(VariableContainer *variableContainer);
-Node *equality(VariableContainer *variableContainer);
-Node *relational(VariableContainer *variableContainer);
-Node *add(VariableContainer *variableContainer);
-Node *multiply(VariableContainer *variableContainer);
-Node *unary(VariableContainer *variableContainer);
-Node *postfix(VariableContainer *variableContainer);
-Node *primary(VariableContainer *variableContainer);
+Declaration *declaration(ParseContext *context);
+Vector *init_declarator_list(Type *type, ParseContext *context);
+Node *init_declarator(Type *type, ParseContext *context);
+
+Node *expression(ParseContext *context);
+Vector *argument_expression_list(ParseContext *context);
+
+Node *assign(ParseContext *context);
+Node *conditional(ParseContext *context);
+Node *logical_or(ParseContext *context);
+Node *logical_and(ParseContext *context);
+Node *bitwise_inclusive_or(ParseContext *context);
+Node *bitwise_exclusive_or(ParseContext *context);
+Node *bitwise_and(ParseContext *context);
+Node *equality(ParseContext *context);
+Node *relational(ParseContext *context);
+Node *add(ParseContext *context);
+Node *shift(ParseContext *context);
+Node *multiply(ParseContext *context);
+Node *unary(ParseContext *context);
+Node *postfix(ParseContext *context);
+Node *primary(ParseContext *context);
 Node *literal();
 
 // program = (function_definition | global_variable_definition |
@@ -358,7 +394,10 @@ Node *literal();
 // assign = (unary (("=" | "+=" | "-=" | "*=" | "/=") assign)? | conditional)
 // conditional = logic_or ("?" expression ":" conditional)?
 // logical_or = logic_and ("||" logic_and)*
-// logical_and = equality ("&&" equality)*
+// logical_and = bitwise_inclusive_or ("&&" bitwise_inclusive_or)*
+// bitwise_inclusive_or = bitwise_exclusive_or ("&" bitwise_exclusive_or)*
+// bitwise_exclusive_xor = bitwise_and ("^" bitwise_and)*
+// bitwise_and = equality ("&" equality)*
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
@@ -372,29 +411,34 @@ Node *literal();
 
 //プログラムをパースする
 Program *program() {
-  HashTable *globalVariableTable = new_hash_table();
-  ListNode *listHead = new_list_node(globalVariableTable);
-  VariableContainer *variableContainer = new_variable_container(listHead);
-
   Program *result = calloc(1, sizeof(Program));
   result->functionDefinitions = new_vector(16);
   result->globalVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
   globalVariables = result->globalVariables;
   stringLiterals = result->stringLiterals;
-  structs = new_vector(16);
-  enums = new_vector(16);
   typedefs = new_vector(16);
   functionContainer = new_function_container();
+
+  ParseContext *context = calloc(1, sizeof(ParseContext));
+  {
+    HashTable *globalVariableTable = new_hash_table();
+    ListNode *listHead = new_list_node(globalVariableTable);
+    context->variableContainer = new_variable_container(listHead);
+
+    HashTable *globalTagTable = new_hash_table();
+    ListNode *tagListHead = new_list_node(globalTagTable);
+    context->tagContainer = new_tag_container(tagListHead);
+  }
 
   while (!at_eof()) {
     //先頭に型指定子がつくもの
     bool isExtern = consume("extern");
-    Type *type = type_specifier(variableContainer);
+    Type *type = type_specifier(context);
     if (type) {
       {
         FunctionDefinition *functionDefinition =
-            function_definition(type, variableContainer);
+            function_definition(type, context);
         if (functionDefinition) {
           if (functionDefinition->body)
             vector_push_back(result->functionDefinitions, functionDefinition);
@@ -403,7 +447,7 @@ Program *program() {
       }
 
       {
-        if (global_variable_declaration(isExtern, type, variableContainer))
+        if (global_variable_declaration(isExtern, type, context))
           continue;
       }
 
@@ -416,7 +460,7 @@ Program *program() {
     }
 
     {
-      Typedef *typeDefinition = type_definition(variableContainer);
+      Typedef *typeDefinition = type_definition(context);
       if (typeDefinition) {
         vector_push_back(typedefs, typeDefinition);
         continue;
@@ -432,8 +476,7 @@ Program *program() {
 ListNode *switchStatementNest; //引数に押し込みたい
 
 //関数の定義をパースする
-FunctionDefinition *function_definition(Type *type,
-                                        VariableContainer *variableContainer) {
+FunctionDefinition *function_definition(Type *type, ParseContext *context) {
   Token *tokenHead = token;
 
   Token *identifier = consume_identifier();
@@ -445,9 +488,7 @@ FunctionDefinition *function_definition(Type *type,
   //引数のパース
   //新しいスコープなので先頭に新しい変数テーブルを追加
   currentOffset = 0;
-  HashTable *localVariableTable = new_hash_table();
-  VariableContainer *mergedContainer =
-      variable_container_push_table(variableContainer, localVariableTable);
+  context = new_scope_context(context);
   Vector *arguments = NULL;
   if (!consume("(")) {
     token = tokenHead;
@@ -456,7 +497,7 @@ FunctionDefinition *function_definition(Type *type,
   if (consume(")")) {
     arguments = NULL;
   } else {
-    arguments = function_definition_argument(mergedContainer);
+    arguments = function_definition_argument(context);
     expect(")");
   }
 
@@ -466,6 +507,9 @@ FunctionDefinition *function_definition(Type *type,
     function_container_push(functionContainer, definition);
     return definition;
   }
+
+  //ここまで到達したなら関数定義以外はありえない
+  expect("{");
 
   if (!arguments)
     arguments = new_vector(0);
@@ -490,11 +534,6 @@ FunctionDefinition *function_definition(Type *type,
   }
   //--------------------------------
 
-  if (!consume("{")) {
-    token = tokenHead;
-    return NULL;
-  }
-
   // switch文のネスト情報の初期化
   switchStatementNest = new_list_node(NULL);
 
@@ -506,23 +545,25 @@ FunctionDefinition *function_definition(Type *type,
   //新しいスコープの追加を外へ移動
 
   //ブロック内の文をパース
-  ListNode head;
-  head.next = NULL;
-  ListNode *node = &head;
+  body->blockItemList = new_vector(32);
   while (!consume("}")) {
-    StatementUnion *statementUnion = statement(mergedContainer);
+    BlockItem *blockItem = calloc(1, sizeof(BlockItem));
+    blockItem->declaration = declaration(context);
+    if (!blockItem->declaration)
+      blockItem->statement = statement(context);
+    vector_push_back(body->blockItemList, blockItem);
+  }
+  //
+  //
+  //
 
+  {
+    //型検査
     TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
     context->returnType = type;
     context->functionContainer = functionContainer;
-
-    tag_type_to_statement(statementUnion, context);
-    node = list_push_back(node, statementUnion);
+    tag_type_to_statement(new_statement_union_compound(body), context);
   }
-  body->statementHead = head.next;
-  //
-  //
-  //
 
   definition->body = body;
   definition->stackSize = currentOffset;
@@ -530,14 +571,16 @@ FunctionDefinition *function_definition(Type *type,
 }
 
 // Local Variable Nodes
-Vector *function_definition_argument(VariableContainer *variableContainer) {
+Vector *function_definition_argument(ParseContext *context) {
   Vector *arguments = new_vector(32);
 
   do {
     Token *source = token;
-    Type *type = type_specifier(variableContainer);
+    Type *type = type_specifier(context);
     if (!type)
       ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
+
+    // func(void)への対応とvoid型の値の排除
     if (type->kind == TYPE_VOID) {
       if (vector_length(arguments) == 0 && !consume_identifier() &&
           !consume(","))
@@ -546,15 +589,21 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
         ERROR_AT(source->string->head, "関数定義の引数の宣言が不正です");
     }
 
-    Variable *declaration = variable_declaration(type, variableContainer);
+    Variable *declaration = variable_declaration(type, context);
     if (!declaration) {
-      char *disable = calloc(1, sizeof(char));
+      char *disable = calloc(2, sizeof(char));
       disable[0] = '0' + vector_length(arguments);
       declaration = new_variable(type, char_to_string(disable));
     }
 
-    Node *node =
-        new_node_variable_definition(declaration, variableContainer, source);
+    //関数定義の引数のうち、配列はポインタに読み替え
+    if (declaration->type->kind == TYPE_ARRAY) {
+      declaration->type->kind = TYPE_PTR;
+      declaration->type->length = 0;
+    }
+
+    Node *node = new_node_variable_definition(
+        declaration, context->variableContainer, source);
     node->type =
         node->variable->type; // tag_type_to_node(type)できないので手動型付け
 
@@ -564,10 +613,10 @@ Vector *function_definition_argument(VariableContainer *variableContainer) {
 }
 
 Variable *global_variable_declaration(bool isExtern, Type *type,
-                                      VariableContainer *variableContainer) {
+                                      ParseContext *context) {
   Token *tokenHead = token;
 
-  Variable *declaration = variable_declaration(type, variableContainer);
+  Variable *declaration = variable_declaration(type, context);
   if (!declaration)
     return NULL;
 
@@ -594,7 +643,8 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
     ERROR_AT(token->string->head, "同名の変数が既に定義されています");
 
   Variable *globalVariable = variable_to_global(declaration, initialization);
-  bool isDeclared = !variable_container_push(variableContainer, globalVariable);
+  bool isDeclared =
+      !variable_container_push(context->variableContainer, globalVariable);
   if (isExtern && isDeclared)
     ERROR_AT(token->string->head, "同名の変数が既に宣言されています");
 
@@ -604,12 +654,12 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
   return globalVariable;
 }
 
-Typedef *type_definition(VariableContainer *variableContainer) {
+Typedef *type_definition(ParseContext *context) {
   if (!consume("typedef")) {
     return NULL;
   }
 
-  Type *type = type_specifier(variableContainer);
+  Type *type = type_specifier(context);
   if (!type) {
     ERROR_AT(token->string->head, "型指定子ではありません");
   }
@@ -625,8 +675,7 @@ Typedef *type_definition(VariableContainer *variableContainer) {
   return result;
 }
 
-Variable *variable_declaration(Type *type,
-                               VariableContainer *variableContainer) {
+Variable *variable_declaration(Type *type, ParseContext *context) {
   Token *tokenHead = token;
 
   Token *identifier = consume_identifier();
@@ -661,68 +710,67 @@ Node *initializer() {
 }
 
 //文をパースする
-StatementUnion *statement(VariableContainer *variableContainer) {
-  ReturnStatement *returnPattern = return_statement(variableContainer);
+StatementUnion *statement(ParseContext *context) {
+  ReturnStatement *returnPattern = return_statement(context);
   if (returnPattern) {
     return new_statement_union_return(returnPattern);
   }
 
-  IfStatement *ifPattern = if_statement(variableContainer);
+  IfStatement *ifPattern = if_statement(context);
   if (ifPattern) {
     return new_statement_union_if(ifPattern);
   }
 
-  SwitchStatement *switchPattern = switch_statement(variableContainer);
+  SwitchStatement *switchPattern = switch_statement(context);
   if (switchPattern) {
     return new_statement_union_switch(switchPattern);
   }
 
-  LabeledStatement *labeledPattern = labeled_statement(variableContainer);
+  LabeledStatement *labeledPattern = labeled_statement(context);
   if (labeledPattern) {
     return new_statement_union_labeled(labeledPattern);
   }
 
-  WhileStatement *whilePattern = while_statement(variableContainer);
+  WhileStatement *whilePattern = while_statement(context);
   if (whilePattern) {
     return new_statement_union_while(whilePattern);
   }
 
-  DoWhileStatement *doWhilePattern = do_while_statement(variableContainer);
+  DoWhileStatement *doWhilePattern = do_while_statement(context);
   if (doWhilePattern) {
     return new_statement_union_do_while(doWhilePattern);
   }
 
-  ForStatement *forPattern = for_statement(variableContainer);
+  ForStatement *forPattern = for_statement(context);
   if (forPattern) {
     return new_statement_union_for(forPattern);
   }
 
-  CompoundStatement *compoundPattern = compound_statement(variableContainer);
+  CompoundStatement *compoundPattern = compound_statement(context);
   if (compoundPattern) {
     return new_statement_union_compound(compoundPattern);
   }
 
-  BreakStatement *breakPattern = break_statement(variableContainer);
+  BreakStatement *breakPattern = break_statement(context);
   if (breakPattern) {
     return new_statement_union_break(breakPattern);
   }
 
-  ContinueStatement *continuePattern = continue_statement(variableContainer);
+  ContinueStatement *continuePattern = continue_statement(context);
   if (continuePattern) {
     return new_statement_union_continue(continuePattern);
   }
 
-  NullStatement *nullPattern = null_statement(variableContainer);
+  NullStatement *nullPattern = null_statement(context);
   if (nullPattern) {
     return new_statement_union_null(nullPattern);
   }
 
-  ExpressionStatement *expressionPattern =
-      expression_statement(variableContainer);
+  ExpressionStatement *expressionPattern = expression_statement(context);
   return new_statement_union_expression(expressionPattern);
 }
 
-NullStatement *null_statement(VariableContainer *variableContainer) {
+NullStatement *null_statement(ParseContext *context) {
   if (!consume(";"))
     return NULL;
 
@@ -730,16 +778,15 @@ NullStatement *null_statement(VariableContainer *variableContainer) {
 }
 
 // 式の文をパースする
-ExpressionStatement *
-expression_statement(VariableContainer *variableContainer) {
+ExpressionStatement *expression_statement(ParseContext *context) {
   ExpressionStatement *result = calloc(1, sizeof(ExpressionStatement));
-  result->node = expression(variableContainer);
+  result->node = expression(context);
   expect(";");
   return result;
 }
 
 // return文をパースする
-ReturnStatement *return_statement(VariableContainer *variableContainer) {
+ReturnStatement *return_statement(ParseContext *context) {
   if (!consume("return")) {
     return NULL;
   }
@@ -747,58 +794,58 @@ ReturnStatement *return_statement(VariableContainer *variableContainer) {
   ReturnStatement *result = calloc(1, sizeof(ReturnStatement));
 
   if (!consume(";")) {
-    result->node = expression(variableContainer);
+    result->node = expression(context);
     expect(";");
   }
   return result;
 }
 
 // if文をパースする
-IfStatement *if_statement(VariableContainer *variableContainer) {
+IfStatement *if_statement(ParseContext *context) {
   if (!consume("if") || !consume("(")) {
     return NULL;
   }
 
   IfStatement *result = calloc(1, sizeof(IfStatement));
-  result->condition = expression(variableContainer);
+  result->condition = expression(context);
 
   expect(")");
 
-  result->thenStatement = statement(variableContainer);
+  result->thenStatement = statement(context);
   if (consume("else")) {
-    result->elseStatement = statement(variableContainer);
+    result->elseStatement = statement(context);
   }
 
   return result;
 }
 
 // switch文をパースする
-SwitchStatement *switch_statement(VariableContainer *variableContainer) {
+SwitchStatement *switch_statement(ParseContext *context) {
   if (!consume("switch") || !consume("(")) {
     return NULL;
   }
 
   SwitchStatement *result = calloc(1, sizeof(SwitchStatement));
-  result->condition = expression(variableContainer);
+  result->condition = expression(context);
   result->labeledStatements = new_vector(16);
 
   expect(")");
 
   switchStatementNest = list_push_front(switchStatementNest, result);
-  result->statement = statement(variableContainer);
+  result->statement = statement(context);
   switchStatementNest = switchStatementNest->next;
 
   return result;
 }
 
 // label付の文をパースする
-LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
+LabeledStatement *labeled_statement(ParseContext *context) {
   Token *tokenHead = token;
 
   LabeledStatement *result = calloc(1, sizeof(LabeledStatement));
   bool isCaseLabel = consume("case");
   if (isCaseLabel) {
-    result->constantExpression = expression(variableContainer);
+    result->constantExpression = expression(context);
   }
   if (isCaseLabel || consume("default")) {
     expect(":");
@@ -811,14 +858,14 @@ LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
       ERROR_AT(tokenHead->string->head,
                "switch文の外でcaseまたはdefaultラベルが定義されました");
 
-    result->statement = statement(variableContainer);
+    result->statement = statement(context);
     return result;
   }
 
   Token *identifier = consume_identifier();
   if (identifier && consume(":")) {
     result->name = identifier->string;
-    result->statement = statement(variableContainer);
+    result->statement = statement(context);
     return result;
   }
 
@@ -827,37 +874,37 @@ LabeledStatement *labeled_statement(VariableContainer *variableContainer) {
 }
 
 // while文をパースする
-WhileStatement *while_statement(VariableContainer *variableContainer) {
+WhileStatement *while_statement(ParseContext *context) {
   if (!consume("while") || !consume("(")) {
     return NULL;
   }
 
   WhileStatement *result = calloc(1, sizeof(WhileStatement));
-  result->condition = expression(variableContainer);
+  result->condition = expression(context);
 
   expect(")");
 
-  result->statement = statement(variableContainer);
+  result->statement = statement(context);
 
   return result;
 }
 
 // do-while文をパースする
-DoWhileStatement *do_while_statement(VariableContainer *variableContainer) {
+DoWhileStatement *do_while_statement(ParseContext *context) {
   Token *tokenHead = token;
 
   if (!consume("do"))
     return NULL;
 
   DoWhileStatement *result = calloc(1, sizeof(DoWhileStatement));
-  result->statement = statement(variableContainer);
+  result->statement = statement(context);
 
   if (!consume("while") || !consume("(")) {
     token = tokenHead;
     return NULL;
   }
 
-  result->condition = expression(variableContainer);
+  result->condition = expression(context);
 
   expect(")");
   expect(";");
@@ -865,36 +912,55 @@ DoWhileStatement *do_while_statement(VariableContainer *variableContainer) {
 }
 
 // for文をパースする
-ForStatement *for_statement(VariableContainer *variableContainer) {
+ForStatement *for_statement(ParseContext *context) {
   if (!consume("for") || !consume("(")) {
     return NULL;
   }
 
   //スコープの生成
-  variableContainer =
-      variable_container_push_table(variableContainer, new_hash_table());
+  context = new_scope_context(context);
 
   ForStatement *result = calloc(1, sizeof(ForStatement));
+
+  // initialization
   if (!consume(";")) {
-    result->initialization = expression(variableContainer);
+    Declaration *initialDeclaration = declaration(context);
+    if (initialDeclaration) {
+      //宣言ならカンマ演算子に読み替え
+      Node *node = NULL;
+      for (int i = 0; i < vector_length(initialDeclaration->declarators); i++) {
+        Node *declarator = vector_get(initialDeclaration->declarators, i);
+        if (node)
+          node = new_node(NODE_COMMA, node, declarator);
+        else
+          node = declarator;
+      }
+      result->initialization = node;
+    } else {
+      result->initialization = expression(context);
+      expect(";");
+    }
+  }
+
+  // condition
+  if (!consume(";")) {
+    result->condition = expression(context);
     expect(";");
   }
-  if (!consume(";")) {
-    result->condition = expression(variableContainer);
-    expect(";");
-  }
+
+  // afterthought
   if (!consume(")")) {
-    result->afterthought = expression(variableContainer);
+    result->afterthought = expression(context);
     expect(")");
   }
 
-  result->statement = statement(variableContainer);
+  result->statement = statement(context);
 
   return result;
 }
 
 // 複文をパースする
-CompoundStatement *compound_statement(VariableContainer *variableContainer) {
+CompoundStatement *compound_statement(ParseContext *context) {
   if (!consume("{")) {
     return NULL;
   }
@@ -902,24 +968,23 @@ CompoundStatement *compound_statement(VariableContainer *variableContainer) {
   CompoundStatement *result = calloc(1, sizeof(CompoundStatement));
 
   //新しいスコープなので先頭に新しい変数テーブルを追加
-  HashTable *localVariableTable = new_hash_table();
-  VariableContainer *mergedContainer =
-      variable_container_push_table(variableContainer, localVariableTable);
+  context = new_scope_context(context);
 
   //ブロック内の文をパ-ス
-  ListNode head;
-  head.next = NULL;
-  ListNode *node = &head;
+  result->blockItemList = new_vector(32);
   while (!consume("}")) {
-    node = list_push_back(node, statement(mergedContainer));
+    BlockItem *blockItem = calloc(1, sizeof(BlockItem));
+    blockItem->declaration = declaration(context);
+    if (!blockItem->declaration)
+      blockItem->statement = statement(context);
+    vector_push_back(result->blockItemList, blockItem);
   }
-  result->statementHead = head.next;
 
   return result;
 }
 
 // break文をパースする
-BreakStatement *break_statement(VariableContainer *variableContainer) {
+BreakStatement *break_statement(ParseContext *context) {
   if (!consume("break")) {
     return NULL;
   }
@@ -929,7 +994,7 @@ BreakStatement *break_statement(VariableContainer *variableContainer) {
 }
 
 // continue文をパースする
-ContinueStatement *continue_statement(VariableContainer *variableContainer) {
+ContinueStatement *continue_statement(ParseContext *context) {
   if (!consume("continue")) {
     return NULL;
   }
@@ -938,59 +1003,78 @@ ContinueStatement *continue_statement(VariableContainer *variableContainer) {
   return result;
 }
 
+Declaration *declaration(ParseContext *context) {
+  Declaration *result = calloc(1, sizeof(Declaration));
+
+  Type *type = type_specifier(context); // declaration_specifier
+  if (type) {
+    if (consume(";")) {
+      result->type = type;
+      result->declarators = new_vector(0);
+      return result;
+    }
+
+    Vector *declarators = init_declarator_list(type, context);
+    expect(";");
+
+    result->declarators = declarators;
+    return result;
+  }
+
+  // static assert
+
+  return NULL;
+}
+
+Vector *init_declarator_list(Type *type, ParseContext *context) {
+  Vector *declarators = new_vector(8);
+  do {
+    vector_push_back(declarators, init_declarator(type, context));
+  } while (consume(","));
+  return declarators;
+}
+
+// 変数宣言をパースする
+Node *init_declarator(Type *type, ParseContext *context) {
+  Token *tokenHead = token;
+
+  // declarator
+  Variable *variable = variable_declaration(type, context);
+  if (!variable)
+    return NULL;
+
+  Node *node = new_node_variable_definition(
+      variable, context->variableContainer, tokenHead);
+
+  // initalizer
+  if (consume("="))
+    node = new_node(NODE_ASSIGN, node, assign(context));
+
+  return node;
+}
+
 //式をパースする
-Node *expression(VariableContainer *variableContainer) {
-  Node *node = NULL;
-
-  Type *type = type_specifier(variableContainer);
-  if (type)
-    node = variable_definition(type, variableContainer);
-
-  if (node)
-    return node;
-
+Node *expression(ParseContext *context) {
   //カンマ演算子
-  node = assign(variableContainer);
+  Node *node = assign(context);
   while (consume(",")) {
-    node = new_node(NODE_COMMA, node, assign(variableContainer));
+    node = new_node(NODE_COMMA, node, assign(context));
   }
 
   return node;
 }
 
 // Node Vector
-Vector *argument_expression_list(VariableContainer *variableContainer) {
+Vector *argument_expression_list(ParseContext *context) {
   Vector *arguments = new_vector(32);
   do {
-    vector_push_back(arguments, assign(variableContainer));
+    vector_push_back(arguments, assign(context));
   } while (consume(","));
   return arguments;
 }
 
-// 変数定義をパースする
-Node *variable_definition(Type *type, VariableContainer *variableContainer) {
-  Token *tokenHead = token;
-
-  Variable *variable = variable_declaration(type, variableContainer);
-  if (!variable)
-    return NULL;
-
-  Node *node =
-      new_node_variable_definition(variable, variableContainer, tokenHead);
-
-  for (;;) {
-    if (consume("=")) {
-      node = new_node(NODE_ASSIGN, node, logic_or(variableContainer));
-    } else {
-      return node;
-    }
-  }
-
-  return node;
-}
-
 //型指定子をパースする
-Type *type_specifier(VariableContainer *variableContainer) {
+Type *type_specifier(ParseContext *context) {
   Token *tokenHead = token;
 
   // 型修飾子のスキップ
@@ -1038,7 +1122,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
     return NULL;
   }
 
-  Type *structType = struct_specifier(variableContainer);
+  Type *structType = struct_specifier(context);
   if (structType) {
     Token *head = token;
     while (consume("*"))
@@ -1046,7 +1130,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
     return wrap_by_pointer(structType, head);
   }
 
-  Type *enumType = enum_specifier(variableContainer);
+  Type *enumType = enum_specifier(context);
   if (enumType) {
     Token *head = token;
     while (consume("*"))
@@ -1058,7 +1142,7 @@ Type *type_specifier(VariableContainer *variableContainer) {
   return NULL;
 }
 
-Type *enum_specifier(VariableContainer *variableContainer) {
+Type *enum_specifier(ParseContext *context) {
   Token *tokenHead = token;
 
   if (!consume("enum"))
@@ -1068,26 +1152,38 @@ Type *enum_specifier(VariableContainer *variableContainer) {
 
   Type *result = NULL;
 
-  // 宣言済み構造体の解決
+  // 宣言済み列挙体の解決
   if (identifier) {
-    for (int i = 0; i < vector_length(structs); i++) {
-      Type *type = vector_get(structs, i);
-      if (type->kind == TYPE_ENUM &&
-          string_compare(identifier->string, type->name)) {
-        result = type;
-        break;
+    Tag *tag = tag_container_get(context->tagContainer, identifier->string);
+    if (tag) {
+      if (tag->type->kind == TYPE_ENUM) {
+        result = tag->type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
       }
     }
   }
 
+  // 解決できなければ生成
   if (!result) {
     result = new_type(TYPE_ENUM);
-    if (identifier)
+    if (identifier) {
       result->name = identifier->string;
-    vector_push_back(enums, result);
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      tag_container_push(context->tagContainer, type_to_tag(result));
+    }
   }
 
   if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+    } else {
+      ERROR_AT(identifier->string->head, "列挙体が多重に定義されています")
+    }
+
     int count = 0;
     do {
       Token *enumeratorIdentifier = consume_identifier();
@@ -1106,7 +1202,8 @@ Type *enum_specifier(VariableContainer *variableContainer) {
           new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
       Variable *enumeratorVariable =
           variable_to_enumerator(variable, constantExpression);
-      if (!variable_container_push(variableContainer, enumeratorVariable))
+      if (!variable_container_push(context->variableContainer,
+                                   enumeratorVariable))
         ERROR_AT(enumeratorIdentifier->string->head,
                  "列挙子%sと同名の識別子が既に定義されています",
                  string_to_char(enumeratorIdentifier->string));
@@ -1120,9 +1217,7 @@ Type *enum_specifier(VariableContainer *variableContainer) {
   return result;
 }
 
-Type *struct_specifier(VariableContainer *variableContainer) {
-  Token *tokenHead = token;
-
+Type *struct_specifier(ParseContext *context) {
   if (!consume("struct"))
     return NULL;
 
@@ -1132,12 +1227,14 @@ Type *struct_specifier(VariableContainer *variableContainer) {
 
   // 宣言済み構造体の解決
   if (identifier) {
-    for (int i = 0; i < vector_length(structs); i++) {
-      Type *type = vector_get(structs, i);
-      if (type->kind == TYPE_STRUCT &&
-          string_compare(identifier->string, type->name)) {
-        result = type;
-        break;
+    Tag *tag = tag_container_get(context->tagContainer, identifier->string);
+    if (tag) {
+      if (tag->type->kind == TYPE_STRUCT) {
+        result = tag->type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
       }
     }
   }
@@ -1145,19 +1242,28 @@ Type *struct_specifier(VariableContainer *variableContainer) {
   // 解決できなければ生成
   if (!result) {
     result = new_type(TYPE_STRUCT);
-    if (identifier)
+    if (identifier) {
       result->name = identifier->string;
-    result->members = new_member_container();
-    vector_push_back(structs, result);
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      tag_container_push(context->tagContainer, type_to_tag(result));
+    }
   }
 
   if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+      result->members = new_member_container();
+    } else {
+      ERROR_AT(identifier->string->head, "構造体が多重に定義されています")
+    }
+
     int memberOffset = 0;
     while (!consume("}")) {
-      Type *type = type_specifier(variableContainer);
+      Type *type = type_specifier(context);
       if (!type)
         ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
-      Variable *member = variable_declaration(type, variableContainer);
+      Variable *member = variable_declaration(type, context);
       if (!member)
         ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
 
@@ -1181,39 +1287,54 @@ Type *struct_specifier(VariableContainer *variableContainer) {
 }
 
 //代入をパースする
-Node *assign(VariableContainer *variableContainer) {
+Node *assign(ParseContext *context) {
   //本来代入の左辺にとれるのはunaryだけなのでフィルタリングする必要があるがやっていない
-  Node *node = conditional(variableContainer);
+  Node *node = conditional(context);
 
   if (consume("=")) {
-    return new_node(NODE_ASSIGN, node, assign(variableContainer));
+    return new_node(NODE_ASSIGN, node, assign(context));
   } else if (consume("+=")) {
-    Node *addNode = new_node(NODE_ADD, node, assign(variableContainer));
+    Node *addNode = new_node(NODE_ADD, node, assign(context));
     return new_node(NODE_ASSIGN, node, addNode);
   } else if (consume("-=")) {
-    Node *subNode = new_node(NODE_SUB, node, assign(variableContainer));
+    Node *subNode = new_node(NODE_SUB, node, assign(context));
     return new_node(NODE_ASSIGN, node, subNode);
   } else if (consume("*=")) {
-    Node *mulNode = new_node(NODE_MUL, node, assign(variableContainer));
+    Node *mulNode = new_node(NODE_MUL, node, assign(context));
     return new_node(NODE_ASSIGN, node, mulNode);
   } else if (consume("/=")) {
-    Node *divNode = new_node(NODE_DIV, node, assign(variableContainer));
+    Node *divNode = new_node(NODE_DIV, node, assign(context));
     return new_node(NODE_ASSIGN, node, divNode);
   } else if (consume("%=")) {
-    Node *modNode = new_node(NODE_MOD, node, assign(variableContainer));
+    Node *modNode = new_node(NODE_MOD, node, assign(context));
     return new_node(NODE_ASSIGN, node, modNode);
+  } else if (consume("&=")) {
+    Node *bandNode = new_node(NODE_BAND, node, assign(context));
+    return new_node(NODE_ASSIGN, node, bandNode);
+  } else if (consume("^=")) {
+    Node *bxorNode = new_node(NODE_BXOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, bxorNode);
+  } else if (consume("|=")) {
+    Node *borNode = new_node(NODE_BOR, node, assign(context));
+    return new_node(NODE_ASSIGN, node, borNode);
+  } else if (consume("<<=")) {
+    Node *lshftNode = new_node(NODE_LSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, lshftNode);
+  } else if (consume(">>=")) {
+    Node *rshiftNode = new_node(NODE_RSHIFT, node, assign(context));
+    return new_node(NODE_ASSIGN, node, rshiftNode);
   } else {
     return node;
   }
 }
 
-Node *conditional(VariableContainer *variableContainer) {
-  Node *node = logic_or(variableContainer);
+Node *conditional(ParseContext *context) {
+  Node *node = logical_or(context);
 
   if (consume("?")) {
-    Node *lhs = expression(variableContainer);
+    Node *lhs = expression(context);
     expect(":");
-    Node *rhs = conditional(variableContainer);
+    Node *rhs = conditional(context);
 
     Node *conditionalNode = new_node(NODE_COND, lhs, rhs);
     conditionalNode->condition = node;
@@ -1223,115 +1344,163 @@ Node *conditional(VariableContainer *variableContainer) {
   return node;
 }
 
-Node *logic_or(VariableContainer *variableContainer) {
-  Node *node = logic_and(variableContainer);
+Node *logical_or(ParseContext *context) {
+  Node *node = logical_and(context);
 
   for (;;) {
     if (consume("||"))
-      node = new_node(NODE_LOR, node, logic_and(variableContainer));
+      node = new_node(NODE_LOR, node, logical_and(context));
     else
       return node;
   }
 }
 
-Node *logic_and(VariableContainer *variableContainer) {
-  Node *node = equality(variableContainer);
+Node *logical_and(ParseContext *context) {
+  Node *node = bitwise_inclusive_or(context);
 
   for (;;) {
     if (consume("&&"))
-      node = new_node(NODE_LAND, node, equality(variableContainer));
+      node = new_node(NODE_LAND, node, bitwise_inclusive_or(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_inclusive_or(ParseContext *context) {
+  Node *node = bitwise_exclusive_or(context);
+
+  for (;;) {
+    if (consume("|"))
+      node = new_node(NODE_BOR, node, bitwise_exclusive_or(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_exclusive_or(ParseContext *context) {
+  Node *node = bitwise_and(context);
+
+  for (;;) {
+    if (consume("^"))
+      node = new_node(NODE_BXOR, node, bitwise_and(context));
+    else
+      return node;
+  }
+}
+
+Node *bitwise_and(ParseContext *context) {
+  Node *node = equality(context);
+
+  for (;;) {
+    if (consume("&"))
+      node = new_node(NODE_BAND, node, equality(context));
     else
       return node;
   }
 }
 
 //等式をパースする
-Node *equality(VariableContainer *variableContainer) {
-  Node *node = relational(variableContainer);
+Node *equality(ParseContext *context) {
+  Node *node = relational(context);
 
   for (;;) {
     if (consume("=="))
-      node = new_node(NODE_EQ, node, relational(variableContainer));
+      node = new_node(NODE_EQ, node, relational(context));
     else if (consume("!="))
-      node = new_node(NODE_NE, node, relational(variableContainer));
+      node = new_node(NODE_NE, node, relational(context));
     else
       return node;
   }
 }
 
 //不等式をパースする
-Node *relational(VariableContainer *variableContainer) {
-  Node *node = add(variableContainer);
+Node *relational(ParseContext *context) {
+  Node *node = shift(context);
 
   for (;;) {
     if (consume("<"))
-      node = new_node(NODE_LT, node, add(variableContainer));
+      node = new_node(NODE_LT, node, shift(context));
     else if (consume("<="))
-      node = new_node(NODE_LE, node, add(variableContainer));
+      node = new_node(NODE_LE, node, shift(context));
     else if (consume(">"))
-      node = new_node(NODE_LT, add(variableContainer), node);
+      node = new_node(NODE_LT, shift(context), node);
     else if (consume(">="))
-      node = new_node(NODE_LE, add(variableContainer), node);
+      node = new_node(NODE_LE, shift(context), node);
     else
       return node;
   }
 }
 
-Node *add(VariableContainer *variableContainer) {
-  Node *node = multiply(variableContainer);
+Node *shift(ParseContext *context) {
+  Node *node = add(context);
+
+  for (;;) {
+    if (consume("<<"))
+      node = new_node(NODE_LSHIFT, node, add(context));
+    else if (consume(">>"))
+      node = new_node(NODE_RSHIFT, node, add(context));
+    else
+      return node;
+  }
+}
+
+Node *add(ParseContext *context) {
+  Node *node = multiply(context);
 
   for (;;) {
     if (consume("+"))
-      node = new_node(NODE_ADD, node, multiply(variableContainer));
+      node = new_node(NODE_ADD, node, multiply(context));
     else if (consume("-"))
-      node = new_node(NODE_SUB, node, multiply(variableContainer));
+      node = new_node(NODE_SUB, node, multiply(context));
     else
       return node;
   }
 }
 
 //乗除算をパースする
-Node *multiply(VariableContainer *variableContainer) {
-  Node *node = unary(variableContainer);
+Node *multiply(ParseContext *context) {
+  Node *node = unary(context);
 
   for (;;) {
     if (consume("*"))
-      node = new_node(NODE_MUL, node, unary(variableContainer));
+      node = new_node(NODE_MUL, node, unary(context));
     else if (consume("/"))
-      node = new_node(NODE_DIV, node, unary(variableContainer));
+      node = new_node(NODE_DIV, node, unary(context));
     else if (consume("%"))
-      node = new_node(NODE_MOD, node, unary(variableContainer));
+      node = new_node(NODE_MOD, node, unary(context));
     else
       return node;
   }
 }
 
 //単項演算子をパースする
-Node *unary(VariableContainer *variableContainer) {
+Node *unary(ParseContext *context) {
   if (consume("+"))
-    return postfix(variableContainer);
+    return postfix(context);
   if (consume("-"))
-    return new_node(NODE_SUB, new_node_num(0), postfix(variableContainer));
+    return new_node(NODE_SUB, new_node_num(0), postfix(context));
   if (consume("!"))
-    return new_node(NODE_LNOT, unary(variableContainer), NULL);
+    return new_node(NODE_LNOT, unary(context), NULL);
+  if (consume("~"))
+    return new_node(NODE_BNOT, unary(context), NULL);
   if (consume("&"))
-    return new_node(NODE_REF, unary(variableContainer), NULL);
+    return new_node(NODE_REF, unary(context), NULL);
   if (consume("*"))
-    return new_node(NODE_DEREF, unary(variableContainer), NULL);
+    return new_node(NODE_DEREF, unary(context), NULL);
   if (consume("++")) {
-    Node *source = postfix(variableContainer);
+    Node *source = unary(context);
     Node *addNode = new_node(NODE_ADD, source, new_node_num(1));
     return new_node(NODE_ASSIGN, source, addNode);
   }
   if (consume("--")) {
-    Node *source = postfix(variableContainer);
+    Node *source = unary(context);
     Node *addNode = new_node(NODE_SUB, source, new_node_num(1));
     return new_node(NODE_ASSIGN, source, addNode);
   }
   if (consume("sizeof")) {
     Token *head = token;
     if (consume("(")) {
-      Type *type = type_specifier(variableContainer);
+      Type *type = type_specifier(context);
       if (type) {
         expect(")");
         return new_node_num(type_to_size(type));
@@ -1342,15 +1511,15 @@ Node *unary(VariableContainer *variableContainer) {
     bool parentheses = consume("(");
     //識別子に対するsizeofのみを特別に許可する
     Token *identifier = consume_identifier();
-    // postfix(variableContainer);
+    // postfix(context);
     if (!identifier) {
       ERROR_AT(identifier->string->head, "式に対するsizeof演算は未実装です");
     }
     if (parentheses)
       expect(")");
 
-    Type *type =
-        new_node_variable(identifier, variableContainer)->variable->type;
+    Type *type = new_node_variable(identifier, context->variableContainer)
+                     ->variable->type;
     if (!type)
       ERROR_AT(token->string->head, "sizeof演算子のオペランドが不正です");
     return new_node_num(type_to_size(type));
@@ -1358,18 +1527,18 @@ Node *unary(VariableContainer *variableContainer) {
   if (consume("_Alignof")) {
     expect("(");
 
-    Type *type = type_specifier(variableContainer);
+    Type *type = type_specifier(context);
     if (!type)
       ERROR_AT(token->string->head, "型指定子ではありません");
 
     expect(")");
     return new_node_num(type_to_align(type));
   }
-  return postfix(variableContainer);
+  return postfix(context);
 }
 
 //変数、関数呼び出し、添字付の配列
-Node *postfix(VariableContainer *variableContainer) {
+Node *postfix(ParseContext *context) {
   Token *head = token;
 
   //----postfixが連続するときの先頭は関数呼び出しかprimary--------
@@ -1381,7 +1550,7 @@ Node *postfix(VariableContainer *variableContainer) {
     if (consume(")")) {
       arguments = new_vector(0);
     } else {
-      arguments = argument_expression_list(variableContainer);
+      arguments = argument_expression_list(context);
       expect(")");
     }
 
@@ -1396,7 +1565,7 @@ Node *postfix(VariableContainer *variableContainer) {
   }
 
   if (!node)
-    node = primary(variableContainer);
+    node = primary(context);
 
   //--------------
 
@@ -1404,7 +1573,7 @@ Node *postfix(VariableContainer *variableContainer) {
     if (consume("[")) {
       //配列の添字をポインタ演算に置き換え
       //ポインタ演算の構文木を生成
-      Node *addNode = new_node(NODE_ADD, node, expression(variableContainer));
+      Node *addNode = new_node(NODE_ADD, node, expression(context));
       node = new_node(NODE_DEREF, addNode, NULL);
       expect("]");
     } else if (consume(".")) {
@@ -1432,17 +1601,17 @@ Node *postfix(VariableContainer *variableContainer) {
   }
 }
 
-Node *primary(VariableContainer *variableContainer) {
+Node *primary(ParseContext *context) {
   //次のトークンが(なら入れ子になった式
   if (consume("(")) {
-    Node *node = expression(variableContainer);
+    Node *node = expression(context);
     expect(")");
     return node;
   }
 
   Token *identifier = consume_identifier();
   if (identifier) {
-    Node *node = new_node_variable(identifier, variableContainer);
+    Node *node = new_node_variable(identifier, context->variableContainer);
     //列挙子の解決 ここでやるべきではない
     if (node->variable->kind == VARIABLE_ENUMERATOR)
       return node->variable->initialization;
@@ -1503,10 +1672,19 @@ Node *literal() {
 
   Token *string = consume_string();
   if (string) {
+    const String *content = string->string;
+    for (;;) {
+      Token *next = consume_string();
+      if (next)
+        content = string_concat(content, next->string);
+      else
+        break;
+    }
+
     Node *node = new_node(NODE_STRING, NULL, NULL);
     node->val = vector_length(stringLiterals);
     //コンテナはポインタしか受け入れられないので
-    vector_push_back(stringLiterals, string_to_char(string->string));
+    vector_push_back(stringLiterals, string_to_char(content));
     return node;
   }
 

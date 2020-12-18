@@ -1,5 +1,6 @@
 #include "typecheck.h"
 #include "container.h"
+#include "declaration.h"
 #include "functioncall.h"
 #include "functioncontainer.h"
 #include "membercontainer.h"
@@ -94,6 +95,10 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   }
   case NODE_LNOT:
+    tag_type_to_node(node->lhs, context);
+    node->type = new_type(TYPE_INT);
+    return;
+  case NODE_BNOT:
     tag_type_to_node(node->lhs, context);
     node->type = node->lhs->type;
     return;
@@ -230,6 +235,11 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LE:
   case NODE_LAND:
   case NODE_LOR:
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT:
   case NODE_COND:
   case NODE_COMMA:
     break; //次のswitch文で判定する
@@ -248,7 +258,8 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       return;
     }
     if (lhs->kind == TYPE_INT && rhs->base != NULL) {
-      ERROR_AT(node->source, "未実装の演算です");
+      node->type = rhs;
+      return;
     }
     {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
@@ -323,18 +334,47 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_LOR:
     node->type = new_type(TYPE_INT);
     return;
-  case NODE_COND:
+  case NODE_BAND:
+  case NODE_BXOR:
+  case NODE_BOR:
+  case NODE_LSHIFT:
+  case NODE_RSHIFT: {
+    Type *result = check_arithmetic_binary_operator(lhs, rhs);
+    if (result) {
+      node->type = result;
+      insert_implicit_cast_node(node->type, node);
+      return;
+    }
+    ERROR_AT(node->source, "ビット算演算子のオペランド型が不正です");
+  }
+  case NODE_COND: {
     tag_type_to_node(node->condition, context);
+
+    //ポインタ型と0の比較のときのみ0をNULLポインタと見なす
+    bool isLhsNull = rhs->kind == TYPE_PTR && node->lhs->kind == NODE_NUM &&
+                     node->lhs->val == 0;
+    bool isRhsNull = lhs->kind == TYPE_PTR && node->rhs->kind == NODE_NUM &&
+                     node->rhs->val == 0;
+    if (isLhsNull) {
+      node->lhs = new_node_cast(rhs, node->lhs);
+      lhs = node->lhs->type;
+    } else if (isRhsNull) {
+      node->rhs = new_node_cast(lhs, node->rhs);
+      rhs = node->rhs->type;
+    }
+
     if (type_compare_deep_with_implicit_cast(lhs, rhs)) {
       node->type = lhs;
       node->rhs = new_node_cast(lhs, node->rhs);
       return;
     }
     ERROR_AT(node->source, "条件演算子のオペランド型が不正です");
+  }
   case NODE_COMMA:
     node->type = rhs;
     return;
   case NODE_LNOT:
+  case NODE_BNOT:
   case NODE_REF:
   case NODE_DEREF:
   case NODE_ASSIGN:
@@ -350,6 +390,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   }
 
   ERROR_AT(node->source, "予期しないノードが指定されました");
+}
+
+void tag_type_to_declaration(Declaration *declaration,
+                             TypeCheckContext *context) {
+  for (int i = 0; i < vector_length(declaration->declarators); i++) {
+    Node *declarator = vector_get(declaration->declarators, i);
+    tag_type_to_node(declarator, context);
+  }
 }
 
 void tag_type_to_statement(StatementUnion *statementUnion,
@@ -436,11 +484,14 @@ void tag_type_to_statement(StatementUnion *statementUnion,
     CompoundStatement *compoundPattern =
         statement_union_take_compound(statementUnion);
     if (compoundPattern) {
-      ListNode *node = compoundPattern->statementHead;
-      while (node) {
-        tag_type_to_statement(node->body, context);
-        node = node->next;
+      for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
+        BlockItem *item = vector_get(compoundPattern->blockItemList, i);
+        if (item->declaration)
+          tag_type_to_declaration(item->declaration, context);
+        else if (item->statement)
+          tag_type_to_statement(item->statement, context);
       }
+
       return;
     }
   }
