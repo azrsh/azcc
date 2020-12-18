@@ -12,6 +12,7 @@ struct String {
 const String *new_string(const char *source, int length);
 const String *char_to_string(const char *source);
 char *string_to_char(const String *source);
+const String *string_concat(const String *source1, const String *source2);
 bool string_compare(const String *string1, const String *string2);
 
 typedef struct ListNode ListNode;

@@ -22,6 +22,13 @@ char *string_to_char(const String *source) {
   return p;
 }
 
+const String *string_concat(const String *source1, const String *source2) {
+  char *p = calloc(source1->length + source2->length, sizeof(char));
+  memcpy(p, source1->head, source1->length);
+  memcpy(p + source1->length, source2->head, source2->length);
+  return new_string(p, source1->length + source2->length);
+}
+
 bool string_compare(const String *string1, const String *string2) {
   if (string1->length != string2->length) {
     return false;

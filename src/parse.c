@@ -1672,10 +1672,19 @@ Node *literal() {
 
   Token *string = consume_string();
   if (string) {
+    const String *content = string->string;
+    for (;;) {
+      Token *next = consume_string();
+      if (next)
+        content = string_concat(content, next->string);
+      else
+        break;
+    }
+
     Node *node = new_node(NODE_STRING, NULL, NULL);
     node->val = vector_length(stringLiterals);
     //コンテナはポインタしか受け入れられないので
-    vector_push_back(stringLiterals, string_to_char(string->string));
+    vector_push_back(stringLiterals, string_to_char(content));
     return node;
   }
 
