@@ -24,8 +24,8 @@ $ gcc -o source.out source.s
 ## Thanks
 + Rui Ueyama, instructor at seccamp2020
 + hikalium, instructor at seccamp2020
-+ hsjoihs, tutor at seccamp2020, contributor of this project.
-+ sksat, tutor at seccamp2020, contributor of this project.
++ hsjoihs, tutor at seccamp2020, contributor of this project
++ sksat, tutor at seccamp2020, contributor of this project
 + Takana-Norimasa, classmate at seccamp2020
 + and more classmates at seccamp2020
 
