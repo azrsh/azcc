@@ -167,6 +167,9 @@ Token *tokenize(const char *p) {
         if (strchr("\\", *p))
           p++;
         p++;
+
+        if (strchr("\n", *p))
+          ERROR_AT(p, "不正な文字列リテラルです");
       }
       current = new_token(TOKEN_STRING, current, q, p - q);
       p++;
@@ -182,6 +185,9 @@ Token *tokenize(const char *p) {
         if (strchr("\\", *p))
           p++;
         p++;
+
+        if (strchr("\n", *p))
+          ERROR_AT(p, "不正な文字リテラルです");
       }
       current = new_token(TOKEN_CHAR, current, q, p - q);
       p++;

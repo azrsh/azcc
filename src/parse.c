@@ -1666,6 +1666,8 @@ Node *literal() {
                  "予期しない文字のエスケープシーケンスです");
         break;
       }
+    } else {
+      ERROR_AT(character->string->head, "文字リテラルではありません");
     }
     return node;
   }
