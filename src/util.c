@@ -13,7 +13,7 @@ bool start_with(const char *p, const char *q) {
 }
 
 // 指定されたファイルの内容を返す
-const char *read_file(const char *path) {
+const char *read_path(const char *path) {
   // ファイルを開く
   FILE *fp = fopen(path, "r");
   if (!fp)
@@ -36,4 +36,24 @@ const char *read_file(const char *path) {
   buf[size] = '\0';
   fclose(fp);
   return buf;
+}
+
+//本来はread_file(FILE *stream)としたいが、stdioを宣言できないのでこの形とする
+const char *read_stdin() {
+  const int bufferSize = 1024;
+  char *buffer = calloc(bufferSize, sizeof(char));
+  for (int i = 0;; i++) {
+    buffer[i] = getchar();
+    if (buffer[i] == EOF) {
+      if (i == 0 || buffer[i - 1] != '\n')
+        buffer[i++] = '\n';
+      buffer[i] = '\0';
+      break;
+    }
+
+    if (i % bufferSize == bufferSize - 1)
+      buffer = realloc(buffer, (i + bufferSize + 2) * sizeof(char));
+  }
+
+  return buffer;
 }

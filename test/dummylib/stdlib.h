@@ -5,6 +5,7 @@
 
 typedef int size_t;
 void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
 int strtol(const char *s, char **endptr, int base);
 int exit(int status);
 #define EXIT_FAILURE 1

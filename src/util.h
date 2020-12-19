@@ -49,6 +49,7 @@ extern const char *user_input;
 extern const char *filename; // 入力ファイル名
 
 bool start_with(const char *p, const char *q);
-const char *read_file(const char *path);
+const char *read_path(const char *path);
+const char *read_stdin();
 
 #endif
