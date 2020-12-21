@@ -1588,12 +1588,12 @@ Node *postfix(ParseContext *context) {
     } else if (consume("++")) {
       Node *addNode = new_node(NODE_ADD, node, new_node_num(1));
       Node *assignNode = new_node(NODE_ASSIGN, node, addNode);
-      return new_node(NODE_SUB, assignNode,
+      node = new_node(NODE_SUB, assignNode,
                       new_node_num(1)); //戻り値を変えるためにやっているが、最悪
     } else if (consume("--")) {
       Node *addNode = new_node(NODE_SUB, node, new_node_num(1));
       Node *assignNode = new_node(NODE_ASSIGN, node, addNode);
-      return new_node(NODE_ADD, assignNode,
+      node = new_node(NODE_ADD, assignNode,
                       new_node_num(1)); //戻り値を変えるためにやっているが、最悪
     } else {
       return node;
