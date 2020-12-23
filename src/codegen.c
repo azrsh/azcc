@@ -202,6 +202,33 @@ void generate_assign_i8() {
   printf("  push rdi\n");
 }
 
+void generate_assign_large(int size) {
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+  int current = 0;
+  for (int i = 0; i < size / 8; i++) {
+    printf("  mov r11, [rdi+%d]\n", current);
+    printf("  mov [rax+%d], r11\n", current);
+    current += 8;
+  }
+  if (size % 8 >= 4) {
+    printf("  mov r11d, DWORD PTR [rdi+%d]\n", current);
+    printf("  mov DWORD PTR [rax+%d], r11d\n", current);
+    current += 4;
+  }
+  if (size % 4 >= 2) {
+    printf("  mov r11w, WORD PTR [rdi+%d]\n", current);
+    printf("  mov WORD PTR [rax+%d], r11w\n", current);
+    current += 2;
+  }
+  if (size % 2 >= 1) {
+    printf("  mov r11b, BYTE PTR [rdi+%d]\n", current);
+    printf("  mov BYTE PTR [rax+%d], r11b\n", current);
+    current += 1;
+  }
+  printf("  push rdi\n");
+}
+
 void generate_rhs_extension(Node *node) {
   //暗黙的なキャスト
   //配列はポインタに
@@ -219,9 +246,15 @@ void generate_rhs_extension(Node *node) {
     printf("  movsx rax, DWORD PTR [rax]\n");
     break;
   case TYPE_PTR:
-  case TYPE_STRUCT:
     printf("  mov rax, [rax]\n");
     break;
+  case TYPE_STRUCT: {
+    int size = type_to_size(node->type);
+    //サイズが8byte以上ならポインタのまま
+    if (size <= 8)
+      printf("  mov rax, [rax]\n");
+    break;
+  }
   case TYPE_ARRAY:
     break; //配列はポインタのままにする
   case TYPE_VOID:
@@ -332,6 +365,8 @@ void generate_expression(Node *node, int *labelCount) {
       generate_assign_i32();
     else if (lhsSize == 8 && rhsSize == 8)
       generate_assign_i64();
+    else if (lhsSize == rhsSize)
+      generate_assign_large(lhsSize);
     else
       ERROR_AT(node->source, "予期しない代入");
 
