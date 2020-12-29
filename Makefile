@@ -62,7 +62,8 @@ RUN_TESTS_STOP_ON_FAIL=\
 		fi; \
 	done; \
 	if [ $$res -eq 0 ]; then \
-		exit 1;
+		exit 1;\
+	fi
 
 RUN_TESTS=$(RUN_TESTS_CONTINUE_ON_FAIL)
 #RUN_TESTS=$(RUN_TESTS_STOP_ON_FAIL)
