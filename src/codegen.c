@@ -130,7 +130,7 @@ void generate_function_call(Node *node, int *labelCount) {
 
       // 8byte以上の値はポインタとして格納されているので
       // 値に変換してスタックに積み直す
-      int stackLength = type_to_stack_size(argument->type) / 8;
+      int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
       if (stackLength > 1) {
         printf("  pop %s\n", "rax");
         for (int j = 0; j < stackLength; j++) {
@@ -149,7 +149,7 @@ void generate_function_call(Node *node, int *labelCount) {
     int currentStackIndex = 0;
     for (int i = 0; i < vector_length(arguments); i++) {
       Node *node = vector_get(arguments, i);
-      const int stackLength = type_to_stack_size(node->type) / 8;
+      const int stackLength = type_to_stack_size(node->type) / stackUnitSize;
       if (registerIndex + stackLength > 6)
         break;
 
@@ -164,11 +164,11 @@ void generate_function_call(Node *node, int *labelCount) {
 
       //もしレジスタに移した値よりも前に引数があれば詰める
       for (int j = currentStackIndex - 1; j >= 0; j--) {
-        printf("  mov r11, [rsp+%d]\n", j * 8);
-        printf("  mov [rsp+%d], r11\n", (j + stackLength) * 8);
+        printf("  mov r11, [rsp+%d]\n", j * stackUnitSize);
+        printf("  mov [rsp+%d], r11\n", (j + stackLength) * stackUnitSize);
       }
 
-      printf("  add rsp, %d\n", stackLength * 8);
+      printf("  add rsp, %d\n", stackLength * stackUnitSize);
     }
   }
 
@@ -183,8 +183,8 @@ void generate_function_call(Node *node, int *labelCount) {
   printf("  call %s\n", functionName);
 
   //スタックに積んだ引数を処理
-  if (vector_length(arguments) > 6) {
-    printf("  add rsp, %d\n", (vector_length(arguments) - 6) * stackUnitSize);
+  if (stackArgumentSize > 0) {
+    printf("  add rsp, %d\n", stackArgumentSize);
   }
 
   //アライメントの判定とスタックの復元
