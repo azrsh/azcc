@@ -95,58 +95,81 @@ void generate_function_call(Node *node, int *labelCount) {
   //アライメント
   //スタックの使用予測に基づいてアライメント
   const int stackUnitSize = 8;
-  const int alignmentLength = stackUnitSize * 2;
+  const int alignmentSize = stackUnitSize * 2;
   printf("  push 0\n");
   printf("  mov rax, rsp\n");
 
   //引数うちスタックに積まれる部分のサイズ計算
-  int argumentSize = 0;
   int stackArgumentSize = 0;
-  for (int i = 0; i < vector_length(arguments); i++) {
-    Node *node = vector_get(arguments, i);
-    argumentSize += type_to_stack_size(node->type);
-    if (argumentSize > 6 * stackUnitSize)
-      stackArgumentSize += type_to_stack_size(node->type);
+  {
+    int argumentStackLengthSum = 0;
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      int stackLength = type_to_stack_size(node->type) / stackUnitSize;
+      argumentStackLengthSum += stackLength;
+      if (stackLength > 2 || argumentStackLengthSum > 6)
+        stackArgumentSize += stackLength * stackUnitSize;
+    }
   }
 
   if (stackArgumentSize) {
     printf("  sub rax, %d\n", stackArgumentSize);
   }
-  printf("  and rax, %d\n", alignmentLength - 1);
+  printf("  and rax, %d\n", alignmentSize - 1);
   printf("  jz .Lcall%d\n", currentLabel);
   printf("  push 1\n");
   printf(".Lcall%d:\n", currentLabel);
 
   //引数の評価
-  for (int i = vector_length(arguments) - 1; i >= 0; i--) {
-    INSERT_COMMENT("function %s argument %d start", functionName, i);
-    Node *argument = vector_get(arguments, i);
-    generate_expression(argument, labelCount);
+  {
+    int argumentStackLengthSum = 0;
+    for (int i = vector_length(arguments) - 1; i >= 0; i--) {
+      INSERT_COMMENT("function %s argument %d start", functionName, i);
+      Node *argument = vector_get(arguments, i);
+      generate_expression(argument, labelCount);
 
-    int stackLength = type_to_stack_size(argument->type) / 8;
-    if (stackLength > 1) {
-      printf("  pop %s\n", "rax");
-      for (int j = 0; j < stackLength; j++) {
-        printf("  push [%s+%d]\n", "rax", j);
+      // 8byte以上の値はポインタとして格納されているので
+      // 値に変換してスタックに積み直す
+      int stackLength = type_to_stack_size(argument->type) / 8;
+      if (stackLength > 1) {
+        printf("  pop %s\n", "rax");
+        for (int j = 0; j < stackLength; j++) {
+          printf("  push [%s+%d]\n", "rax", j);
+        }
       }
-    }
 
-    INSERT_COMMENT("function %s argument %d end", functionName, i);
+      INSERT_COMMENT("function %s argument %d end", functionName, i);
+    }
   }
 
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
   //引数を全て評価してからレジスタに割り当て
-  int registerIndex = 0;
-  for (int i = 0; i < vector_length(arguments); i++) {
-    Node *node = vector_get(arguments, i);
-    int stackLength = type_to_stack_size(node->type) / 8;
-    if (registerIndex + stackLength > 6)
-      break;
+  {
+    int registerIndex = 0;
+    int currentStackIndex = 0;
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      const int stackLength = type_to_stack_size(node->type) / 8;
+      if (registerIndex + stackLength > 6)
+        break;
 
-    for (int j = 0; j < stackLength; j++) {
-      printf("  pop %s\n", argumentRegister64[registerIndex + j]);
+      if (stackLength > 2) {
+        currentStackIndex += stackLength;
+        continue;
+      }
+
+      for (int j = 0; j < stackLength; j++)
+        printf("  mov %s, [rsp+%d]\n", argumentRegister64[registerIndex++],
+               (currentStackIndex + j) * 8);
+
+      //もしレジスタに移した値よりも前に引数があれば詰める
+      for (int j = currentStackIndex - 1; j >= 0; j--) {
+        printf("  mov r11, [rsp+%d]\n", j * 8);
+        printf("  mov [rsp+%d], r11\n", (j + stackLength) * 8);
+      }
+
+      printf("  add rsp, %d\n", stackLength * 8);
     }
-    registerIndex += stackLength;
   }
 
   printf("  mov rax, 0\n");
@@ -966,18 +989,18 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     printf("  pop rax\n");
 
     //このコンパイラにはINTEGERクラスしか存在しないのでこれでよい
-    const int size = type_to_size(node->type);
-    const int stackUnitSize = size / 8 + (size % 8 ? 1 : 0);
-    if (registerIndex + stackUnitSize <= 6) {
-      for (int j = 0; j < stackUnitSize; j++) {
+    // INTEGERクラスとMEMORYクラスの境界は16byte(2 eight bytes)
+    const int stackLength = type_to_stack_size(node->type) / 8;
+    if (stackLength <= 2 && registerIndex + stackLength <= 6) {
+      for (int j = 0; j < stackLength; j++) {
         printf("  mov [%s+%d], %s\n", "rax", j * 8,
                argumentRegister64[registerIndex]);
-        registerIndex++;
       }
+      registerIndex += stackLength;
     } else {
       // rbp+16 is memory argument eightbyte 0
       // rbp+16+8n is memory argument eightbyte n
-      for (int j = 0; j < stackUnitSize; j++) {
+      for (int j = 0; j < stackLength; j++) {
         printf("  mov %s, [rbp+%d]\n", "r11", 16 + argumentStackOffset + j * 8);
         printf("  mov [%s+%d], %s\n", "rax", j * 8, "r11");
       }
