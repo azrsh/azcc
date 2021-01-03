@@ -133,8 +133,8 @@ void generate_function_call(Node *node, int *labelCount) {
       int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
       if (stackLength > 1) {
         printf("  pop %s\n", "rax");
-        for (int j = 0; j < stackLength; j++) {
-          printf("  push [%s+%d]\n", "rax", j);
+        for (int j = stackLength - 1; j >= 0; j--) {
+          printf("  push [%s+%d]\n", "rax", j * 8);
         }
       }
 
@@ -193,6 +193,18 @@ void generate_function_call(Node *node, int *labelCount) {
   printf("  je .Lend%d\n", currentLabel);
   printf("  add rsp, %d\n", stackUnitSize);
   printf(".Lend%d:\n", currentLabel);
+
+  {
+    // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+    // raxとrdxに戻り値が値として格納されているのでポインタに変換
+    Type *returnType = node->type;
+    Variable *returnStack = node->functionCall->returnStack;
+    if (type_to_stack_size(returnType) / stackUnitSize == 2) {
+      printf("  mov [rbp-%d], rax\n", returnStack->offset);
+      printf("  mov [rbp-%d], rdx\n", returnStack->offset - stackUnitSize);
+      printf("  lea rax, [rbp-%d]\n", returnStack->offset);
+    }
+  }
 
   printf("  push rax\n");
 
@@ -326,8 +338,8 @@ void generate_value_extension(Node *node) {
     break;
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
+  case TYPE_STRUCT: //構造体はそのままでよい
     break;
-  case TYPE_STRUCT:
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
   }
@@ -908,6 +920,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       else
         printf("  push 0\n"); //戻り値がvoid型のときはダミーの0をプッシュ
       printf("  pop rax\n");
+
+      // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+      // ポインタになっている戻り値から値を取り出し
+      // 下位64bitをrdx(2nd return register)に代入
+      if (returnPattern->node &&
+          type_to_stack_size(returnPattern->node->type) / 8 == 2) {
+        printf("  mov rdx, [rax+8]\n");
+        printf("  mov rax, [rax]\n");
+      }
+
       printf("  mov rsp, rbp\n");
       printf("  pop rbp\n");
       printf("  ret\n");
@@ -994,9 +1016,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     if (stackLength <= 2 && registerIndex + stackLength <= 6) {
       for (int j = 0; j < stackLength; j++) {
         printf("  mov [%s+%d], %s\n", "rax", j * 8,
-               argumentRegister64[registerIndex]);
+               argumentRegister64[registerIndex++]);
       }
-      registerIndex += stackLength;
     } else {
       // rbp+16 is memory argument eightbyte 0
       // rbp+16+8n is memory argument eightbyte n
@@ -1013,6 +1034,15 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   generate_statement(new_statement_union_compound(functionDefinition->body),
                      labelCount, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
+
+  // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+  // ポインタになっている戻り値から値を取り出し
+  // 下位64bitをrdx(2nd return register)に代入
+  Type *returnType = functionDefinition->returnType;
+  if (type_to_stack_size(returnType) / 8 == 2) {
+    printf("  mov rdx, [rax+8]\n");
+    printf("  mov rax, [rax]\n");
+  }
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる

@@ -1555,11 +1555,22 @@ Node *postfix(ParseContext *context) {
     }
 
     //関数宣言との整合性の検証
-    if (!function_container_get(functionContainer, identifier->string))
+    FunctionDefinition *function =
+        function_container_get(functionContainer, identifier->string);
+    if (!function)
       ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
 
     node = new_node_function_call(identifier);
     node->functionCall->arguments = arguments;
+    if (type_to_stack_size(function->returnType) > 1) {
+      //識別子として無効な変数名を生成
+      const String *name =
+          string_concat(char_to_string("0"), identifier->string);
+      Variable *returnVariable =
+          variable_to_local(new_variable(function->returnType, name));
+      variable_container_push(context->variableContainer, returnVariable);
+      node->functionCall->returnStack = returnVariable;
+    }
   } else {
     token = head;
   }

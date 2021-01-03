@@ -1,7 +1,19 @@
 #include "testtool.h"
 #include <stdio.h>
 
-struct TupleInt {
+struct TupleInt2 {
+  int x1;
+  int x2;
+};
+
+struct TupleInt4 {
+  int x1;
+  int x2;
+  int x3;
+  int x4;
+};
+
+struct TupleInt5 {
   int x1;
   int x2;
   int x3;
@@ -9,22 +21,64 @@ struct TupleInt {
   int x5;
 };
 
-int test1(struct TupleInt instance1, struct TupleInt instance2) {
-  assert(instance1.x1, instance2.x1, "instance1.x1 == instance2.x1");
-  assert(instance1.x2, instance2.x2, "instance1.x2 == instance2.x2");
-  assert(instance1.x3, instance2.x3, "instance1.x3 == instance2.x3");
-  assert(instance1.x4, instance2.x4, "instance1.x4 == instance2.x4");
-  assert(instance1.x5, instance2.x5, "instance1.x5 == instance2.x5");
-  return 0;
+void compare_tuple_int2(struct TupleInt2 instance1,
+                        struct TupleInt2 instance2) {
+  assert(instance1.x1, instance2.x1, "int2_1.x1 == int2_2.x1");
+  assert(instance1.x2, instance2.x2, "int2_1.x2 == int2_2.x2");
+  return;
+}
+
+void compare_tuple_int4(struct TupleInt4 instance1,
+                        struct TupleInt4 instance2) {
+  assert(instance1.x1, instance2.x1, "int4_1.x1 == int4_2.x1");
+  assert(instance1.x2, instance2.x2, "int4_1.x2 == int4_2.x2");
+  assert(instance1.x3, instance2.x3, "int4_1.x3 == int4_2.x3");
+  assert(instance1.x4, instance2.x4, "int4_1.x4 == int4_2.x4");
+  return;
+}
+
+void compare_tuple_int5(struct TupleInt5 instance1,
+                        struct TupleInt5 instance2) {
+  assert(instance1.x1, instance2.x1, "int5_1.x1 == int5_2.x1");
+  assert(instance1.x2, instance2.x2, "int5_1.x2 == int5_2.x2");
+  assert(instance1.x3, instance2.x3, "int5_1.x3 == int5_2.x3");
+  assert(instance1.x4, instance2.x4, "int5_1.x4 == int5_2.x4");
+  assert(instance1.x5, instance2.x5, "int5_1.x5 == int5_2.x5");
+  return;
+}
+
+struct TupleInt2 test1(struct TupleInt2 instance) {
+  return instance;
+}
+
+struct TupleInt4 test2(struct TupleInt4 instance) {
+  return instance;
 }
 
 int main() {
-  struct TupleInt a1, a2, a3, a4, a5;
-  test1(a1, a1);
-  test1(a2, a2);
-  test1(a3, a3);
-  test1(a4, a4);
-  test1(a5, a5);
+  struct TupleInt5 a1, a2, a3, a4, a5;
+  compare_tuple_int5(a1, a1);
+  compare_tuple_int5(a2, a2);
+  compare_tuple_int5(a3, a3);
+  compare_tuple_int5(a4, a4);
+  compare_tuple_int5(a5, a5);
+
+  struct TupleInt2 b1, b2, b3, b4, b5, b6;
+  b2 = test1(b1);
+  compare_tuple_int2(b1, b2);
+  b4 = test1(b3);
+  compare_tuple_int2(b3, b4);
+  b5 = test1(b6);
+  compare_tuple_int2(b5, b6);
+
+  struct TupleInt4 c1, c2, c3, c4, c5, c6;
+  c2 = test2(c1);
+  compare_tuple_int4(c1, c2);
+  c4 = test2(c3);
+  compare_tuple_int4(c3, c4);
+  c5 = test2(c6);
+  compare_tuple_int4(c5, c6);
+
   printf("OK\n");
   return 0;
 }
