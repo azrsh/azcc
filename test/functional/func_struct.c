@@ -55,6 +55,10 @@ struct TupleInt4 test2(struct TupleInt4 instance) {
   return instance;
 }
 
+struct TupleInt5 test3(struct TupleInt5 instance) {
+  return instance;
+}
+
 int main() {
   struct TupleInt5 a1, a2, a3, a4, a5;
   compare_tuple_int5(a1, a1);
@@ -78,6 +82,14 @@ int main() {
   compare_tuple_int4(c3, c4);
   c5 = test2(c6);
   compare_tuple_int4(c5, c6);
+
+  struct TupleInt5 d1, d2, d3, d4, d5, d6;
+  d2 = test3(d1);
+  compare_tuple_int5(d1, d2);
+  d4 = test3(d3);
+  compare_tuple_int5(d3, d4);
+  d5 = test3(d6);
+  compare_tuple_int5(d5, d6);
 
   printf("OK\n");
   return 0;

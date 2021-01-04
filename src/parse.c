@@ -1562,7 +1562,7 @@ Node *postfix(ParseContext *context) {
 
     node = new_node_function_call(identifier);
     node->functionCall->arguments = arguments;
-    if (type_to_stack_size(function->returnType) > 1) {
+    if (type_to_stack_size(function->returnType) > 1 * 8) {
       //識別子として無効な変数名を生成
       const String *name =
           string_concat(char_to_string("0"), identifier->string);
