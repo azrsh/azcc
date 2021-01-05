@@ -59,6 +59,22 @@ struct TupleInt5 test3(struct TupleInt5 instance) {
   return instance;
 }
 
+void test4(struct TupleInt5 instance1, int a, int b, int c, int d, int e, int f,
+           int g, int h, int i, int j) {
+  assert(instance1.x1, a, "int5_1.x1 == a");
+  assert(instance1.x2, b, "int5_1.x2 == b");
+  assert(instance1.x3, c, "int5_1.x3 == c");
+  assert(instance1.x4, d, "int5_1.x4 == d");
+  assert(instance1.x5, e, "int5_1.x5 == e");
+
+  assert(instance1.x1, f, "int5_1.x1 == f");
+  assert(instance1.x2, g, "int5_1.x2 == g");
+  assert(instance1.x3, h, "int5_1.x3 == h");
+  assert(instance1.x4, i, "int5_1.x4 == i");
+  assert(instance1.x5, j, "int5_1.x5 == j");
+  return;
+}
+
 int main() {
   struct TupleInt5 a1, a2, a3, a4, a5;
   compare_tuple_int5(a1, a1);
@@ -90,6 +106,10 @@ int main() {
   compare_tuple_int5(d3, d4);
   d5 = test3(d6);
   compare_tuple_int5(d5, d6);
+
+  struct TupleInt5 e1;
+  test4(e1, e1.x1, e1.x2, e1.x3, e1.x4, e1.x5, e1.x1, e1.x2, e1.x3, e1.x4,
+        e1.x5);
 
   printf("OK\n");
   return 0;
