@@ -4,7 +4,7 @@ run_test() {
     bin/gen1//azcc test/hsjoihs_tmp/task$1.c > test/hsjoihs_tmp/task$1.s 2> /dev/null
     d=$?
     if [ $d -ne 0 ]; then { echo -e "compile FAIL, at test case" $1: "$2"; return 0; }; else echo -e "\033[32mcompile PASS\033[m"; fi
-    gcc test/hsjoihs_tmp/task$1.s -o test/hsjoihs_tmp/task$1.out
+    gcc test/hsjoihs_tmp/task$1.s -o test/hsjoihs_tmp/task$1.out -static
 	./test/hsjoihs_tmp/task$1.out
 	res=$?
 	if [ $res -ne $3 ]; then { echo "got:" $res; echo "expected:" $3; echo -e "\033[31mFAIL\033[m, at test case" $1: "$2"; }; else echo -e "\033[32mPASS\033[m"; fi

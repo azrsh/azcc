@@ -1,6 +1,7 @@
 #include "container.h"
 #include "node.h"
 #include "parse.h"
+#include "returnstack.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
@@ -84,7 +85,9 @@ void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     ERROR("関数ではありません");
 
-  const char *functionName = string_to_char(node->functionCall->name);
+  const char *functionName = "mock";
+  const int stackUnitSize = 8;
+  const int alignmentSize = stackUnitSize * 2;
 
   INSERT_COMMENT("function call start : %s", functionName);
 
@@ -94,8 +97,6 @@ void generate_function_call(Node *node, int *labelCount) {
 
   //アライメント
   //スタックの使用予測に基づいてアライメント
-  const int stackUnitSize = 8;
-  const int alignmentSize = stackUnitSize * 2;
   printf("  push 0\n");
   printf("  mov rax, rsp\n");
 
@@ -128,6 +129,7 @@ void generate_function_call(Node *node, int *labelCount) {
 
   //引数の評価
   {
+    INSERT_COMMENT("function %s argument evaluation start", functionName);
     int argumentStackLengthSum = 0;
     for (int i = vector_length(arguments) - 1; i >= 0; i--) {
       INSERT_COMMENT("function %s argument %d start", functionName, i);
@@ -146,6 +148,7 @@ void generate_function_call(Node *node, int *labelCount) {
 
       INSERT_COMMENT("function %s argument %d end", functionName, i);
     }
+    INSERT_COMMENT("function %s argument evaluation end", functionName);
   }
 
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
@@ -164,6 +167,9 @@ void generate_function_call(Node *node, int *labelCount) {
              node->functionCall->returnStack->offset);
       printf("  mov %s, %s\n", argumentRegister64[registerIndex++], "rax");
       INSERT_COMMENT("function %s implicit argument assign end", functionName);
+    } else {
+      INSERT_COMMENT("function %s no implicit argument insertion",
+                     functionName);
     }
 
     int currentStackIndex = 0;
@@ -195,7 +201,6 @@ void generate_function_call(Node *node, int *labelCount) {
                    functionName);
   }
 
-  printf("  mov rax, 0\n");
   // if (string_compare(&node->functionCall->name, char_to_string("calloc"))
   // ||
   //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
@@ -203,7 +208,14 @@ void generate_function_call(Node *node, int *labelCount) {
   //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
   //  printf("  call %s@PLT\n", functionName);
   // else
-  printf("  call %s\n", functionName);
+
+  //この処理は引数評価の前(少なくともそのレジスタ割り当ての前)にやらないとレジスタを破壊する可能性がある
+  //具体的には、関数ポインタの評価式の中で関数を呼び出すと死ぬ
+  generate_expression(node->lhs, labelCount);
+  printf("  pop r11\n");
+
+  printf("  mov rax, 0\n");
+  printf("  call r11\n");
 
   //スタックに積んだ引数を処理
   if (stackArgumentSize > 0) {
@@ -340,6 +352,7 @@ void generate_rhs_extension(Node *node) {
     break;
   }
   case TYPE_ARRAY:
+  case TYPE_FUNC:
     break; //配列はポインタのままにする
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
@@ -366,6 +379,7 @@ void generate_value_extension(Node *node) {
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
   case TYPE_STRUCT: //構造体はそのままでよい
+  case TYPE_FUNC:   //関数はそのままでよい
     break;
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
@@ -1122,8 +1136,8 @@ void generate_code(Program *program) {
 
   int labelCount = 0;
   for (int i = 0; i < vector_length(program->functionDefinitions); i++) {
-    const FunctionDefinition *function =
-        vector_get(program->functionDefinitions, i);
+    FunctionDefinition *function = vector_get(program->functionDefinitions, i);
+    allocate_return_stack_to_function(function);
     generate_function_definition(function, &labelCount);
   }
 }

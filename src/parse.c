@@ -1,7 +1,6 @@
 #include "parse.h"
 #include "container.h"
 #include "declaration.h"
-#include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "statement.h"
@@ -20,30 +19,56 @@
 #include <string.h>
 
 Token *token;
-int currentOffset;
 Vector *globalVariables; // Variable vector
 Vector *stringLiterals;  // String vector
 Vector *typedefs;        // Typedef vector
-FunctionContainer *functionContainer;
 
-typedef struct ParseContext ParseContext;
-struct ParseContext {
+typedef struct Scope Scope;
+struct Scope {
   TagContainer *tagContainer;
   VariableContainer *variableContainer;
 };
 
-ParseContext *new_scope_context(ParseContext *context) {
+typedef struct Function Function;
+struct Function {
+  int currentStackOffset;
+};
+
+typedef struct ParseContext ParseContext;
+struct ParseContext {
+  Scope *scope;
+  Function *function;
+};
+
+ParseContext *new_scope_context(ParseContext *parent) {
   ParseContext *result = calloc(1, sizeof(ParseContext));
 
   {
-    HashTable *localVariableTable = new_hash_table();
-    result->variableContainer = variable_container_push_table(
-        context->variableContainer, localVariableTable);
+    result->scope = calloc(1, sizeof(Scope));
+    {
+      HashTable *localVariableTable = new_hash_table();
+      if (parent)
+        result->scope->variableContainer = variable_container_push_table(
+            parent->scope->variableContainer, localVariableTable);
+      else
+        result->scope->variableContainer =
+            new_variable_container(new_list_node(localVariableTable));
+    }
+    {
+      HashTable *localTagTable = new_hash_table();
+      if (parent)
+        result->scope->tagContainer = tag_container_push_table(
+            parent->scope->tagContainer, localTagTable);
+      else
+        result->scope->tagContainer =
+            new_tag_container(new_list_node(localTagTable));
+    }
   }
+
   {
-    HashTable *localTagTable = new_hash_table();
-    result->tagContainer =
-        tag_container_push_table(context->tagContainer, localTagTable);
+    //スコープが変わっても関数のコンテキストは不変
+    if (parent)
+      result->function = parent->function;
   }
 
   return result;
@@ -125,16 +150,23 @@ Variable *new_variable(Type *type, const String *name) {
   return variable;
 }
 
-Variable *variable_to_local(Variable *variable) {
+Variable *variable_to_local(Variable *variable, ParseContext *context) {
   variable->kind = VARIABLE_LOCAL;
-  currentOffset += type_to_stack_size(variable->type);
-  variable->offset = currentOffset;
+  context->function->currentStackOffset += type_to_stack_size(variable->type);
+  variable->offset = context->function->currentStackOffset;
   return variable;
 }
 
 Variable *variable_to_global(Variable *variable, Node *initialization) {
   variable->kind = VARIABLE_GLOBAL;
   variable->initialization = initialization;
+  return variable;
+}
+
+Variable *variable_to_function(Variable *variable,
+                               FunctionDefinition *function) {
+  variable->kind = VARIABLE_GLOBAL;
+  variable->function = function;
   return variable;
 }
 
@@ -149,9 +181,8 @@ Variable *variable_to_member(Variable *variable) {
   return variable;
 }
 
-FunctionCall *new_function_call(Token *token) {
+FunctionCall *new_function_call() {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
-  functionCall->name = token->string;
   return functionCall;
 }
 
@@ -203,6 +234,13 @@ Type *new_type_array(Type *base, size_t size) {
   return array;
 }
 
+Type *new_type_function(Type *returnType, Vector *arguments) {
+  Type *function = new_type(TYPE_FUNC);
+  function->returnType = returnType;
+  function->arguments = arguments;
+  return function;
+}
+
 Tag *type_to_tag(Type *type) {
   Tag *result = calloc(1, sizeof(Tag));
   result->type = type;
@@ -230,14 +268,14 @@ Node *new_node_num(int val) {
 }
 
 //抽象構文木のローカル変数定義のノードを新しく生成する
-Node *new_node_variable_definition(Variable *variable,
-                                   VariableContainer *variableContainer,
+Node *new_node_variable_definition(Variable *variable, ParseContext *context,
                                    Token *source) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  Variable *localVariable = variable_to_local(variable);
-  if (!variable_container_push(variableContainer, localVariable))
+  Variable *localVariable = variable_to_local(variable, context);
+  if (!variable_container_push(context->scope->variableContainer,
+                               localVariable))
     ERROR_AT(variable->name->head, "同名の変数が既に定義されています");
 
   node->variable = localVariable;
@@ -274,11 +312,12 @@ Node *new_node_member(Token *token) {
 }
 
 //抽象構文木の関数のノードを新しく生成する
-Node *new_node_function_call(Token *token) {
+Node *new_node_function_call(Node *lhs) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_FUNC;
-  node->functionCall = new_function_call(token);
-  node->source = token->string->head;
+  node->lhs = lhs;
+  node->functionCall = new_function_call();
+  node->source = lhs->source;
   return node;
 }
 
@@ -292,7 +331,7 @@ FunctionDefinition *new_function_declaration(Type *type, const String *name,
 }
 
 Vector *node_vector_to_type_vector(Vector *nodes) {
-  Vector *types = new_vector(16);
+  Vector *types = new_vector(vector_length(nodes));
   for (int i = 0; i < vector_length(nodes); i++) {
     Node *node = vector_get(nodes, i);
     Variable *variable = node->variable;
@@ -418,18 +457,8 @@ Program *program() {
   globalVariables = result->globalVariables;
   stringLiterals = result->stringLiterals;
   typedefs = new_vector(16);
-  functionContainer = new_function_container();
 
-  ParseContext *context = calloc(1, sizeof(ParseContext));
-  {
-    HashTable *globalVariableTable = new_hash_table();
-    ListNode *listHead = new_list_node(globalVariableTable);
-    context->variableContainer = new_variable_container(listHead);
-
-    HashTable *globalTagTable = new_hash_table();
-    ListNode *tagListHead = new_list_node(globalTagTable);
-    context->tagContainer = new_tag_container(tagListHead);
-  }
+  ParseContext *context = new_scope_context(NULL);
 
   while (!at_eof()) {
     //先頭に型指定子がつくもの
@@ -487,8 +516,8 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
 
   //引数のパース
   //新しいスコープなので先頭に新しい変数テーブルを追加
-  currentOffset = 0;
-  context = new_scope_context(context);
+  ParseContext *localContext = new_scope_context(context);
+  localContext->function = calloc(1, sizeof(Function));
   Vector *arguments = NULL;
   if (!consume("(")) {
     token = tokenHead;
@@ -497,14 +526,21 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
   if (consume(")")) {
     arguments = NULL;
   } else {
-    arguments = function_definition_argument(context);
+    arguments = function_definition_argument(localContext);
     expect(")");
   }
 
   if (consume(";")) {
     FunctionDefinition *definition =
         new_function_declaration(type, identifier->string, arguments);
-    function_container_push(functionContainer, definition);
+    Type *functionType = new_type_function(
+        definition->returnType,
+        definition->arguments
+            ? node_vector_to_type_vector(definition->arguments)
+            : NULL);
+    Variable *variable = variable_to_function(
+        new_variable(functionType, definition->name), definition);
+    variable_container_push(context->scope->variableContainer, variable);
     return definition;
   }
 
@@ -516,21 +552,36 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
 
   //-----関数宣言との対応づけ-------
   //再帰関数に対応するためにここでやる
-  FunctionDefinition *definition =
-      function_container_get(functionContainer, identifier->string);
-  if (definition) {
-    //宣言に引数がなければ引数チェックをスキップ
-    if (definition->arguments) {
-      if (!type_vector_compare(
-              node_vector_to_type_vector(definition->arguments),
-              node_vector_to_type_vector(arguments)))
-        ERROR_AT(identifier->string->head,
-                 "関数の定義と前方宣言の引数が一致しません");
+  FunctionDefinition *definition = NULL;
+  {
+    Variable *variable = variable_container_get(
+        localContext->scope->variableContainer, identifier->string);
+    if (variable && variable->type->kind != TYPE_FUNC)
+      ERROR_AT(identifier->string->head,
+               "同名のシンボルが既に定義されています");
+
+    if (variable) {
+      //宣言に引数がなければ引数チェックをスキップ
+      if (variable->type->arguments) {
+        if (!type_vector_compare(variable->type->arguments,
+                                 node_vector_to_type_vector(arguments)))
+          ERROR_AT(identifier->string->head,
+                   "関数の定義と前方宣言の引数が一致しません");
+      }
+      definition = variable->function;
+      definition->arguments = arguments; //一致が確認できたので上書き
+    } else {
+      definition =
+          new_function_declaration(type, identifier->string, arguments);
+      Type *functionType = new_type_function(
+          definition->returnType,
+          definition->arguments
+              ? node_vector_to_type_vector(definition->arguments)
+              : NULL);
+      Variable *variable = variable_to_function(
+          new_variable(functionType, definition->name), definition);
+      variable_container_push(context->scope->variableContainer, variable);
     }
-    definition->arguments = arguments; //一致が確認できたので上書き
-  } else {
-    definition = new_function_declaration(type, identifier->string, arguments);
-    function_container_push(functionContainer, definition);
   }
   //--------------------------------
 
@@ -548,9 +599,9 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
   body->blockItemList = new_vector(32);
   while (!consume("}")) {
     BlockItem *blockItem = calloc(1, sizeof(BlockItem));
-    blockItem->declaration = declaration(context);
+    blockItem->declaration = declaration(localContext);
     if (!blockItem->declaration)
-      blockItem->statement = statement(context);
+      blockItem->statement = statement(localContext);
     vector_push_back(body->blockItemList, blockItem);
   }
   //
@@ -561,12 +612,12 @@ FunctionDefinition *function_definition(Type *type, ParseContext *context) {
     //型検査
     TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
     context->returnType = type;
-    context->functionContainer = functionContainer;
+    context->variableContainer = localContext->scope->variableContainer;
     tag_type_to_statement(new_statement_union_compound(body), context);
   }
 
   definition->body = body;
-  definition->stackSize = currentOffset;
+  definition->stackSize = localContext->function->currentStackOffset;
   return definition;
 }
 
@@ -602,8 +653,7 @@ Vector *function_definition_argument(ParseContext *context) {
       declaration->type->length = 0;
     }
 
-    Node *node = new_node_variable_definition(
-        declaration, context->variableContainer, source);
+    Node *node = new_node_variable_definition(declaration, context, source);
     node->type =
         node->variable->type; // tag_type_to_node(type)できないので手動型付け
 
@@ -643,8 +693,8 @@ Variable *global_variable_declaration(bool isExtern, Type *type,
     ERROR_AT(token->string->head, "同名の変数が既に定義されています");
 
   Variable *globalVariable = variable_to_global(declaration, initialization);
-  bool isDeclared =
-      !variable_container_push(context->variableContainer, globalVariable);
+  bool isDeclared = !variable_container_push(context->scope->variableContainer,
+                                             globalVariable);
   if (isExtern && isDeclared)
     ERROR_AT(token->string->head, "同名の変数が既に宣言されています");
 
@@ -1043,8 +1093,7 @@ Node *init_declarator(Type *type, ParseContext *context) {
   if (!variable)
     return NULL;
 
-  Node *node = new_node_variable_definition(
-      variable, context->variableContainer, tokenHead);
+  Node *node = new_node_variable_definition(variable, context, tokenHead);
 
   // initalizer
   if (consume("="))
@@ -1154,7 +1203,8 @@ Type *enum_specifier(ParseContext *context) {
 
   // 宣言済み列挙体の解決
   if (identifier) {
-    Tag *tag = tag_container_get(context->tagContainer, identifier->string);
+    Tag *tag =
+        tag_container_get(context->scope->tagContainer, identifier->string);
     if (tag) {
       if (tag->type->kind == TYPE_ENUM) {
         result = tag->type;
@@ -1173,7 +1223,7 @@ Type *enum_specifier(ParseContext *context) {
       result->name = identifier->string;
 
       //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
-      tag_container_push(context->tagContainer, type_to_tag(result));
+      tag_container_push(context->scope->tagContainer, type_to_tag(result));
     }
   }
 
@@ -1202,7 +1252,7 @@ Type *enum_specifier(ParseContext *context) {
           new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
       Variable *enumeratorVariable =
           variable_to_enumerator(variable, constantExpression);
-      if (!variable_container_push(context->variableContainer,
+      if (!variable_container_push(context->scope->variableContainer,
                                    enumeratorVariable))
         ERROR_AT(enumeratorIdentifier->string->head,
                  "列挙子%sと同名の識別子が既に定義されています",
@@ -1227,7 +1277,8 @@ Type *struct_specifier(ParseContext *context) {
 
   // 宣言済み構造体の解決
   if (identifier) {
-    Tag *tag = tag_container_get(context->tagContainer, identifier->string);
+    Tag *tag =
+        tag_container_get(context->scope->tagContainer, identifier->string);
     if (tag) {
       if (tag->type->kind == TYPE_STRUCT) {
         result = tag->type;
@@ -1246,7 +1297,7 @@ Type *struct_specifier(ParseContext *context) {
       result->name = identifier->string;
 
       //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
-      tag_container_push(context->tagContainer, type_to_tag(result));
+      tag_container_push(context->scope->tagContainer, type_to_tag(result));
     }
   }
 
@@ -1518,8 +1569,9 @@ Node *unary(ParseContext *context) {
     if (parentheses)
       expect(")");
 
-    Type *type = new_node_variable(identifier, context->variableContainer)
-                     ->variable->type;
+    Type *type =
+        new_node_variable(identifier, context->scope->variableContainer)
+            ->variable->type;
     if (!type)
       ERROR_AT(token->string->head, "sizeof演算子のオペランドが不正です");
     return new_node_num(type_to_size(type));
@@ -1539,49 +1591,22 @@ Node *unary(ParseContext *context) {
 
 //変数、関数呼び出し、添字付の配列
 Node *postfix(ParseContext *context) {
-  Token *head = token;
-
   //----postfixが連続するときの先頭は関数呼び出しかprimary--------
-  Node *node = NULL;
-
-  Token *identifier = consume_identifier();
-  if (identifier && consume("(")) {
-    Vector *arguments; // Node vector
-    if (consume(")")) {
-      arguments = new_vector(0);
-    } else {
-      arguments = argument_expression_list(context);
-      expect(")");
-    }
-
-    //関数宣言との整合性の検証
-    FunctionDefinition *function =
-        function_container_get(functionContainer, identifier->string);
-    if (!function)
-      ERROR_AT(identifier->string->head, "関数宣言がみつかりません");
-
-    node = new_node_function_call(identifier);
-    node->functionCall->arguments = arguments;
-    if (type_to_stack_size(function->returnType) > 1 * 8) {
-      //識別子として無効な変数名を生成
-      const String *name =
-          string_concat(char_to_string("0"), identifier->string);
-      Variable *returnVariable =
-          variable_to_local(new_variable(function->returnType, name));
-      variable_container_push(context->variableContainer, returnVariable);
-      node->functionCall->returnStack = returnVariable;
-    }
-  } else {
-    token = head;
-  }
-
-  if (!node)
-    node = primary(context);
-
-  //--------------
+  Node *node = primary(context);
 
   for (;;) {
-    if (consume("[")) {
+    if (consume("(")) {
+      Vector *arguments; // Node vector
+      if (consume(")")) {
+        arguments = new_vector(0);
+      } else {
+        arguments = argument_expression_list(context);
+        expect(")");
+      }
+
+      node = new_node_function_call(node);
+      node->functionCall->arguments = arguments;
+    } else if (consume("[")) {
       //配列の添字をポインタ演算に置き換え
       //ポインタ演算の構文木を生成
       Node *addNode = new_node(NODE_ADD, node, expression(context));
@@ -1622,7 +1647,8 @@ Node *primary(ParseContext *context) {
 
   Token *identifier = consume_identifier();
   if (identifier) {
-    Node *node = new_node_variable(identifier, context->variableContainer);
+    Node *node =
+        new_node_variable(identifier, context->scope->variableContainer);
     //列挙子の解決 ここでやるべきではない
     if (node->variable->kind == VARIABLE_ENUMERATOR)
       return node->variable->initialization;

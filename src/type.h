@@ -14,6 +14,7 @@ typedef enum {
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_STRUCT,
+  TYPE_FUNC,
   TYPE_ENUM,
 } TypeKind;
 
@@ -27,6 +28,10 @@ struct Type {
   const String *name; //とりあえずはTYPE_STRUCT、TYPE_ENUMlのときのみ使用
   MemberContainer *members; // TypeKindがTYPE_STRUCTのときのみ使用する
   bool isDefined;           // TypeKindがTYPE_STRUCTのときのみ使用する
+
+  // function
+  Type *returnType;
+  Vector *arguments; // Type
 };
 
 Type *new_type(TypeKind kind);

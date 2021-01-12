@@ -2,14 +2,17 @@
 #include "container.h"
 #include "declaration.h"
 #include "functioncall.h"
-#include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "parse.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
+#include "variable.h"
+#include "variablecontainer.h"
 #include <stdlib.h>
+
+char unique = 0;
 
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
   if (lhs->base || rhs->base)
@@ -119,63 +122,63 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
-    FunctionDefinition *declaration = function_container_get(
-        context->functionContainer, node->functionCall->name);
-    node->type = declaration->returnType;
-    Vector *callingArguments = node->functionCall->arguments;
+    tag_type_to_node(node->lhs, context);
+    if (node->lhs->type->kind != TYPE_FUNC)
+      ERROR("関数呼び出し演算子のオペランド型が不正です");
+
+    Type *functionType = node->lhs->type;
+    node->type = functionType->returnType;
 
     //引数の検証
-    //型付けと同時にType型のVectorを生成
-    Vector *callingTypes = new_vector(16);
-    for (int i = 0; i < vector_length(callingArguments); i++) {
-      Node *arg = vector_get(callingArguments, i);
-      tag_type_to_node(arg, context);
-      vector_push_back(callingTypes, arg->type);
-    }
+    {
+      Vector *callingArguments = node->functionCall->arguments;
 
-    //引数がNULLならスキップ
-    if (!declaration->arguments)
-      return;
-
-    // 関数の宣言の引数のNULLチェック後
-    // Type型のVectorを生成
-    Vector *declarationTypes = new_vector(16);
-    for (int i = 0; i < vector_length(declaration->arguments); i++) {
-      Node *arg = vector_get(declaration->arguments, i);
-      vector_push_back(declarationTypes, arg->type);
-    }
-
-    if (vector_length(declaration->arguments) !=
-        vector_length(callingArguments))
-      ERROR_AT(node->source,
-               "関数の呼び出しと前方宣言の引数の数が一致しません %s",
-               string_to_char(declaration->name));
-
-    for (int i = 0; i < vector_length(declarationTypes); i++) {
-      Type *type1 = vector_get(declarationTypes, i);
-      Type *type2 = vector_get(callingTypes, i);
-      if (type_compare_deep(type1, type2))
-        continue;
-
-      if (type_compare_deep_with_implicit_cast(type1, type2)) {
-        Node *castNode = new_node_cast(type1, vector_get(callingArguments, i));
-        vector_set(callingArguments, i, castNode);
-        continue;
+      //型付けと同時にType型のVectorを生成
+      //型付けも行っているので全てのreturn文の前に置く
+      Vector *callingTypes = new_vector(16);
+      for (int i = 0; i < vector_length(callingArguments); i++) {
+        Node *arg = vector_get(callingArguments, i);
+        tag_type_to_node(arg, context);
+        vector_push_back(callingTypes, arg->type);
       }
 
-      // 0をNULL扱いすべきか検証する
-      {
-        Node *argument = vector_get(callingArguments, i);
-        bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
-                      argument->val == 0;
-        if (isNull) {
-          vector_set(callingArguments, i, new_node_cast(type1, argument));
+      //引数がNULLならスキップ
+      if (!functionType->arguments)
+        return;
+
+      // type_compare
+      if (vector_length(functionType->arguments) !=
+          vector_length(callingArguments))
+        ERROR_AT(node->source,
+                 "関数の呼び出しと前方宣言の引数の数が一致しません");
+
+      for (int i = 0; i < vector_length(functionType->arguments); i++) {
+        Type *type1 = vector_get(functionType->arguments, i);
+        Type *type2 = vector_get(callingTypes, i);
+        if (type_compare_deep(type1, type2))
+          continue;
+
+        if (type_compare_deep_with_implicit_cast(type1, type2)) {
+          Node *castNode =
+              new_node_cast(type1, vector_get(callingArguments, i));
+          vector_set(callingArguments, i, castNode);
           continue;
         }
-      }
 
-      ERROR_AT(node->source,
-               "関数の呼び出しと前方宣言の引数の型が一致しません");
+        // 0をNULL扱いすべきか検証する
+        {
+          Node *argument = vector_get(callingArguments, i);
+          bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
+                        argument->val == 0;
+          if (isNull) {
+            vector_set(callingArguments, i, new_node_cast(type1, argument));
+            continue;
+          }
+        }
+
+        ERROR_AT(node->source,
+                 "関数の呼び出しと前方宣言の引数の型が一致しません");
+      }
     }
     return;
   }

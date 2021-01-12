@@ -22,6 +22,7 @@ bool type_is_primitive(Type *type) {
   case TYPE_PTR:
   case TYPE_ARRAY:
   case TYPE_STRUCT:
+  case TYPE_FUNC:
     return false;
   }
 
@@ -39,6 +40,7 @@ int type_to_size(Type *type) {
   case TYPE_ENUM:
     return 4;
   case TYPE_PTR:
+  case TYPE_FUNC: //関数型は常に関数ポインタなので
     return 8;
   case TYPE_ARRAY:
     return type_to_size(type->base) * type->length;
@@ -69,6 +71,9 @@ int type_to_align(Type *type) {
     if (!type->isDefined)
       ERROR("未定義の型のサイズは取得できません");
     return member_container_align(type->members);
+  case TYPE_FUNC:
+    ERROR("関数型のサイズは取得できません");
+    return 0;
   }
 
   ERROR("予期しない型が指定されました");
@@ -98,6 +103,8 @@ char *type_kind_to_char(TypeKind kind) {
     return "Pointer";
   case TYPE_ARRAY:
     return "Array";
+  case TYPE_FUNC:
+    return "Function";
   }
 
   ERROR("予期しない型が指定されました");
