@@ -110,10 +110,19 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_DEREF:
     tag_type_to_node(node->lhs, context);
+
     Type *lhsBase = node->lhs->type->base;
-    if (!lhsBase)
-      ERROR_AT(node->source, "単項演算子*のオペランド型が不正です");
-    node->type = lhsBase;
+    if (lhsBase) {
+      node->type = lhsBase;
+      return;
+    }
+
+    if (node->lhs->type->kind == TYPE_FUNC) {
+      node->type = node->lhs->type;
+      return;
+    }
+
+    ERROR_AT(node->source, "単項演算子*のオペランド型が不正です");
     return;
   case NODE_VAR:
     node->type = node->variable->type;

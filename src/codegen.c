@@ -353,7 +353,7 @@ void generate_rhs_extension(Node *node) {
   }
   case TYPE_ARRAY:
   case TYPE_FUNC:
-    break; //配列はポインタのままにする
+    break; //配列と関数はポインタのままにする
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
   }
