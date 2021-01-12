@@ -12,8 +12,6 @@
 #include "variablecontainer.h"
 #include <stdlib.h>
 
-char unique = 0;
-
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
   if (lhs->base || rhs->base)
     return NULL;
