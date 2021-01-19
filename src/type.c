@@ -2,6 +2,7 @@
 #include "container.h"
 #include "membercontainer.h"
 #include "util.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -161,8 +162,7 @@ char *type_kind_to_semantic_string(TypeKind kind) {
 }
 
 char *type_to_semantic_string(Type *type) {
-  if (!type)
-    return NULL;
+  assert(type);
 
   const int capacity = 128;
   char *buffer = calloc(capacity + 1, sizeof(char));
@@ -201,7 +201,8 @@ char *type_to_semantic_string(Type *type) {
   }
   case TYPE_FUNC: {
     const int limit = capacity - strlen(kind) - 11;
-    char *returnType = type_to_semantic_string(type->base); // move from callee
+    char *returnType =
+        type_to_semantic_string(type->returnType); // move from callee
     sprintf(buffer, "%s returning %*.s", kind, limit, returnType);
     free(returnType); // free own memory
     break;
