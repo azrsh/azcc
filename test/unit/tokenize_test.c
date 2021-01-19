@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void assert(int, int, char *);
+void test_assert(int, int, char *);
 
-void assert_string(const String *s1, const String *s2, const char *msg) {
-  assert(s1->length, s2->length, "length");
+void test_assert_string(const String *s1, const String *s2, const char *msg) {
+  test_assert(s1->length, s2->length, "length");
   if (!string_compare(s1, s2)) {
     printf("\033[31m");
     printf("%s => \"%s\"", msg, string_to_char(s2));
@@ -20,87 +20,87 @@ void assert_string(const String *s1, const String *s2, const char *msg) {
 }
 
 void test1() {
-  char *input = "void assert(); int main() { int test = 0; assert(); }";
+  char *input = "void test_assert(); int main() { int test = 0; test_assert(); }";
   Token *token = tokenize(input);
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("void"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("void"), "string");
   token = token->next;
 
-  assert(TOKEN_IDENTIFIER, token->kind, "kind");
-  assert_string(token->string, char_to_string("assert"), "string");
+  test_assert(TOKEN_IDENTIFIER, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("test_assert"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("("), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("("), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(")"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(")"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(";"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(";"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("int"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("int"), "string");
   token = token->next;
 
-  assert(TOKEN_IDENTIFIER, token->kind, "kind");
-  assert_string(token->string, char_to_string("main"), "string");
+  test_assert(TOKEN_IDENTIFIER, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("main"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("("), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("("), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(")"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(")"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("{"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("{"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("int"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("int"), "string");
   token = token->next;
 
-  assert(TOKEN_IDENTIFIER, token->kind, "kind");
-  assert_string(token->string, char_to_string("test"), "string");
+  test_assert(TOKEN_IDENTIFIER, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("test"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("="), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("="), "string");
   token = token->next;
 
-  assert(TOKEN_NUMBER, token->kind, "kind");
-  assert_string(token->string, char_to_string("0"), "string");
+  test_assert(TOKEN_NUMBER, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("0"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(";"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(";"), "string");
   token = token->next;
 
-  assert(TOKEN_IDENTIFIER, token->kind, "kind");
-  assert_string(token->string, char_to_string("assert"), "string");
+  test_assert(TOKEN_IDENTIFIER, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("test_assert"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("("), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("("), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(")"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(")"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string(";"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string(";"), "string");
   token = token->next;
 
-  assert(TOKEN_RESERVED, token->kind, "kind");
-  assert_string(token->string, char_to_string("}"), "string");
+  test_assert(TOKEN_RESERVED, token->kind, "kind");
+  test_assert_string(token->string, char_to_string("}"), "string");
   token = token->next;
 }
 

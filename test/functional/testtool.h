@@ -1,7 +1,7 @@
 #ifndef TESTTOOL_H
 #define TESTTOOL_H
 
-void assert(int expected, int actual, char *code);
+void test_assert(int expected, int actual, char *code);
 void alloc4(int **p, int v1, int v2, int v3, int v4);
 int foo();
 int foo1(int a);

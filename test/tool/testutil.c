@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void assert(int expected, int actual, char *code) {
+void test_assert(int expected, int actual, char *code) {
   if (expected == actual) {
     printf("\033[32m");
     printf("PASS ");

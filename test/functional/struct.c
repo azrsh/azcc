@@ -14,9 +14,9 @@ struct TupleCharChar {
 int test1() {
   struct TupleIntInt instance;
   instance.a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   instance.b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -24,8 +24,8 @@ int test2() {
   struct TupleIntInt instance;
   instance.a = 92 + 34;
   instance.b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -42,23 +42,23 @@ int test3() {
   instance2.b = 133;
   instance3.b = 643;
   instance4.b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(2184, instance2.a, "instance2.a");
-  assert(134, instance3.a, "instance3.a");
-  assert(3809, instance4.a, "instance4.a");
-  assert(13789, instance1.b, "instance1.b");
-  assert(133, instance2.b, "instance2.b");
-  assert(643, instance3.b, "instance3.b");
-  assert(1319, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(2184, instance2.a, "instance2.a");
+  test_assert(134, instance3.a, "instance3.a");
+  test_assert(3809, instance4.a, "instance4.a");
+  test_assert(13789, instance1.b, "instance1.b");
+  test_assert(133, instance2.b, "instance2.b");
+  test_assert(643, instance3.b, "instance3.b");
+  test_assert(1319, instance4.b, "instance4.b");
   return 0;
 }
 
 int test4() {
   struct TupleCharChar instance;
   instance.a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   instance.b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -66,8 +66,8 @@ int test5() {
   struct TupleCharChar instance;
   instance.a = 92 + 34;
   instance.b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -84,14 +84,14 @@ int test6() {
   instance2.b = 133;
   instance3.b = 643;
   instance4.b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(-120, instance2.a, "instance2.a");
-  assert(-122, instance3.a, "instance3.a");
-  assert(-31, instance4.a, "instance4.a");
-  assert(-35, instance1.b, "instance1.b");
-  assert(-123, instance2.b, "instance2.b");
-  assert(-125, instance3.b, "instance3.b");
-  assert(39, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(-120, instance2.a, "instance2.a");
+  test_assert(-122, instance3.a, "instance3.a");
+  test_assert(-31, instance4.a, "instance4.a");
+  test_assert(-35, instance1.b, "instance1.b");
+  test_assert(-123, instance2.b, "instance2.b");
+  test_assert(-125, instance3.b, "instance3.b");
+  test_assert(39, instance4.b, "instance4.b");
   return 0;
 }
 
@@ -118,25 +118,25 @@ struct TupleCharIntCharIntChar {
 };
 
 int test7() {
-  assert(8, sizeof(struct TupleIntInt), "sizeof(struct TupleIntInt)");
-  assert(2, sizeof(struct TupleCharChar), "sizeof(struct TupleCharChar)");
-  assert(12, sizeof(struct TupleCharCharIntChar),
+  test_assert(8, sizeof(struct TupleIntInt), "sizeof(struct TupleIntInt)");
+  test_assert(2, sizeof(struct TupleCharChar), "sizeof(struct TupleCharChar)");
+  test_assert(12, sizeof(struct TupleCharCharIntChar),
          "sizeof(struct TupleCharCharIntChar)");
-  assert(8, sizeof(struct TupleCharCharCharInt),
+  test_assert(8, sizeof(struct TupleCharCharCharInt),
          "sizeof(struct TupleCharCharCharInt)");
-  assert(20, sizeof(struct TupleCharIntCharIntChar),
+  test_assert(20, sizeof(struct TupleCharIntCharIntChar),
          "sizeof(struct TupleCharIntCharIntChar)");
   return 0;
 }
 
 int test8() {
-  assert(4, _Alignof(struct TupleIntInt), "_Alignof(struct TupleIntInt)");
-  assert(1, _Alignof(struct TupleCharChar), "_Alignof(struct TupleCharChar)");
-  assert(4, _Alignof(struct TupleCharCharIntChar),
+  test_assert(4, _Alignof(struct TupleIntInt), "_Alignof(struct TupleIntInt)");
+  test_assert(1, _Alignof(struct TupleCharChar), "_Alignof(struct TupleCharChar)");
+  test_assert(4, _Alignof(struct TupleCharCharIntChar),
          "_Alignof(struct TupleCharCharIntChar)");
-  assert(4, _Alignof(struct TupleCharCharCharInt),
+  test_assert(4, _Alignof(struct TupleCharCharCharInt),
          "_Alignof(struct TupleCharCharCharInt)");
-  assert(4, _Alignof(struct TupleCharIntCharIntChar),
+  test_assert(4, _Alignof(struct TupleCharIntCharIntChar),
          "_Alignof(struct TupleCharIntCharIntChar)");
   return 0;
 }
@@ -148,8 +148,8 @@ struct TupleCompound {
 };
 
 int test9() {
-  assert(4, _Alignof(struct TupleCompound), "_Alignof(struct TupleCompound)");
-  assert(36, sizeof(struct TupleCompound), "sizeof(struct TupleCompound)");
+  test_assert(4, _Alignof(struct TupleCompound), "_Alignof(struct TupleCompound)");
+  test_assert(36, sizeof(struct TupleCompound), "sizeof(struct TupleCompound)");
   return 0;
 }
 
@@ -166,14 +166,14 @@ void test10() {
   instance2.b = 133;
   instance3.b = 643;
   instance4.b = 1319;
-  assert(0, instance1.a > instance1.b, "instance1.a > instance1.b");
-  assert(1, instance1.a < instance1.b, "instance1.a < instance1.b");
-  assert(1, instance2.a > instance2.b, "instance2.a > instance2.b");
-  assert(0, instance2.a < instance2.b, "instance2.a < instance2.b");
-  assert(0, instance3.a > instance3.b, "instance3.a > instance3.b");
-  assert(1, instance3.a < instance3.b, "instance3.a < instance3.b");
-  assert(1, instance4.a > instance4.b, "instance4.a > instance4.b");
-  assert(0, instance4.a < instance4.b, "instance4.a < instance4.b");
+  test_assert(0, instance1.a > instance1.b, "instance1.a > instance1.b");
+  test_assert(1, instance1.a < instance1.b, "instance1.a < instance1.b");
+  test_assert(1, instance2.a > instance2.b, "instance2.a > instance2.b");
+  test_assert(0, instance2.a < instance2.b, "instance2.a < instance2.b");
+  test_assert(0, instance3.a > instance3.b, "instance3.a > instance3.b");
+  test_assert(1, instance3.a < instance3.b, "instance3.a < instance3.b");
+  test_assert(1, instance4.a > instance4.b, "instance4.a > instance4.b");
+  test_assert(0, instance4.a < instance4.b, "instance4.a < instance4.b");
 }
 
 int main() {

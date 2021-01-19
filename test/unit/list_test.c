@@ -1,7 +1,7 @@
 #include "container.h"
 #include <stdio.h>
 
-void assert(int, int, char *);
+void test_assert(int, int, char *);
 
 int main() {
   int source[10];
@@ -15,11 +15,11 @@ int main() {
   int count = 0;
   while (list->next) {
     list = list->next;
-    assert(1, list->body == &source[count], "list->body == &source[count]");
+    test_assert(1, list->body == &source[count], "list->body == &source[count]");
     count++;
   }
 
-  assert(10, count, "list->body == &source[count]");
+  test_assert(10, count, "list->body == &source[count]");
 
   return 0;
 }

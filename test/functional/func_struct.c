@@ -23,27 +23,27 @@ struct TupleInt5 {
 
 void compare_tuple_int2(struct TupleInt2 instance1,
                         struct TupleInt2 instance2) {
-  assert(instance1.x1, instance2.x1, "int2_1.x1 == int2_2.x1");
-  assert(instance1.x2, instance2.x2, "int2_1.x2 == int2_2.x2");
+  test_assert(instance1.x1, instance2.x1, "int2_1.x1 == int2_2.x1");
+  test_assert(instance1.x2, instance2.x2, "int2_1.x2 == int2_2.x2");
   return;
 }
 
 void compare_tuple_int4(struct TupleInt4 instance1,
                         struct TupleInt4 instance2) {
-  assert(instance1.x1, instance2.x1, "int4_1.x1 == int4_2.x1");
-  assert(instance1.x2, instance2.x2, "int4_1.x2 == int4_2.x2");
-  assert(instance1.x3, instance2.x3, "int4_1.x3 == int4_2.x3");
-  assert(instance1.x4, instance2.x4, "int4_1.x4 == int4_2.x4");
+  test_assert(instance1.x1, instance2.x1, "int4_1.x1 == int4_2.x1");
+  test_assert(instance1.x2, instance2.x2, "int4_1.x2 == int4_2.x2");
+  test_assert(instance1.x3, instance2.x3, "int4_1.x3 == int4_2.x3");
+  test_assert(instance1.x4, instance2.x4, "int4_1.x4 == int4_2.x4");
   return;
 }
 
 void compare_tuple_int5(struct TupleInt5 instance1,
                         struct TupleInt5 instance2) {
-  assert(instance1.x1, instance2.x1, "int5_1.x1 == int5_2.x1");
-  assert(instance1.x2, instance2.x2, "int5_1.x2 == int5_2.x2");
-  assert(instance1.x3, instance2.x3, "int5_1.x3 == int5_2.x3");
-  assert(instance1.x4, instance2.x4, "int5_1.x4 == int5_2.x4");
-  assert(instance1.x5, instance2.x5, "int5_1.x5 == int5_2.x5");
+  test_assert(instance1.x1, instance2.x1, "int5_1.x1 == int5_2.x1");
+  test_assert(instance1.x2, instance2.x2, "int5_1.x2 == int5_2.x2");
+  test_assert(instance1.x3, instance2.x3, "int5_1.x3 == int5_2.x3");
+  test_assert(instance1.x4, instance2.x4, "int5_1.x4 == int5_2.x4");
+  test_assert(instance1.x5, instance2.x5, "int5_1.x5 == int5_2.x5");
   return;
 }
 
@@ -61,17 +61,17 @@ struct TupleInt5 test3(struct TupleInt5 instance) {
 
 void test4(struct TupleInt5 instance1, int a, int b, int c, int d, int e, int f,
            int g, int h, int i, int j) {
-  assert(instance1.x1, a, "int5_1.x1 == a");
-  assert(instance1.x2, b, "int5_1.x2 == b");
-  assert(instance1.x3, c, "int5_1.x3 == c");
-  assert(instance1.x4, d, "int5_1.x4 == d");
-  assert(instance1.x5, e, "int5_1.x5 == e");
+  test_assert(instance1.x1, a, "int5_1.x1 == a");
+  test_assert(instance1.x2, b, "int5_1.x2 == b");
+  test_assert(instance1.x3, c, "int5_1.x3 == c");
+  test_assert(instance1.x4, d, "int5_1.x4 == d");
+  test_assert(instance1.x5, e, "int5_1.x5 == e");
 
-  assert(instance1.x1, f, "int5_1.x1 == f");
-  assert(instance1.x2, g, "int5_1.x2 == g");
-  assert(instance1.x3, h, "int5_1.x3 == h");
-  assert(instance1.x4, i, "int5_1.x4 == i");
-  assert(instance1.x5, j, "int5_1.x5 == j");
+  test_assert(instance1.x1, f, "int5_1.x1 == f");
+  test_assert(instance1.x2, g, "int5_1.x2 == g");
+  test_assert(instance1.x3, h, "int5_1.x3 == h");
+  test_assert(instance1.x4, i, "int5_1.x4 == i");
+  test_assert(instance1.x5, j, "int5_1.x5 == j");
   return;
 }
 

@@ -1,11 +1,11 @@
-int assert(int, int, char *);
+int test_assert(int, int, char *);
 int printf();
 
 void test(int a) {
   void *b = &a;
   int *c = b;
   int d = *c;
-  assert(a, d, "void *b = &a; int *c = b; int d = *c;");
+  test_assert(a, d, "void *b = &a; int *c = b; int d = *c;");
 }
 
 void return_test() { return; }

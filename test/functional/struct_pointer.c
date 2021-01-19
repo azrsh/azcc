@@ -21,9 +21,9 @@ int test1() {
   struct TupleIntInt instance;
   struct TupleIntInt *ptr = &instance;
   (*ptr).a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   (*ptr).b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -32,8 +32,8 @@ int test2() {
   struct TupleIntInt *ptr = &instance;
   (*ptr).a = 92 + 34;
   (*ptr).b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -54,14 +54,14 @@ int test3() {
   (*ptr2).b = 133;
   (*ptr3).b = 643;
   (*ptr4).b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(2184, instance2.a, "instance2.a");
-  assert(134, instance3.a, "instance3.a");
-  assert(3809, instance4.a, "instance4.a");
-  assert(13789, instance1.b, "instance1.b");
-  assert(133, instance2.b, "instance2.b");
-  assert(643, instance3.b, "instance3.b");
-  assert(1319, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(2184, instance2.a, "instance2.a");
+  test_assert(134, instance3.a, "instance3.a");
+  test_assert(3809, instance4.a, "instance4.a");
+  test_assert(13789, instance1.b, "instance1.b");
+  test_assert(133, instance2.b, "instance2.b");
+  test_assert(643, instance3.b, "instance3.b");
+  test_assert(1319, instance4.b, "instance4.b");
   return 0;
 }
 
@@ -69,9 +69,9 @@ int test4() {
   struct TupleCharChar instance;
   struct TupleCharChar *ptr = &instance;
   (*ptr).a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   (*ptr).b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -80,8 +80,8 @@ int test5() {
   struct TupleCharChar *ptr = &instance;
   (*ptr).a = 92 + 34;
   (*ptr).b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -102,14 +102,14 @@ int test6() {
   (*ptr2).b = 133;
   (*ptr3).b = 643;
   (*ptr4).b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(-120, instance2.a, "instance2.a");
-  assert(-122, instance3.a, "instance3.a");
-  assert(-31, instance4.a, "instance4.a");
-  assert(-35, instance1.b, "instance1.b");
-  assert(-123, instance2.b, "instance2.b");
-  assert(-125, instance3.b, "instance3.b");
-  assert(39, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(-120, instance2.a, "instance2.a");
+  test_assert(-122, instance3.a, "instance3.a");
+  test_assert(-31, instance4.a, "instance4.a");
+  test_assert(-35, instance1.b, "instance1.b");
+  test_assert(-123, instance2.b, "instance2.b");
+  test_assert(-125, instance3.b, "instance3.b");
+  test_assert(39, instance4.b, "instance4.b");
   return 0;
 }
 
@@ -117,9 +117,9 @@ int test7() {
   struct TupleIntInt instance;
   struct TupleIntInt *ptr = &instance;
   ptr->a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   ptr->b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -128,8 +128,8 @@ int test8() {
   struct TupleIntInt *ptr = &instance;
   ptr->a = 92 + 34;
   ptr->b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -150,14 +150,14 @@ int test9() {
   ptr2->b = 133;
   ptr3->b = 643;
   ptr4->b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(2184, instance2.a, "instance2.a");
-  assert(134, instance3.a, "instance3.a");
-  assert(3809, instance4.a, "instance4.a");
-  assert(13789, instance1.b, "instance1.b");
-  assert(133, instance2.b, "instance2.b");
-  assert(643, instance3.b, "instance3.b");
-  assert(1319, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(2184, instance2.a, "instance2.a");
+  test_assert(134, instance3.a, "instance3.a");
+  test_assert(3809, instance4.a, "instance4.a");
+  test_assert(13789, instance1.b, "instance1.b");
+  test_assert(133, instance2.b, "instance2.b");
+  test_assert(643, instance3.b, "instance3.b");
+  test_assert(1319, instance4.b, "instance4.b");
   return 0;
 }
 
@@ -165,9 +165,9 @@ int test10() {
   struct TupleCharChar instance;
   struct TupleCharChar *ptr = &instance;
   ptr->a = 92 + 34;
-  assert(126, instance.a, "instance.a");
+  test_assert(126, instance.a, "instance.a");
   ptr->b = 1 + 2 * 3 + 8;
-  assert(15, instance.b, "instance.b");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -176,8 +176,8 @@ int test11() {
   struct TupleCharChar *ptr = &instance;
   ptr->a = 92 + 34;
   ptr->b = 1 + 2 * 3 + 8;
-  assert(126, instance.a, "instance.a");
-  assert(15, instance.b, "instance.b");
+  test_assert(126, instance.a, "instance.a");
+  test_assert(15, instance.b, "instance.b");
   return 0;
 }
 
@@ -198,14 +198,14 @@ int test12() {
   ptr2->b = 133;
   ptr3->b = 643;
   ptr4->b = 1319;
-  assert(34, instance1.a, "instance1.a");
-  assert(-120, instance2.a, "instance2.a");
-  assert(-122, instance3.a, "instance3.a");
-  assert(-31, instance4.a, "instance4.a");
-  assert(-35, instance1.b, "instance1.b");
-  assert(-123, instance2.b, "instance2.b");
-  assert(-125, instance3.b, "instance3.b");
-  assert(39, instance4.b, "instance4.b");
+  test_assert(34, instance1.a, "instance1.a");
+  test_assert(-120, instance2.a, "instance2.a");
+  test_assert(-122, instance3.a, "instance3.a");
+  test_assert(-31, instance4.a, "instance4.a");
+  test_assert(-35, instance1.b, "instance1.b");
+  test_assert(-123, instance2.b, "instance2.b");
+  test_assert(-125, instance3.b, "instance3.b");
+  test_assert(39, instance4.b, "instance4.b");
   return 0;
 }
 
@@ -220,10 +220,10 @@ int test13() {
   ptr->a->b = 2184;
   ptr->b->a = 134;
   ptr->b->b = 3809;
-  assert(34, instance2.a, "instance2.a");
-  assert(2184, instance2.b, "instance2.a");
-  assert(-122, instance3.a, "instance3.a");
-  assert(-31, instance3.b, "instance3.b");
+  test_assert(34, instance2.a, "instance2.a");
+  test_assert(2184, instance2.b, "instance2.a");
+  test_assert(-122, instance3.a, "instance3.a");
+  test_assert(-31, instance3.b, "instance3.b");
   return 0;
 }
 

@@ -1,4 +1,4 @@
-int assert(int, int, char *);
+int test_assert(int, int, char *);
 int printf();
 
 int main() {
@@ -35,7 +35,7 @@ int main() {
   for (int i = 0; i < count; i++) {
     res = res && (buffer[i] == source[i]);
   }
-  assert(1, res, "Duff's device");
+  test_assert(1, res, "Duff's device");
 
   printf("OK\n");
   return 0;

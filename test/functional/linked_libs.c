@@ -8,7 +8,7 @@ void memalloc() {
   int *array = calloc(10, sizeof(int));
   for (int i = 0; i < 10; i++) {
     array[i] = i;
-    assert(i, array[i], "i == array[i]");
+    test_assert(i, array[i], "i == array[i]");
   }
 }
 
@@ -168,66 +168,66 @@ void test_malloc_source() {
   hash_table_store(hashTable, char_to_string("i"), source[8]);
   hash_table_store(hashTable, char_to_string("j"), source[9]);
 
-  assert(1, source[0] == hash_table_find(hashTable, char_to_string("a")),
+  test_assert(1, source[0] == hash_table_find(hashTable, char_to_string("a")),
          "source[0] == hash_table_find(char_to_string(\"a\"))");
-  assert(1, source[1] == hash_table_find(hashTable, char_to_string("b")),
+  test_assert(1, source[1] == hash_table_find(hashTable, char_to_string("b")),
          "source[1] == hash_table_find(char_to_string(\"b\"))");
-  assert(1, source[2] == hash_table_find(hashTable, char_to_string("c")),
+  test_assert(1, source[2] == hash_table_find(hashTable, char_to_string("c")),
          "source[2] == hash_table_find(char_to_string(\"c\"))");
-  assert(1, source[3] == hash_table_find(hashTable, char_to_string("d")),
+  test_assert(1, source[3] == hash_table_find(hashTable, char_to_string("d")),
          "source[3] == hash_table_find(char_to_string(\"d\"))");
-  assert(1, source[4] == hash_table_find(hashTable, char_to_string("e")),
+  test_assert(1, source[4] == hash_table_find(hashTable, char_to_string("e")),
          "source[4] == hash_table_find(char_to_string(\"e\"))");
-  assert(1, source[5] == hash_table_find(hashTable, char_to_string("f")),
+  test_assert(1, source[5] == hash_table_find(hashTable, char_to_string("f")),
          "source[5] == hash_table_find(char_to_string(\"f\"))");
-  assert(1, source[6] == hash_table_find(hashTable, char_to_string("g")),
+  test_assert(1, source[6] == hash_table_find(hashTable, char_to_string("g")),
          "source[6] == hash_table_find(char_to_string(\"g\"))");
-  assert(1, source[7] == hash_table_find(hashTable, char_to_string("h")),
+  test_assert(1, source[7] == hash_table_find(hashTable, char_to_string("h")),
          "source[7] == hash_table_find(char_to_string(\"h\"))");
-  assert(1, source[8] == hash_table_find(hashTable, char_to_string("i")),
+  test_assert(1, source[8] == hash_table_find(hashTable, char_to_string("i")),
          "source[8] == hash_table_find(char_to_string(\"i\"))");
-  assert(1, source[9] == hash_table_find(hashTable, char_to_string("j")),
+  test_assert(1, source[9] == hash_table_find(hashTable, char_to_string("j")),
          "source[9] == hash_table_find(char_to_string(\"j\"))");
-  assert(0, hash_table_find(hashTable, char_to_string("k")) != NULL,
+  test_assert(0, hash_table_find(hashTable, char_to_string("k")) != NULL,
          "hash_table_find(char_to_string(\"k\"))");
-  assert(0, hash_table_find(hashTable, char_to_string("l")) != NULL,
+  test_assert(0, hash_table_find(hashTable, char_to_string("l")) != NULL,
          "hash_table_find(char_to_string(\"l\"))");
-  assert(0, hash_table_find(hashTable, char_to_string("m")) != NULL,
+  test_assert(0, hash_table_find(hashTable, char_to_string("m")) != NULL,
          "hash_table_find(char_to_string(\"m\"))");
-  assert(0, hash_table_find(hashTable, char_to_string("n")) != NULL,
+  test_assert(0, hash_table_find(hashTable, char_to_string("n")) != NULL,
          "hash_table_find(char_to_string(\"n\"))");
-  assert(0, hash_table_find(hashTable, char_to_string("o")) != NULL,
+  test_assert(0, hash_table_find(hashTable, char_to_string("o")) != NULL,
          "hash_table_find(char_to_string(\"o\"))");
 
-  assert(1, hash_table_contain(hashTable, char_to_string("a")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("a")),
          "hash_table_contain(char_to_string(\"a\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("b")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("b")),
          "hash_table_contain(char_to_string(\"b\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("c")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("c")),
          "hash_table_contain(char_to_string(\"c\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("d")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("d")),
          "hash_table_contain(char_to_string(\"d\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("e")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("e")),
          "hash_table_contain(char_to_string(\"e\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("f")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("f")),
          "hash_table_contain(char_to_string(\"f\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("g")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("g")),
          "hash_table_contain(char_to_string(\"g\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("h")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("h")),
          "hash_table_contain(char_to_string(\"h\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("i")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("i")),
          "hash_table_contain(char_to_string(\"i\"))");
-  assert(1, hash_table_contain(hashTable, char_to_string("j")),
+  test_assert(1, hash_table_contain(hashTable, char_to_string("j")),
          "hash_table_contain(char_to_string(\"j\"))");
-  assert(0, hash_table_contain(hashTable, char_to_string("k")),
+  test_assert(0, hash_table_contain(hashTable, char_to_string("k")),
          "hash_table_contain(char_to_string(\"k\"))");
-  assert(0, hash_table_contain(hashTable, char_to_string("l")),
+  test_assert(0, hash_table_contain(hashTable, char_to_string("l")),
          "hash_table_contain(char_to_string(\"l\"))");
-  assert(0, hash_table_contain(hashTable, char_to_string("m")),
+  test_assert(0, hash_table_contain(hashTable, char_to_string("m")),
          "hash_table_contain(char_to_string(\"m\"))");
-  assert(0, hash_table_contain(hashTable, char_to_string("n")),
+  test_assert(0, hash_table_contain(hashTable, char_to_string("n")),
          "hash_table_contain(char_to_string(\"n\"))");
-  assert(0, hash_table_contain(hashTable, char_to_string("o")),
+  test_assert(0, hash_table_contain(hashTable, char_to_string("o")),
          "hash_table_contain(char_to_string(\"o\"))");
   printf("OK\n");
 }

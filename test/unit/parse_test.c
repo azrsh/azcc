@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void assert(int, int, char *);
+void test_assert(int, int, char *);
 
 int main() {
   user_input =
@@ -13,10 +13,10 @@ int main() {
   Token *head = tokenize(user_input);
   Token *token = head;
 
-  // assert(1, string_compare(token->string, char_to_string("_Bool")), "_Bool");
+  // test_assert(1, string_compare(token->string, char_to_string("_Bool")), "_Bool");
   // token = token->next;
 
-  // assert(1, string_compare(token->string, char_to_string("test6")), "test6");
+  // test_assert(1, string_compare(token->string, char_to_string("test6")), "test6");
   // token = token->next;
 
   parse(head);
