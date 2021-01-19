@@ -40,9 +40,6 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
     allocate_return_stack_to_node(node->lhs, context);
     return;
   case NODE_FUNC: {
-    INSERT_COMMENT("pass %d to %d", context->currentStackOffset,
-                   context->currentStackOffset +
-                       type_to_stack_size(node->type));
     allocate_return_stack_to_node(node->lhs, context);
 
     if (type_to_stack_size(node->type) > 1 * 8) {
@@ -96,10 +93,7 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
 
 void allocate_return_stack_to_declaration(Declaration *declaration,
                                           StackAllocContext *context) {
-  for (int i = 0; i < vector_length(declaration->declarators); i++) {
-    Node *declarator = vector_get(declaration->declarators, i);
-    allocate_return_stack_to_node(declarator, context);
-  }
+  ERROR("invalid abstract syntax tree");
 }
 
 void allocate_return_stack_to_statement(StatementUnion *statementUnion,

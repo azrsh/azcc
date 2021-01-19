@@ -1,0 +1,687 @@
+/*
+ * 宣言文をパースする。
+ * declaration、declaration_specifier、type_nameを公開する。
+ */
+
+#include "declarationparse.h"
+#include "container.h"
+#include "declaration.h"
+#include "expressionparse.h"
+#include "membercontainer.h"
+#include "parseutil.h"
+#include "type.h"
+#include "typecontainer.h"
+#include "util.h"
+#include "variable.h"
+#include <assert.h>
+#include <stdlib.h>
+
+//全てのメンバがNullまたはNoneに初期化される
+Declaration *new_declaration() {
+  Declaration *result = calloc(1, sizeof(Declaration));
+  return result;
+}
+
+Declaration *declaration_clone(Declaration *source) {
+  Declaration *result = new_declaration();
+  result->storage = source->storage;
+  result->type = source->type;
+  result->function = source->function;
+  result->declarators = source->declarators;
+  return result;
+}
+
+Vector *vector_wrap(void *element) {
+  Vector *result = new_vector(1);
+  vector_push_back(result, element);
+  return result;
+}
+
+// EBNF
+// declaration = decralation_specifier init_declarator_list ";"
+
+// declaration_specifier = (storage_class_specifier | type_specifier |
+// type_qualifier | function_specifier) declaration_specifier*
+// type_specifier
+// struct_or_union_specifier
+// | type_qualifier)*
+// enum_specifier
+
+// init_declarator_list = init_declarator ("," init_declarator)*
+// init_declarator = declarator ("=" initializer)?
+// declarator = pointer? direct_declarator
+// direct_declarator = (identifier | ("(" declarator ")")) ("["
+// constant_expression "]" | "(" parameter_type_list | identifier_list ")")*
+
+// pointer = ("*" type_qualifier_list?)*
+// type_qualifier_list = "const"*
+
+// parameter_type_list = parameter_list ("," "...")?
+// parameter_list = parameter_declaration ("," parameter_declaration)*
+// parameter_declaration = declaration_specifier (declarator |
+// abstract_declarator?)
+
+// identifier_list = identifier ("," identifier)*
+
+// 仕様と異なるEBNF
+// type_name = declaration_specifier abstract_declarator
+
+// abstract_declarator = pointer | (pointer? direct_abstract_declarator)
+// abstract_direct_declarator = ("(" abstract_declarator ")")? ("["
+// constant_expression "]" | "(" parameter_type_list ")")*
+
+Declaration *declaration(Declaration *base,
+                         ParseContext *context); // declarated in header file
+
+Declaration *declaration_specifier(ParseContext *context);
+Type *type_specifier(ParseContext *context);
+Type *struct_or_union_specifier(ParseContext *context);
+Type *enum_specifier(ParseContext *context);
+Type *typedef_name(ParseContext *context);
+
+Vector *init_declarator_list(Type *base, ParseContext *context);
+Variable *init_declarator(Type *base, ParseContext *context);
+Variable *declarator(Type *base, ParseContext *context);
+Variable *direct_declarator(Type *type, ParseContext *context);
+
+Type *pointer(Type *base);
+bool type_qualifier_list(void);
+
+// Declaration Vector
+Vector *parameter_type_list(ParseContext *context);
+// Declaration Vector
+Vector *parameter_list(ParseContext *context);
+Declaration *parameter_declaration(ParseContext *context);
+
+// Declaration Vector
+Vector *identifier_list(ParseContext *context);
+
+Type *type_name(ParseContext *context);
+
+Variable *abstract_declarator(Type *base, ParseContext *context);
+Variable *direct_abstract_declarator(Type *type, ParseContext *context);
+
+Node *initializer(ParseContext *context);
+
+Declaration *declaration(Declaration *base, ParseContext *context) {
+  if (!base)
+    return NULL;
+
+  Declaration *result = declaration_clone(base);
+  Type *type = result->type;
+  if (type) {
+    if (consume(";")) {
+      result->type = type;
+      result->declarators = new_vector(0);
+      return result;
+    }
+
+    result->declarators = init_declarator_list(type, context);
+    expect(";");
+    return result;
+  }
+
+  // static assert
+
+  return NULL;
+}
+
+Declaration *declaration_specifier(ParseContext *context) {
+  Declaration *result = new_declaration();
+  for (;;) {
+    // storage class specifier
+    if (consume("typedef")) {
+      result->storage = STORAGE_TYPEDEF;
+      continue;
+    } else if (consume("extern")) {
+      result->storage = STORAGE_EXTERN;
+      continue;
+    } else if (consume("static")) {
+      result->storage = STORAGE_STATIC;
+      ERROR_AT(token->string->head, "staticはサポートされていません");
+      continue;
+    } else if (consume("_Thread_local")) {
+      result->storage = STORAGE_THREAD_LOCAL;
+      ERROR_AT(token->string->head, "_Thread_localはサポートされていません");
+      continue;
+    } else if (consume("auto")) {
+      result->storage = STORAGE_AUTO;
+      ERROR_AT(token->string->head, "autoはサポートされていません");
+      continue;
+    } else if (consume("register")) {
+      result->storage = STORAGE_REGISTER;
+      ERROR_AT(token->string->head, "registerはサポートされていません");
+      continue;
+    }
+
+    // type specifier
+    {
+      Type *typeSpecifier = type_specifier(context);
+      if (typeSpecifier) {
+        result->type = typeSpecifier;
+        continue;
+      }
+    }
+
+    // type qualifier
+    if (type_qualifier_list())
+      continue;
+
+    // function specifier
+    {
+      if (consume("inline")) {
+        result->function = FUNCTION_INLINE;
+        ERROR_AT(token->string->head, "inlineはサポートされていません");
+        continue;
+      } else if (consume("_Noreturn")) {
+        result->function = FUNCTION_NORETURN;
+        ERROR_AT(token->string->head, "_Noreturnはサポートされていません");
+        continue;
+      }
+    }
+
+    // alignment specifier
+    if (consume("_Alignas")) {
+      // (type-name) | (constant-expression)
+      ERROR_AT(token->string->head, "_Alighnasはサポートされていません");
+      continue;
+    }
+
+    if (!result->type)
+      return NULL;
+
+    return result;
+  }
+}
+
+//型指定子をパースする
+Type *type_specifier(ParseContext *context) {
+  // primitive types
+  if (consume("void")) {
+    return new_type(TYPE_VOID);
+  } else if (consume("char")) {
+    return new_type(TYPE_CHAR);
+  } else if (consume("short")) {
+    // new_type(TYPE_SHORT);
+    ERROR_AT(token->string->head, "サポートされていない型です");
+  } else if (consume("int")) {
+    return new_type(TYPE_INT);
+  } else if (consume("long")) {
+    // new_type(TYPE_LONG);
+    ERROR_AT(token->string->head, "サポートされていない型です");
+  } else if (consume("float")) {
+    // new_type(TYPE_FLOAT);
+    ERROR_AT(token->string->head, "サポートされていない型です");
+  } else if (consume("double")) {
+    // new_type(TYPE_DOUBLE);
+    ERROR_AT(token->string->head, "サポートされていない型です");
+  } else if (consume("signed")) {
+    // new_type(TYPE_SIGHNED);
+    return NULL;
+  } else if (consume("unsigned")) {
+    // new_type(TYPE_UNSIGNED);
+    return NULL;
+  } else if (consume("_Bool")) {
+    return new_type(TYPE_BOOL);
+  } else if (consume("_Complex")) {
+    // new_type(TYPE_COMPLEX);
+    ERROR_AT(token->string->head, "サポートされていない型です");
+  }
+
+  if (consume("atomic-type-specifier")) {
+    ERROR("atomic specifier is not supported");
+  }
+
+  // struct or union specifier
+  {
+    Type *structType = struct_or_union_specifier(context);
+    if (structType) {
+      return structType;
+    }
+  }
+
+  // enum specifier
+  {
+    Type *enumType = enum_specifier(context);
+    if (enumType) {
+      return enumType;
+    }
+  }
+
+  // typedef name
+  {
+    Type *typedefType = typedef_name(context);
+    if (typedefType) {
+      return typedefType;
+    }
+  }
+
+  return NULL;
+}
+
+Type *struct_or_union_specifier(ParseContext *context) {
+  if (!consume("struct"))
+    return NULL;
+
+  Type *result = NULL;
+
+  Token *identifier = consume_identifier();
+
+  // 宣言済み構造体の解決
+  if (identifier) {
+    Type *type =
+        type_container_get(context->scope->tagContainer, identifier->string);
+    if (type) {
+      if (type->kind == TYPE_STRUCT) {
+        result = type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
+      }
+    }
+  }
+
+  // 解決できなければ生成
+  if (!result) {
+    result = new_type(TYPE_STRUCT);
+    if (identifier) {
+      result->name = identifier->string;
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      type_container_push(context->scope->tagContainer, result->name, result);
+    }
+  }
+
+  if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+      result->members = new_member_container();
+    } else {
+      ERROR_AT(identifier->string->head, "構造体が多重に定義されています")
+    }
+
+    int memberOffset = 0;
+    while (!consume("}")) {
+      Declaration *memberDeclaration =
+          declaration(declaration_specifier(context), context);
+      for (int i = 0; i < vector_length(memberDeclaration->declarators); i++) {
+        Variable *member = vector_get(memberDeclaration->declarators, i);
+        if (!member)
+          ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
+
+        member->kind = VARIABLE_LOCAL;
+        size_t memberAlignment = type_to_align(member->type);
+        memberOffset += (memberAlignment - memberOffset % memberAlignment) %
+                        memberAlignment;
+        member->offset = memberOffset;
+        memberOffset += type_to_size(member->type);
+
+        if (!member_container_push(result->members, member))
+          ERROR_AT(member->name->head, "同名のメンバが既に定義されています");
+      }
+    }
+  } else if (!identifier) {
+    ERROR_AT(token->string->head,
+             "無名構造体を定義なしで使用することはできません");
+  }
+
+  return result;
+}
+
+Type *enum_specifier(ParseContext *context) {
+  Token *tokenHead = token;
+
+  if (!consume("enum"))
+    return NULL;
+
+  Token *identifier = consume_identifier();
+
+  Type *result = NULL;
+
+  // 宣言済み列挙体の解決
+  if (identifier) {
+    Type *type =
+        type_container_get(context->scope->tagContainer, identifier->string);
+    if (type) {
+      if (type->kind == TYPE_ENUM) {
+        result = type;
+      } else {
+        ERROR_AT(identifier->string->head,
+                 "%sは違う種類のタグとして定義されています",
+                 identifier->string->head);
+      }
+    }
+  }
+
+  // 解決できなければ生成
+  if (!result) {
+    result = new_type(TYPE_ENUM);
+    if (identifier) {
+      result->name = identifier->string;
+
+      //この時点でresultは宣言済みでないことが保証されているので場合分けは不要
+      type_container_push(context->scope->tagContainer, result->name, result);
+    }
+  }
+
+  if (consume("{")) {
+    if (!result->isDefined) {
+      result->isDefined = true;
+    } else {
+      ERROR_AT(identifier->string->head, "列挙体が多重に定義されています")
+    }
+
+    int count = 0;
+    do {
+      Token *enumeratorIdentifier = consume_identifier();
+      if (!enumeratorIdentifier)
+        break;
+
+      Node *constantExpression = NULL;
+      if (consume("="))
+        constantExpression = constant_expression(context);
+      else {
+        constantExpression = new_node_num(count);
+        count++;
+      }
+
+      Variable *variable =
+          new_variable(new_type(TYPE_INT), enumeratorIdentifier->string);
+      Variable *enumeratorVariable =
+          variable_to_enumerator(variable, constantExpression);
+      if (!variable_container_push(context->scope->variableContainer,
+                                   enumeratorVariable))
+        ERROR_AT(enumeratorIdentifier->string->head,
+                 "列挙子%sと同名の識別子が既に定義されています",
+                 string_to_char(enumeratorIdentifier->string));
+    } while (consume(","));
+    expect("}");
+  } else if (!identifier) {
+    ERROR_AT(tokenHead->string->head,
+             "列挙体の名称または列挙子を指定してください");
+  }
+
+  return result;
+}
+
+Type *typedef_name(ParseContext *context) {
+  Token *tokenHead = token;
+
+  Token *identifier = consume_identifier();
+  if (!identifier)
+    return NULL;
+
+  // typedefされた型指定子の探索
+  Type *result =
+      type_container_get(context->scope->typedefContainer, identifier->string);
+  if (result)
+    return result;
+
+  token = tokenHead;
+  return NULL;
+}
+
+Vector *init_declarator_list(Type *base, ParseContext *context) {
+  Vector *declarators = new_vector(8);
+  do {
+    vector_push_back(declarators, init_declarator(base, context));
+  } while (consume(","));
+  return declarators;
+}
+
+Variable *init_declarator(Type *base, ParseContext *context) {
+  Token *tokenHead = token;
+
+  // declarator
+  Variable *variable = declarator(base, context);
+  if (!variable)
+    return NULL;
+
+  // initalizer
+  if (consume("="))
+    variable->initialization = initializer(context);
+
+  return variable;
+}
+
+Variable *declarator(Type *base, ParseContext *context) {
+  // pointer
+  Type *type = pointer(base);
+
+  // direct-declarator
+  return direct_declarator(type, context);
+}
+
+Variable *direct_declarator(Type *base, ParseContext *context) {
+  Variable *result = NULL;
+  Type *dummy = new_type(TYPE_VOID);
+
+  // 1番外側
+  Token *identifier = consume_identifier();
+  if (identifier)
+    result = new_variable(dummy, identifier->string);
+  else if (consume("(")) {
+    result = declarator(dummy, context);
+    expect(")");
+  } else {
+    return NULL;
+  }
+
+  // 2番に外側
+  Type root;
+  root.base = base;
+  Type *type = &root;
+  for (;;) {
+    Type *child = NULL;
+    if (consume("[")) {
+      child = new_type_array(base, expect_number());
+      expect("]");
+    } else if (consume("(")) {
+      // Declaration Vector
+      Vector *parameters = NULL;
+      if (!consume(")")) {
+        parameters = parameter_type_list(context);
+        if (!parameters)
+          parameters = identifier_list(context);
+
+        assert(parameters);
+
+        expect(")");
+      }
+      child = new_type_function(base, parameters);
+    } else {
+      break;
+    }
+
+    if (type->base) {
+      type->base = child;
+      type = type->base;
+    } else if (type->returnType) {
+      type->returnType = child;
+      type = type->returnType;
+    } else {
+      assert(0); // unreachable
+    }
+  }
+
+  //ダミーを上書き
+  *dummy = *root.base;
+
+  return result;
+}
+
+Type *pointer(Type *base) {
+  Type *type = base;
+  while (consume("*")) {
+    Type *pointer = new_type(TYPE_PTR);
+    pointer->base = type;
+    type = pointer;
+
+    type_qualifier_list();
+  }
+  return type;
+}
+
+bool type_qualifier_list() {
+  bool result = false;
+  for (;;) {
+    if (consume("const")) {
+      result = true;
+      continue;
+    }
+
+    if (consume("restrict") || consume("volatile") || consume("_Atomic"))
+      ERROR_AT(token->string->head, "Unsupported type qualifier");
+
+    return result;
+  }
+}
+
+// parameter_type_list = parameter_list ("," "...")?
+// パラメータが少なくとも1つはあることを期待する
+Vector *parameter_type_list(ParseContext *context) {
+  Vector *result = parameter_list(context);
+
+  if (consume(",") && consume("...")) {
+    ERROR_AT(token->string->head,
+             "可変長引数関数の宣言はサポートされていません");
+    // vector_push_back(result, );
+  }
+
+  return result;
+}
+
+// parameter_list = parameter_declaration ("," parameter_declaration)*
+// パラメータが少なくとも1つはあることを期待する
+Vector *parameter_list(ParseContext *context) {
+  Vector *result = new_vector(16);
+  do {
+    Declaration *parameter = parameter_declaration(context);
+
+    assert(parameter);
+
+    vector_push_back(result, parameter);
+  } while (consume(","));
+
+  return result;
+}
+
+// parameter_declaration = declaration_specifier (declarator |
+// abstract_declarator?)
+Declaration *parameter_declaration(ParseContext *context) {
+  Declaration *base = declaration_specifier(context);
+  if (!base)
+    return NULL;
+
+  Token *head = token;
+  Variable *element = declarator(base->type, context);
+  if (!element) {
+    //ロールバック
+    //構造体指定子などで多重に名前を登録してうまく動かないと思われる
+    token = head;
+    element = abstract_declarator(base->type, context);
+  }
+
+  base->declarators = vector_wrap(element);
+
+  return base;
+}
+
+// identifier_list = identifier ("," identifier)*
+// パラメータが少なくとも1つはあることを期待する
+Vector *identifier_list(ParseContext *context) {
+  Vector *result = new_vector(16);
+  do {
+    Variable *variable =
+        new_variable(new_type(TYPE_INT), expect_identifier()->string);
+    Declaration *declaration = new_declaration();
+    declaration->type = variable->type;
+    declaration->declarators = vector_wrap(variable);
+    vector_push_back(result, declaration);
+  } while (consume(","));
+  return result;
+}
+
+Type *type_name(ParseContext *context) {
+  Declaration *specifier = declaration_specifier(context);
+  if (!specifier)
+    return NULL;
+
+  Variable *result = abstract_declarator(specifier->type, context);
+  return result ? result->type : specifier->type;
+}
+
+Variable *abstract_declarator(Type *base, ParseContext *context) {
+  // pointer
+  Type *type = pointer(base);
+
+  // direct-declarator
+  return direct_abstract_declarator(type, context);
+}
+
+Variable *direct_abstract_declarator(Type *base, ParseContext *context) {
+  Variable *result = NULL;
+  Type *dummy = new_type(TYPE_VOID);
+
+  // 1番外側
+  if (consume("(")) {
+    result = abstract_declarator(dummy, context);
+    expect(")");
+  } else {
+    result = new_variable(dummy, NULL);
+  }
+
+  // 2番目に外側
+  Type root;
+  root.base = base;
+  Type *type = &root;
+  for (;;) {
+    Type *child = NULL;
+    if (consume("[")) {
+      child = new_type_array(base, expect_number());
+      expect("]");
+    } else if (consume("(")) {
+      Vector *parameters = NULL;
+      if (!consume(")")) {
+        parameters = parameter_type_list(context);
+        expect(")");
+      }
+      child = new_type_function(base, parameters);
+    } else {
+      break;
+    }
+
+    if (type->base) {
+      type->base = child;
+      type = type->base;
+    } else if (type->returnType) {
+      type->returnType = child;
+      type = type->returnType;
+    } else {
+      assert(0); // unreachable
+    }
+  }
+
+  //ダミーを上書き
+  *dummy = *root.base;
+
+  return result;
+}
+
+//配列とプリミティブ型のみに対応
+Node *initializer(ParseContext *context) {
+  if (consume("{")) {
+    Vector *elements = new_vector(16);
+    do {
+      vector_push_back(elements, assign(context));
+    } while (consume(","));
+    expect("}");
+
+    Node *result = new_node(NODE_ARRAY, NULL, NULL);
+    result->elements = elements;
+    return result;
+  }
+
+  return assign(context);
+}

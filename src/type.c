@@ -2,6 +2,7 @@
 #include "container.h"
 #include "membercontainer.h"
 #include "util.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -86,7 +87,7 @@ int type_to_stack_size(Type *type) {
   return size;
 }
 
-char *type_kind_to_char(TypeKind kind) {
+char *type_kind_to_syntactic_string(TypeKind kind) {
   switch (kind) {
   case TYPE_CHAR:
     return "char";
@@ -111,7 +112,7 @@ char *type_kind_to_char(TypeKind kind) {
   return NULL;
 }
 
-char *type_to_char(Type *type) {
+char *type_to_syntactic_string(Type *type) {
   if (!type)
     return NULL;
   int depth = 1;
@@ -120,8 +121,8 @@ char *type_to_char(Type *type) {
     type = type->base;
   }
 
-  char *baseTypeChar = type_kind_to_char(type->kind);
-  int baseTypeLength = strlen(type_kind_to_char(type->kind));
+  char *baseTypeChar = type_kind_to_syntactic_string(type->kind);
+  int baseTypeLength = strlen(type_kind_to_syntactic_string(type->kind));
   int length = depth + baseTypeLength - 1 + 1;
   char *result = calloc(length, sizeof(char));
   for (int i = 0; i < length - 1; i++) {
@@ -132,6 +133,82 @@ char *type_to_char(Type *type) {
   }
   result[length - 1] = '\0';
   return result;
+}
+
+char *type_kind_to_semantic_string(TypeKind kind) {
+  switch (kind) {
+  case TYPE_CHAR:
+    return "char";
+  case TYPE_VOID:
+    return "void";
+  case TYPE_INT:
+  case TYPE_ENUM:
+    return "int";
+  case TYPE_BOOL:
+    return "_Bool";
+  case TYPE_STRUCT:
+    return "struct";
+  case TYPE_PTR:
+    return "Pointer";
+  case TYPE_ARRAY:
+    return "Array";
+  case TYPE_FUNC:
+    return "Function";
+  }
+
+  ERROR("予期しない型が指定されました");
+  return NULL;
+}
+
+char *type_to_semantic_string(Type *type) {
+  if (!type)
+    return NULL;
+
+  const int capacity = 128;
+  char *buffer = calloc(capacity + 1, sizeof(char));
+
+  char *kind = type_kind_to_semantic_string(type->kind);
+  switch (type->kind) {
+  case TYPE_CHAR:
+  case TYPE_VOID:
+  case TYPE_INT:
+  case TYPE_BOOL:
+    sprintf(buffer, "%s", kind);
+    break;
+  case TYPE_ENUM:
+  case TYPE_STRUCT: {
+    const int limit = capacity - strlen(kind) - 1;
+    char *tagName = type->name ? string_to_char(type->name) // move from callee
+                               : "anonymous";
+    sprintf(buffer, "%s %.*s", kind, limit, tagName);
+    if (type->name)
+      free(tagName); // free own memory
+    break;
+  }
+  case TYPE_PTR: {
+    const int limit = capacity - strlen(kind) - 4;
+    char *base = type_to_semantic_string(type->base); // move from callee
+    sprintf(buffer, "%s to %.*s", kind, limit, base);
+    free(base); // free own memory
+    break;
+  }
+  case TYPE_ARRAY: {
+    const int limit = capacity - strlen(kind) - 4;
+    char *base = type_to_semantic_string(type->base); // move from callee
+    sprintf(buffer, "%s of %.*s", kind, limit, base);
+    free(base); // free own memory
+    break;
+  }
+  case TYPE_FUNC: {
+    const int limit = capacity - strlen(kind) - 11;
+    char *returnType = type_to_semantic_string(type->base); // move from callee
+    sprintf(buffer, "%s returning %*.s", kind, limit, returnType);
+    free(returnType); // free own memory
+    break;
+  }
+  }
+
+  return buffer; // move to caller
 }
 
 bool type_compare_deep(const Type *type1, const Type *type2) {

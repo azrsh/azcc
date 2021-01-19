@@ -157,10 +157,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       if (vector_length(functionType->arguments) !=
           vector_length(callingArguments))
         ERROR_AT(node->source,
-                 "関数の呼び出しと前方宣言の引数の数が一致しません");
+                 "関数呼び出しと前方宣言の引数の数が一致しません");
 
       for (int i = 0; i < vector_length(functionType->arguments); i++) {
-        Type *type1 = vector_get(functionType->arguments, i);
+        Declaration *declaration = vector_get(functionType->arguments, i);
+        Variable *variable = vector_get(declaration->declarators,
+                                        0); //関数の引数のとき、必ず要素数は1
+
+        Type *type1 = variable->type;
         Type *type2 = vector_get(callingTypes, i);
         if (type_compare_deep(type1, type2))
           continue;
@@ -184,7 +188,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
         }
 
         ERROR_AT(node->source,
-                 "関数の呼び出しと前方宣言の引数の型が一致しません");
+                 "関数呼び出しと前方宣言の引数の型が一致しません");
       }
     }
     return;
@@ -404,10 +408,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
 
 void tag_type_to_declaration(Declaration *declaration,
                              TypeCheckContext *context) {
-  for (int i = 0; i < vector_length(declaration->declarators); i++) {
-    Node *declarator = vector_get(declaration->declarators, i);
-    tag_type_to_node(declarator, context);
-  }
+  ERROR("invalid abstract syntax tree");
 }
 
 void tag_type_to_statement(StatementUnion *statementUnion,
@@ -515,7 +516,8 @@ void tag_type_to_statement(StatementUnion *statementUnion,
       if (returnType->kind == TYPE_VOID && !returnPattern->node)
         return;
       if (returnType->kind == TYPE_VOID)
-        ERROR("void型関数で戻り値が返されています");
+        ERROR_AT(returnPattern->node->source,
+                 "void型関数で戻り値が返されています");
 
       tag_type_to_node(returnPattern->node, context);
       if (!type_compare_deep(returnType, returnPattern->node->type) &&
