@@ -203,7 +203,7 @@ char *type_to_semantic_string(Type *type) {
     const int limit = capacity - strlen(kind) - 11;
     char *returnType =
         type_to_semantic_string(type->returnType); // move from callee
-    sprintf(buffer, "%s returning %*.s", kind, limit, returnType);
+    sprintf(buffer, "%s returning %.*s", kind, limit, returnType);
     free(returnType); // free own memory
     break;
   }
