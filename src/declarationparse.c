@@ -449,23 +449,29 @@ Variable *declarator(Type *base, ParseContext *context) {
   // pointer
   Type *type = pointer(base);
 
-  // direct-declarator
+  // direct_declarator
   return direct_declarator(type, context);
 }
 
 Variable *direct_declarator(Type *base, ParseContext *context) {
   Variable *result = NULL;
-  Type *dummy = new_type(TYPE_VOID);
 
   // 1番外側
-  Token *identifier = consume_identifier();
-  if (identifier)
-    result = new_variable(dummy, identifier->string);
-  else if (consume("(")) {
-    result = declarator(dummy, context);
-    expect(")");
-  } else {
-    return NULL;
+  {
+    Type *dummy = new_type(TYPE_VOID);
+    Token *identifier = consume_identifier();
+    if (identifier)
+      result = new_variable(dummy, identifier->string);
+    else if (consume("(")) {
+      result = declarator(dummy, context);
+      expect(")");
+    }
+
+    // 上の2つの条件を満たすがNULLが返ってきたときも
+    // どちらの条件を満たさないときもNlULLを返す
+    if (!result) {
+      return NULL;
+    }
   }
 
   // 2番に外側
@@ -505,8 +511,22 @@ Variable *direct_declarator(Type *base, ParseContext *context) {
     }
   }
 
-  //ダミーを上書き
-  *dummy = *root.base;
+  // dummyを上書き
+  // ただしdummyの保管場所はdeclarationでコピーされて変わっているので
+  // 再探索する
+  {
+    Type *leaf = result->type;
+    for (;;) {
+      if (leaf->base)
+        leaf = leaf->base;
+      else if (leaf->returnType)
+        leaf = leaf->returnType;
+      else
+        break;
+    }
+
+    *leaf = *root.base;
+  }
 
   return result;
 }
@@ -616,20 +636,22 @@ Variable *abstract_declarator(Type *base, ParseContext *context) {
   // pointer
   Type *type = pointer(base);
 
-  // direct-declarator
+  // direct_abstract_declarator
   return direct_abstract_declarator(type, context);
 }
 
 Variable *direct_abstract_declarator(Type *base, ParseContext *context) {
   Variable *result = NULL;
-  Type *dummy = new_type(TYPE_VOID);
 
   // 1番外側
-  if (consume("(")) {
-    result = abstract_declarator(dummy, context);
-    expect(")");
-  } else {
-    result = new_variable(dummy, NULL);
+  {
+    Type *dummy = new_type(TYPE_VOID);
+    if (consume("(")) {
+      result = abstract_declarator(dummy, context);
+      expect(")");
+    } else {
+      result = new_variable(dummy, NULL);
+    }
   }
 
   // 2番目に外側
@@ -664,7 +686,19 @@ Variable *direct_abstract_declarator(Type *base, ParseContext *context) {
   }
 
   //ダミーを上書き
-  *dummy = *root.base;
+  {
+    Type *leaf = result->type;
+    for (;;) {
+      if (leaf->base)
+        leaf = leaf->base;
+      else if (leaf->returnType)
+        leaf = leaf->returnType;
+      else
+        break;
+    }
+
+    *leaf = *root.base;
+  }
 
   return result;
 }
