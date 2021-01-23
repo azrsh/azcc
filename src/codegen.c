@@ -151,8 +151,23 @@ void generate_function_call(Node *node, int *labelCount) {
     INSERT_COMMENT("function %s argument evaluation end", functionName);
   }
 
+  //呼び出し先アドレスの計算
+  {
+    // if (string_compare(&node->functionCall->name, char_to_string("calloc"))
+    // ||
+    //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
+    //    string_compare(&node->functionCall->name, char_to_string("memcmp")) ||
+    //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
+    //  printf("  call %s@PLT\n", functionName);
+    // else
+
+    generate_expression(node->lhs, labelCount);
+    printf("  pop r10\n");
+  }
+
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
   //引数を全て評価してからレジスタに割り当て
+  // r10レジスタを呼び出し先アドレスの保存に使用しているため、変更してはいけない
   {
     INSERT_COMMENT("function %s argument register allocation start",
                    functionName);
@@ -201,21 +216,8 @@ void generate_function_call(Node *node, int *labelCount) {
                    functionName);
   }
 
-  // if (string_compare(&node->functionCall->name, char_to_string("calloc"))
-  // ||
-  //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
-  //    string_compare(&node->functionCall->name, char_to_string("memcmp")) ||
-  //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
-  //  printf("  call %s@PLT\n", functionName);
-  // else
-
-  //この処理は引数評価の前(少なくともそのレジスタ割り当ての前)にやらないとレジスタを破壊する可能性がある
-  //具体的には、関数ポインタの評価式の中で関数を呼び出すと死ぬ
-  generate_expression(node->lhs, labelCount);
-  printf("  pop r11\n");
-
   printf("  mov rax, 0\n");
-  printf("  call r11\n");
+  printf("  call r10\n");
 
   //スタックに積んだ引数を処理
   if (stackArgumentSize > 0) {

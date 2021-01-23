@@ -242,6 +242,11 @@ bool type_compare_deep_with_implicit_cast(Type *advantage, Type *disadvantage) {
        disadvantage->base->kind == TYPE_VOID))
     return true;
 
+  //関数から関数ポインタへの暗黙の変換を許可
+  if (advantage->kind == TYPE_PTR && advantage->base->kind == TYPE_FUNC &&
+      disadvantage->kind == TYPE_FUNC)
+    return true;
+
   if (type_compare_deep_with_implicit_cast(advantage->base, disadvantage->base))
     return true;
 

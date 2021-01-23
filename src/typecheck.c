@@ -39,7 +39,7 @@ Node *new_node_cast(Type *target, Node *source) {
   return castNode;
 }
 
-void insert_implicit_cast_node(Type *target, Node *node) {
+void insert_implicit_cast_to_binary_operator(Type *target, Node *node) {
   Node *lhs = node->lhs;
   if (!type_compare_deep(target, lhs->type)) {
     Node *castNode = new_node_cast(target, lhs);
@@ -130,10 +130,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
     tag_type_to_node(node->lhs, context);
-    if (node->lhs->type->kind != TYPE_FUNC)
-      ERROR("関数呼び出し演算子のオペランド型が不正です");
 
     Type *functionType = node->lhs->type;
+    if (functionType->kind == TYPE_PTR && functionType->base->kind == TYPE_FUNC)
+      functionType = functionType->base;
+
+    if (functionType->kind != TYPE_FUNC)
+      ERROR("関数呼び出し演算子のオペランド型が不正です");
+
     node->type = functionType->returnType;
 
     //引数の検証
@@ -213,9 +217,12 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       node->type = node->lhs->type;
       if (type_is_primitive(node->lhs->type) &&
           type_is_primitive(node->rhs->type)) {
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
       } else if (node->type->kind == TYPE_PTR &&
                  node->rhs->type->kind == TYPE_ARRAY) {
+        node->rhs = new_node_cast(node->type, node->rhs);
+      } else if (node->type->kind == TYPE_PTR &&
+                 node->type->base->kind == TYPE_FUNC) {
         node->rhs = new_node_cast(node->type, node->rhs);
       }
       return;
@@ -279,7 +286,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
         return;
       }
     }
@@ -298,7 +305,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
         return;
       }
     }
@@ -309,7 +316,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
-      insert_implicit_cast_node(node->type, node);
+      insert_implicit_cast_to_binary_operator(node->type, node);
       return;
     }
     ERROR_AT(node->source, "乗除算演算子のオペランド型が不正です");
@@ -339,7 +346,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
 
     if (target) {
       node->type = new_type(TYPE_INT);
-      insert_implicit_cast_node(target, node);
+      insert_implicit_cast_to_binary_operator(target, node);
       return;
     }
     ERROR_AT(node->source, "比較演算子のオペランド型が不正です");
@@ -356,7 +363,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
-      insert_implicit_cast_node(node->type, node);
+      insert_implicit_cast_to_binary_operator(node->type, node);
       return;
     }
     ERROR_AT(node->source, "ビット算演算子のオペランド型が不正です");
