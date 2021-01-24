@@ -1,13 +1,13 @@
 #ifndef TYPECHECK_H
 #define TYPECHECK_H
 
-#include "functioncontainer.h"
 #include "statement.h"
+#include "variablecontainer.h"
 
 typedef struct TypeCheckContext TypeCheckContext;
 struct TypeCheckContext {
   Type *returnType;
-  FunctionContainer *functionContainer; // FunctionDeclaration vector
+  VariableContainer *variableContainer;
 };
 
 void tag_type_to_statement(StatementUnion *statementUnion,

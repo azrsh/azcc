@@ -15,12 +15,6 @@ struct FunctionDefinition {
   size_t stackSize;        //定義済みのとき常に非NULL
 };
 
-typedef struct Typedef Typedef;
-struct Typedef {
-  const String *name;
-  Type *type;
-};
-
 typedef struct Program Program;
 struct Program {
   Vector *functionDefinitions; // FunctionDefinition vector

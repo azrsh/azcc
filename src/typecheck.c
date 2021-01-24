@@ -2,13 +2,14 @@
 #include "container.h"
 #include "declaration.h"
 #include "functioncall.h"
-#include "functioncontainer.h"
 #include "membercontainer.h"
 #include "node.h"
 #include "parse.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
+#include "variable.h"
+#include "variablecontainer.h"
 #include <stdlib.h>
 
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
@@ -38,7 +39,7 @@ Node *new_node_cast(Type *target, Node *source) {
   return castNode;
 }
 
-void insert_implicit_cast_node(Type *target, Node *node) {
+void insert_implicit_cast_to_binary_operator(Type *target, Node *node) {
   Node *lhs = node->lhs;
   if (!type_compare_deep(target, lhs->type)) {
     Node *castNode = new_node_cast(target, lhs);
@@ -109,73 +110,90 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_DEREF:
     tag_type_to_node(node->lhs, context);
+
     Type *lhsBase = node->lhs->type->base;
-    if (!lhsBase)
-      ERROR_AT(node->source, "単項演算子*のオペランド型が不正です");
-    node->type = lhsBase;
+    if (lhsBase) {
+      node->type = lhsBase;
+      return;
+    }
+
+    if (node->lhs->type->kind == TYPE_FUNC) {
+      node->type = node->lhs->type;
+      return;
+    }
+
+    ERROR_AT(node->source, "単項演算子*のオペランド型が不正です");
     return;
   case NODE_VAR:
     node->type = node->variable->type;
     return;
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
-    FunctionDefinition *declaration = function_container_get(
-        context->functionContainer, node->functionCall->name);
-    node->type = declaration->returnType;
-    Vector *callingArguments = node->functionCall->arguments;
+    tag_type_to_node(node->lhs, context);
+
+    Type *functionType = node->lhs->type;
+    if (functionType->kind == TYPE_PTR && functionType->base->kind == TYPE_FUNC)
+      functionType = functionType->base;
+
+    if (functionType->kind != TYPE_FUNC)
+      ERROR("関数呼び出し演算子のオペランド型が不正です");
+
+    node->type = functionType->returnType;
 
     //引数の検証
-    //型付けと同時にType型のVectorを生成
-    Vector *callingTypes = new_vector(16);
-    for (int i = 0; i < vector_length(callingArguments); i++) {
-      Node *arg = vector_get(callingArguments, i);
-      tag_type_to_node(arg, context);
-      vector_push_back(callingTypes, arg->type);
-    }
+    {
+      Vector *callingArguments = node->functionCall->arguments;
 
-    //引数がNULLならスキップ
-    if (!declaration->arguments)
-      return;
-
-    // 関数の宣言の引数のNULLチェック後
-    // Type型のVectorを生成
-    Vector *declarationTypes = new_vector(16);
-    for (int i = 0; i < vector_length(declaration->arguments); i++) {
-      Node *arg = vector_get(declaration->arguments, i);
-      vector_push_back(declarationTypes, arg->type);
-    }
-
-    if (vector_length(declaration->arguments) !=
-        vector_length(callingArguments))
-      ERROR_AT(node->source,
-               "関数の呼び出しと前方宣言の引数の数が一致しません %s",
-               string_to_char(declaration->name));
-
-    for (int i = 0; i < vector_length(declarationTypes); i++) {
-      Type *type1 = vector_get(declarationTypes, i);
-      Type *type2 = vector_get(callingTypes, i);
-      if (type_compare_deep(type1, type2))
-        continue;
-
-      if (type_compare_deep_with_implicit_cast(type1, type2)) {
-        Node *castNode = new_node_cast(type1, vector_get(callingArguments, i));
-        vector_set(callingArguments, i, castNode);
-        continue;
+      //型付けと同時にType型のVectorを生成
+      //型付けも行っているので全てのreturn文の前に置く
+      Vector *callingTypes = new_vector(16);
+      for (int i = 0; i < vector_length(callingArguments); i++) {
+        Node *arg = vector_get(callingArguments, i);
+        tag_type_to_node(arg, context);
+        vector_push_back(callingTypes, arg->type);
       }
 
-      // 0をNULL扱いすべきか検証する
-      {
-        Node *argument = vector_get(callingArguments, i);
-        bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
-                      argument->val == 0;
-        if (isNull) {
-          vector_set(callingArguments, i, new_node_cast(type1, argument));
+      //引数がNULLならスキップ
+      if (!functionType->arguments)
+        return;
+
+      // type_compare
+      if (vector_length(functionType->arguments) !=
+          vector_length(callingArguments))
+        ERROR_AT(node->source,
+                 "関数呼び出しと前方宣言の引数の数が一致しません");
+
+      for (int i = 0; i < vector_length(functionType->arguments); i++) {
+        Declaration *declaration = vector_get(functionType->arguments, i);
+        Variable *variable = vector_get(declaration->declarators,
+                                        0); //関数の引数のとき、必ず要素数は1
+
+        Type *type1 = variable->type;
+        Type *type2 = vector_get(callingTypes, i);
+        if (type_compare_deep(type1, type2))
+          continue;
+
+        if (type_compare_deep_with_implicit_cast(type1, type2)) {
+          Node *castNode =
+              new_node_cast(type1, vector_get(callingArguments, i));
+          vector_set(callingArguments, i, castNode);
           continue;
         }
-      }
 
-      ERROR_AT(node->source,
-               "関数の呼び出しと前方宣言の引数の型が一致しません");
+        // 0をNULL扱いすべきか検証する
+        {
+          Node *argument = vector_get(callingArguments, i);
+          bool isNull = type1->kind == TYPE_PTR && argument->kind == NODE_NUM &&
+                        argument->val == 0;
+          if (isNull) {
+            vector_set(callingArguments, i, new_node_cast(type1, argument));
+            continue;
+          }
+        }
+
+        ERROR_AT(node->source,
+                 "関数呼び出しと前方宣言の引数の型が一致しません");
+      }
     }
     return;
   }
@@ -199,9 +217,12 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       node->type = node->lhs->type;
       if (type_is_primitive(node->lhs->type) &&
           type_is_primitive(node->rhs->type)) {
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
       } else if (node->type->kind == TYPE_PTR &&
                  node->rhs->type->kind == TYPE_ARRAY) {
+        node->rhs = new_node_cast(node->type, node->rhs);
+      } else if (node->type->kind == TYPE_PTR &&
+                 node->type->base->kind == TYPE_FUNC) {
         node->rhs = new_node_cast(node->type, node->rhs);
       }
       return;
@@ -265,7 +286,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
         return;
       }
     }
@@ -284,7 +305,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
       Type *result = check_arithmetic_binary_operator(lhs, rhs);
       if (result) {
         node->type = result;
-        insert_implicit_cast_node(node->type, node);
+        insert_implicit_cast_to_binary_operator(node->type, node);
         return;
       }
     }
@@ -295,7 +316,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
-      insert_implicit_cast_node(node->type, node);
+      insert_implicit_cast_to_binary_operator(node->type, node);
       return;
     }
     ERROR_AT(node->source, "乗除算演算子のオペランド型が不正です");
@@ -325,7 +346,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
 
     if (target) {
       node->type = new_type(TYPE_INT);
-      insert_implicit_cast_node(target, node);
+      insert_implicit_cast_to_binary_operator(target, node);
       return;
     }
     ERROR_AT(node->source, "比較演算子のオペランド型が不正です");
@@ -342,7 +363,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     Type *result = check_arithmetic_binary_operator(lhs, rhs);
     if (result) {
       node->type = result;
-      insert_implicit_cast_node(node->type, node);
+      insert_implicit_cast_to_binary_operator(node->type, node);
       return;
     }
     ERROR_AT(node->source, "ビット算演算子のオペランド型が不正です");
@@ -394,10 +415,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
 
 void tag_type_to_declaration(Declaration *declaration,
                              TypeCheckContext *context) {
-  for (int i = 0; i < vector_length(declaration->declarators); i++) {
-    Node *declarator = vector_get(declaration->declarators, i);
-    tag_type_to_node(declarator, context);
-  }
+  ERROR("invalid abstract syntax tree");
 }
 
 void tag_type_to_statement(StatementUnion *statementUnion,
@@ -505,7 +523,8 @@ void tag_type_to_statement(StatementUnion *statementUnion,
       if (returnType->kind == TYPE_VOID && !returnPattern->node)
         return;
       if (returnType->kind == TYPE_VOID)
-        ERROR("void型関数で戻り値が返されています");
+        ERROR_AT(returnPattern->node->source,
+                 "void型関数で戻り値が返されています");
 
       tag_type_to_node(returnPattern->node, context);
       if (!type_compare_deep(returnType, returnPattern->node->type) &&

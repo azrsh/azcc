@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void assert(int, int, char *);
-void assert_string(const String *s1, const String *s2, const char *msg) {
+void test_assert(int, int, char *);
+void test_assert_string(const String *s1, const String *s2, const char *msg) {
   if (!string_compare(s1, s2)) {
     printf("\033[31m");
     printf("%s => \"%s\"", msg, string_to_char(s2));
@@ -19,12 +19,12 @@ void assert_string(const String *s1, const String *s2, const char *msg) {
 
 void test1(const char *target) {
   const String *s = char_to_string(target);
-  assert_string(s, s, "test no cp");
+  test_assert_string(s, s, "test no cp");
 }
 void test2(const char *target) {
   const String *s1 = char_to_string(target);
   const String *s2 = char_to_string(target);
-  assert_string(s1, s2, "test cp");
+  test_assert_string(s1, s2, "test cp");
 }
 
 int main() {

@@ -1,4 +1,4 @@
-int assert(int, int, char *);
+int test_assert(int, int, char *);
 int printf();
 
 int test1() {
@@ -64,20 +64,20 @@ int test11() {
 }
 
 int main() {
-  assert(3, test1(),
+  test_assert(3, test1(),
          "int x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y;");
-  assert(1, test2(), "char x[3]; x[0] = 1; return x[0];");
-  assert(1, test3(),
+  test_assert(1, test2(), "char x[3]; x[0] = 1; return x[0];");
+  test_assert(1, test3(),
          "char x[3]; x[0] = 1; x[1] = 2; int y; y = x[0]; return y;");
-  assert(5, test4(),
+  test_assert(5, test4(),
          "char x[3]; x[0] = 1; x[1] = 2; int y; y = 4; return x[0] + y;");
-  assert(3, test5(),
+  test_assert(3, test5(),
          "char x[3]; x[0] = -1; x[1] = 2; int y; y = 4; return x[0] + y; ");
-  assert(97, test6(), "char* x = \"abcdefghij\"; return x[0];");
-  assert(98, test7(), "char* x = \"abcdefghij\"; return x[1];");
-  assert(99, test8(), "char* x = \"abcdefghij\"; return x[2];");
-  assert(100, test9(), "char* x = \"abcdefghij\"; return x[3];");
-  assert(101, test10(), "char* x = \"abcdefghij\"; return x[4];");
-  assert(102, test11(), "char* x = \"abcdefghij\"; return x[5];");
+  test_assert(97, test6(), "char* x = \"abcdefghij\"; return x[0];");
+  test_assert(98, test7(), "char* x = \"abcdefghij\"; return x[1];");
+  test_assert(99, test8(), "char* x = \"abcdefghij\"; return x[2];");
+  test_assert(100, test9(), "char* x = \"abcdefghij\"; return x[3];");
+  test_assert(101, test10(), "char* x = \"abcdefghij\"; return x[4];");
+  test_assert(102, test11(), "char* x = \"abcdefghij\"; return x[5];");
   return 0;
 }

@@ -1,6 +1,6 @@
 #include "container.h"
 
-void assert(int, int, char *);
+void test_assert(int, int, char *);
 
 int main() {
   int source[10];
@@ -19,11 +19,11 @@ int main() {
   for (int i = 0; i < sizeof(source) / sizeof(int); i++)
     vector_push_back(vector, &source[i]);
 
-  assert(1, sizeof(source) / sizeof(int) == vector_length(vector),
+  test_assert(1, sizeof(source) / sizeof(int) == vector_length(vector),
          "sizeof(source)/sizeof(int) == vector_length(vector)");
 
   for (int i = 0; i < vector_length(vector); i++) {
-    assert(1, source + i == vector_get(vector, i),
+    test_assert(1, source + i == vector_get(vector, i),
            "source + i == vector_get(i)");
   }
 

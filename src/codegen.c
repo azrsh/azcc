@@ -1,6 +1,7 @@
 #include "container.h"
 #include "node.h"
 #include "parse.h"
+#include "returnstack.h"
 #include "statement.h"
 #include "type.h"
 #include "util.h"
@@ -11,13 +12,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *argumentRegister[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+const char *argumentRegister64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+const char *argumentRegister32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+const char *argumentRegister16[6] = {"di", "si", "dx", "cx", "r8w", "r9w"};
+const char *argumentRegister8[6] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
 
 void generate_expression(Node *node, int *labelCount);
 void generate_variable(Node *node);
 void generate_function_call(Node *node, int *labelCount);
 void generate_assign_lhs(Node *node, int *labelCount);
 void generate_value_extension(Node *node);
+void generate_rhs_extension(Node *node);
 
 void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
@@ -41,19 +46,51 @@ void generate_variable(Node *node) {
   }
 }
 
-void generate_dot_operator(Node *node, int *labelCount) {
+void generate_lhs_dot_operator(Node *node, int *labelCount) {
   if (node->kind != NODE_DOT)
     ERROR_AT(node->source, "ドット演算子ではありません");
 
-  INSERT_COMMENT("dot operator start");
+  INSERT_COMMENT("dot lhs operator start");
   if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
       node->rhs->variable->kind != VARIABLE_MEMBER*/)
     ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+
   generate_assign_lhs(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
   printf("  push rax\n");
-  INSERT_COMMENT("dot operator end");
+  INSERT_COMMENT("dot lhs operator end");
+}
+
+void generate_rhs_dot_operator(Node *node, int *labelCount) {
+  if (node->kind != NODE_DOT)
+    ERROR_AT(node->source, "ドット演算子ではありません");
+
+  INSERT_COMMENT("dot rhs operator start");
+  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
+      node->rhs->variable->kind != VARIABLE_MEMBER*/)
+    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+
+  generate_expression(node->lhs, labelCount);
+
+  const int stackUnitSize = 8;
+  const int bitOfByte = 8;
+  if (type_to_size(node->lhs->type) > stackUnitSize) {
+    printf("  pop rax\n");
+    printf("  add rax, %d\n", node->rhs->variable->offset);
+    printf("  push rax\n");
+    generate_rhs_extension(node);
+  } else {
+    const int memberSize = type_to_size(node->rhs->variable->type);
+    const int memberOffset = node->rhs->variable->offset;
+    printf("  pop rax\n");
+    printf("  shl rax, %d\n",
+           (stackUnitSize - memberOffset - memberSize) * bitOfByte);
+    printf("  shr rax, %d\n", (stackUnitSize - memberSize) * bitOfByte);
+    printf("  push rax\n");
+  }
+
+  INSERT_COMMENT("dot rhs operator end");
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -70,7 +107,7 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   }
 
   if (node->kind == NODE_DOT) {
-    generate_dot_operator(node, labelCount);
+    generate_lhs_dot_operator(node, labelCount);
     return;
   }
 
@@ -81,7 +118,9 @@ void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     ERROR("関数ではありません");
 
-  const char *functionName = string_to_char(node->functionCall->name);
+  const char *functionName = "mock";
+  const int stackUnitSize = 8;
+  const int alignmentSize = stackUnitSize * 2;
 
   INSERT_COMMENT("function call start : %s", functionName);
 
@@ -91,52 +130,155 @@ void generate_function_call(Node *node, int *labelCount) {
 
   //アライメント
   //スタックの使用予測に基づいてアライメント
-  const int stackUnitLength = 8;
-  const int alignmentLength = stackUnitLength * 2;
   printf("  push 0\n");
   printf("  mov rax, rsp\n");
-  if (vector_length(arguments) > 6) {
-    printf("  sub rax, %d\n", (vector_length(arguments) - 6) * stackUnitLength);
+
+  //引数うちスタックに積まれる部分のサイズ計算
+  int stackArgumentSize = 0;
+  {
+    int argumentStackLengthSum = 0;
+
+    //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
+    Type *returnType = node->type;
+    if (type_to_stack_size(returnType) > 2 * stackUnitSize)
+      argumentStackLengthSum++;
+
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      int stackLength = type_to_stack_size(node->type) / stackUnitSize;
+      argumentStackLengthSum += stackLength;
+      if (stackLength > 2 || argumentStackLengthSum > 6)
+        stackArgumentSize += stackLength * stackUnitSize;
+    }
   }
-  printf("  and rax, %d\n", alignmentLength - 1);
+
+  if (stackArgumentSize) {
+    printf("  sub rax, %d\n", stackArgumentSize);
+  }
+  printf("  and rax, %d\n", alignmentSize - 1);
   printf("  jz .Lcall%d\n", currentLabel);
   printf("  push 1\n");
   printf(".Lcall%d:\n", currentLabel);
 
   //引数の評価
-  for (int i = vector_length(arguments) - 1; i >= 0; i--) {
-    INSERT_COMMENT("function %s argument %d start", functionName, i);
-    Node *argument = vector_get(arguments, i);
-    generate_expression(argument, labelCount);
-    INSERT_COMMENT("function %s argument %d end", functionName, i);
+  {
+    INSERT_COMMENT("function %s argument evaluation start", functionName);
+    int argumentStackLengthSum = 0;
+    for (int i = vector_length(arguments) - 1; i >= 0; i--) {
+      INSERT_COMMENT("function %s argument %d start", functionName, i);
+      Node *argument = vector_get(arguments, i);
+      generate_expression(argument, labelCount);
+
+      // 8byte以上の値はポインタとして格納されているので
+      // 値に変換してスタックに積み直す
+      int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
+      if (stackLength > 1) {
+        printf("  pop %s\n", "rax");
+        for (int j = stackLength - 1; j >= 0; j--) {
+          printf("  push [%s+%d]\n", "rax", j * 8);
+        }
+      }
+
+      INSERT_COMMENT("function %s argument %d end", functionName, i);
+    }
+    INSERT_COMMENT("function %s argument evaluation end", functionName);
+  }
+
+  //呼び出し先アドレスの計算
+  {
+    // if (string_compare(&node->functionCall->name, char_to_string("calloc"))
+    // ||
+    //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
+    //    string_compare(&node->functionCall->name, char_to_string("memcmp")) ||
+    //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
+    //  printf("  call %s@PLT\n", functionName);
+    // else
+
+    generate_expression(node->lhs, labelCount);
+    printf("  pop r10\n");
   }
 
   //引数の評価中に関数の呼び出しが発生してレジスタが破壊される可能性があるので
   //引数を全て評価してからレジスタに割り当て
-  for (int i = 0; i < 6 && i < vector_length(arguments); i++) {
-    printf("  pop %s\n", argumentRegister[i]);
+  // r10レジスタを呼び出し先アドレスの保存に使用しているため、変更してはいけない
+  {
+    INSERT_COMMENT("function %s argument register allocation start",
+                   functionName);
+    int registerIndex = 0;
+
+    //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
+    Type *returnType = node->type;
+    if (type_to_stack_size(returnType) > 2 * stackUnitSize) {
+      INSERT_COMMENT("function %s implicit argument assign start",
+                     functionName);
+      printf("  lea %s, [rbp-%d]\n", "rax",
+             node->functionCall->returnStack->offset);
+      printf("  mov %s, %s\n", argumentRegister64[registerIndex++], "rax");
+      INSERT_COMMENT("function %s implicit argument assign end", functionName);
+    } else {
+      INSERT_COMMENT("function %s no implicit argument insertion",
+                     functionName);
+    }
+
+    int currentStackIndex = 0;
+    for (int i = 0; i < vector_length(arguments); i++) {
+      Node *node = vector_get(arguments, i);
+      const int stackLength = type_to_stack_size(node->type) / stackUnitSize;
+      if (registerIndex + stackLength > 6)
+        break;
+
+      if (stackLength > 2) {
+        currentStackIndex += stackLength;
+        continue;
+      }
+
+      for (int j = 0; j < stackLength; j++)
+        printf("  mov %s, [rsp+%d]\n", argumentRegister64[registerIndex++],
+               (currentStackIndex + j) * 8);
+
+      //もしレジスタに移した値よりも前に引数があれば詰める
+      for (int j = currentStackIndex - 1; j >= 0; j--) {
+        printf("  mov r11, [rsp+%d]\n", j * stackUnitSize);
+        printf("  mov [rsp+%d], r11\n", (j + stackLength) * stackUnitSize);
+      }
+
+      printf("  add rsp, %d\n", stackLength * stackUnitSize);
+    }
+
+    INSERT_COMMENT("function %s argument register allocation end",
+                   functionName);
   }
 
   printf("  mov rax, 0\n");
-  // if (string_compare(&node->functionCall->name, char_to_string("calloc")) ||
-  //    string_compare(&node->functionCall->name, char_to_string("strlen")) ||
-  //    string_compare(&node->functionCall->name, char_to_string("memcmp")) ||
-  //    string_compare(&node->functionCall->name, char_to_string("memcpy")))
-  //  printf("  call %s@PLT\n", functionName);
-  // else
-  printf("  call %s\n", functionName);
+  printf("  call r10\n");
 
   //スタックに積んだ引数を処理
-  if (vector_length(arguments) > 6) {
-    printf("  add rsp, %d\n", (vector_length(arguments) - 6) * stackUnitLength);
+  if (stackArgumentSize > 0) {
+    printf("  add rsp, %d\n", stackArgumentSize);
   }
 
   //アライメントの判定とスタックの復元
   printf("  pop r11\n");
   printf("  cmp r11, 0\n");
   printf("  je .Lend%d\n", currentLabel);
-  printf("  add rsp, %d\n", stackUnitLength);
+  printf("  add rsp, %d\n", stackUnitSize);
   printf(".Lend%d:\n", currentLabel);
+
+  {
+    // stack_length > 1 && stack_length <= 2 <=> stack_length == 2のとき
+    // raxとrdxに戻り値が値として格納されているのでポインタに変換
+    // stack_length <= 1のとき
+    // 値がraxにそのまま積まれているので何もしなくてよい
+    // stack_length > 2のとき
+    // 値へのポインタが返ってくるので何もしなくてよい
+    Type *returnType = node->type;
+    Variable *returnStack = node->functionCall->returnStack;
+    if (type_to_stack_size(returnType) / stackUnitSize == 2) {
+      printf("  mov [rbp-%d], rax\n", returnStack->offset);
+      printf("  mov [rbp-%d], rdx\n", returnStack->offset - stackUnitSize);
+      printf("  lea rax, [rbp-%d]\n", returnStack->offset);
+    }
+  }
 
   printf("  push rax\n");
 
@@ -181,52 +323,41 @@ void generate_cast(Node *node) {
   INSERT_COMMENT("cast end");
 }
 
-void generate_assign_i64() {
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  printf("  mov [rax], rdi\n");
-  printf("  push rdi\n");
+void generate_assign_i64(const char *destination, const char *source) {
+  printf("  mov [%s], %s\n", destination, source);
 }
 
-void generate_assign_i32() {
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  printf("  mov DWORD PTR [rax], edi\n");
-  printf("  push rdi\n");
+void generate_assign_i32(const char *destination, const char *source) {
+  printf("  mov DWORD PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_i8() {
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
-  printf("  mov BYTE PTR [rax], dil\n");
-  printf("  push rdi\n");
+void generate_assign_i8(const char *destination, const char *source) {
+  printf("  mov BYTE PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_large(int size) {
-  printf("  pop rdi\n");
-  printf("  pop rax\n");
+void generate_assign_large(int size, const char *destination,
+                           const char *source) {
   int current = 0;
   for (int i = 0; i < size / 8; i++) {
-    printf("  mov r11, [rdi+%d]\n", current);
-    printf("  mov [rax+%d], r11\n", current);
+    printf("  mov r11, [%s+%d]\n", source, current);
+    printf("  mov [%s+%d], r11\n", destination, current);
     current += 8;
   }
   if (size % 8 >= 4) {
-    printf("  mov r11d, DWORD PTR [rdi+%d]\n", current);
-    printf("  mov DWORD PTR [rax+%d], r11d\n", current);
+    printf("  mov r11d, DWORD PTR [%s+%d]\n", source, current);
+    printf("  mov DWORD PTR [%s+%d], r11d\n", destination, current);
     current += 4;
   }
   if (size % 4 >= 2) {
-    printf("  mov r11w, WORD PTR [rdi+%d]\n", current);
-    printf("  mov WORD PTR [rax+%d], r11w\n", current);
+    printf("  mov r11w, WORD PTR [%s+%d]\n", source, current);
+    printf("  mov WORD PTR [%s+%d], r11w\n", destination, current);
     current += 2;
   }
   if (size % 2 >= 1) {
-    printf("  mov r11b, BYTE PTR [rdi+%d]\n", current);
-    printf("  mov BYTE PTR [rax+%d], r11b\n", current);
+    printf("  mov r11b, BYTE PTR [%s+%d]\n", source, current);
+    printf("  mov BYTE PTR [%s+%d], r11b\n", destination, current);
     current += 1;
   }
-  printf("  push rdi\n");
 }
 
 void generate_rhs_extension(Node *node) {
@@ -256,7 +387,8 @@ void generate_rhs_extension(Node *node) {
     break;
   }
   case TYPE_ARRAY:
-    break; //配列はポインタのままにする
+  case TYPE_FUNC:
+    break; //配列と関数はポインタのままにする
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
   }
@@ -281,8 +413,9 @@ void generate_value_extension(Node *node) {
     break;
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
+  case TYPE_STRUCT: //構造体はそのままでよい
+  case TYPE_FUNC:   //関数はそのままでよい
     break;
-  case TYPE_STRUCT:
   case TYPE_VOID:
     ERROR_AT(node->source, "許可されていない型の値です");
   }
@@ -338,8 +471,7 @@ void generate_expression(Node *node, int *labelCount) {
     generate_rhs_extension(node);
     return;
   case NODE_DOT:
-    generate_dot_operator(node, labelCount);
-    generate_rhs_extension(node);
+    generate_rhs_dot_operator(node, labelCount);
     return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
@@ -359,16 +491,19 @@ void generate_expression(Node *node, int *labelCount) {
     // if (lhsSize != rhsSize)
     //  ERROR("右辺を左辺と同じ型にキャストできない不正な代入です");
 
+    printf("  pop rdi\n");
+    printf("  pop rax\n");
     if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8();
+      generate_assign_i8("rax", "dil");
     else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i32();
+      generate_assign_i32("rax", "edi");
     else if (lhsSize == 8 && rhsSize == 8)
-      generate_assign_i64();
+      generate_assign_i64("rax", "rdi");
     else if (lhsSize == rhsSize)
-      generate_assign_large(lhsSize);
+      generate_assign_large(lhsSize, "rax", "rdi");
     else
       ERROR_AT(node->source, "予期しない代入");
+    printf("  push rdi\n");
 
     INSERT_COMMENT("assign end");
     return;
@@ -628,7 +763,8 @@ void generate_global_variable(const Variable *variable) {
 }
 
 void generate_statement(StatementUnion *statementUnion, int *labelCount,
-                        int latestBreakTarget, int latestSwitch) {
+                        int returnTarget, int latestBreakTarget,
+                        int latestSwitch) {
   // match if
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
@@ -647,13 +783,13 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         printf("  je .Lendif%d\n", ifLabel);
       }
 
-      generate_statement(ifPattern->thenStatement, labelCount,
+      generate_statement(ifPattern->thenStatement, labelCount, returnTarget,
                          latestBreakTarget, latestSwitch);
 
       if (ifPattern->elseStatement) {
         printf("  jmp .Lendif%d\n", ifLabel);
         printf(".Lelse%d:\n", ifLabel);
-        generate_statement(ifPattern->elseStatement, labelCount,
+        generate_statement(ifPattern->elseStatement, labelCount, returnTarget,
                            latestBreakTarget, latestSwitch);
       }
 
@@ -698,8 +834,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       }
       printf("  jmp .Lend%d\n", switchLabel);
 
-      generate_statement(switchPattern->statement, labelCount, switchLabel,
-                         switchLabel);
+      generate_statement(switchPattern->statement, labelCount, returnTarget,
+                         switchLabel, switchLabel);
 
       printf(".Lend%d:\n", switchLabel);
       return;
@@ -731,7 +867,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       else // defaultラベルの場合
         printf(".Ldefault%d:\n", latestSwitch);
 
-      generate_statement(labeledPattern->statement, labelCount,
+      generate_statement(labeledPattern->statement, labelCount, returnTarget,
                          latestBreakTarget, latestSwitch);
       return;
     }
@@ -752,8 +888,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       printf("  cmp rax, 0\n");
       printf("  je .Lend%d\n", loopLabel);
 
-      generate_statement(whilePattern->statement, labelCount, loopLabel,
-                         latestSwitch);
+      generate_statement(whilePattern->statement, labelCount, returnTarget,
+                         loopLabel, latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
       printf("  jmp .Lbeginloop%d\n", loopLabel);
@@ -773,8 +909,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 
       printf(".Lbeginloop%d:\n", loopLabel);
 
-      generate_statement(doWhilePattern->statement, labelCount, loopLabel,
-                         latestSwitch);
+      generate_statement(doWhilePattern->statement, labelCount, returnTarget,
+                         loopLabel, latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
       generate_expression(doWhilePattern->condition, labelCount);
@@ -812,8 +948,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
         printf("  je .Lend%d\n", loopLabel);
       }
 
-      generate_statement(forPattern->statement, labelCount, loopLabel,
-                         latestSwitch);
+      generate_statement(forPattern->statement, labelCount, returnTarget,
+                         loopLabel, latestSwitch);
 
       printf(".Lcontinueloop%d:\n", loopLabel);
       if (forPattern->afterthought) {
@@ -842,8 +978,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
             printf("  pop rax\n");
           }
         } else {
-          generate_statement(item->statement, labelCount, latestBreakTarget,
-                             latestSwitch);
+          generate_statement(item->statement, labelCount, returnTarget,
+                             latestBreakTarget, latestSwitch);
         }
       }
       return;
@@ -860,9 +996,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
       else
         printf("  push 0\n"); //戻り値がvoid型のときはダミーの0をプッシュ
       printf("  pop rax\n");
-      printf("  mov rsp, rbp\n");
-      printf("  pop rbp\n");
-      printf("  ret\n");
+
+      printf("  jmp .Lreturn%d\n", returnTarget);
       return;
     }
   }
@@ -916,6 +1051,8 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 void generate_function_definition(const FunctionDefinition *functionDefinition,
                                   int *labelCount) {
   const char *functionName = string_to_char(functionDefinition->name);
+  const int returnTarget = *labelCount;
+  *labelCount += 1;
 
   //ラベルを生成
   printf("  .text\n");
@@ -925,44 +1062,95 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
 
   //プロローグ
   //定義された変数の分の領域を確保
-  INSERT_COMMENT("function prologue start : %s", functionName);
-  printf("  push rbp\n");
-  printf("  mov rbp, rsp\n");
-  printf("  sub rsp, %zu\n", functionDefinition->stackSize);
-  INSERT_COMMENT("function prologue end : %s", functionName);
+  {
+    INSERT_COMMENT("function prologue start : %s", functionName);
+    printf("  push rbp\n");
+    printf("  mov rbp, rsp\n");
+    {
+      //構造体の値渡しの戻り値のための暗黙の第一引数が存在するなら
+      //それを保管するためのスタック領域を確保
+      size_t stackSize = functionDefinition->stackSize;
+      if (type_to_stack_size(functionDefinition->returnType) > 2)
+        stackSize += 8;
+      printf("  sub rsp, %zu\n", stackSize);
+    }
+    INSERT_COMMENT("function prologue end : %s", functionName);
+  }
 
   //引数の代入処理
-  INSERT_COMMENT("function arguments assign start : %s", functionName);
-  int argumentStackOffset = 0;
-  for (int i = vector_length(functionDefinition->arguments) - 1; i >= 0; i--) {
-    Node *node = vector_get(functionDefinition->arguments, i);
-    generate_variable(node);
-    printf("  pop rax\n");
+  {
+    INSERT_COMMENT("function arguments assign start : %s", functionName);
 
-    if (i < 6) {
-      printf("  mov [rax], %s\n", argumentRegister[i]);
-    } else {
-      // rbp+16 is memory argument eightbyte 0
-      // rbp+16+8n is memory argument eightbyte n
-      printf("  mov r11, [rbp+%d]\n", 16 + argumentStackOffset);
-      argumentStackOffset += type_to_stack_size(node->type);
-      printf("  mov [rax], r11\n");
+    int registerIndex = 0;
+
+    //構造体の値渡しの戻り値のための暗黙の第一引数の処理
+    if (type_to_stack_size(functionDefinition->returnType) > 2 * 8) {
+      printf("  mov [rbp-%zu], %s\n", functionDefinition->stackSize + 8,
+             argumentRegister64[registerIndex++]);
     }
+
+    int argumentStackOffset = 0;
+    for (int i = 0; i < vector_length(functionDefinition->arguments); i++) {
+      Node *node = vector_get(functionDefinition->arguments, i);
+      generate_variable(node);
+      printf("  pop rax\n");
+
+      //このコンパイラにはINTEGERクラスしか存在しないのでこれでよい
+      // INTEGERクラスとMEMORYクラスの境界は16byte(2 eight bytes)
+      const int stackLength = type_to_stack_size(node->type) / 8;
+      if (stackLength <= 2 && registerIndex + stackLength <= 6) {
+        for (int j = 0; j < stackLength; j++) {
+          printf("  mov [%s+%d], %s\n", "rax", j * 8,
+                 argumentRegister64[registerIndex++]);
+        }
+      } else {
+        // rbp+16 is memory argument eightbyte 0
+        // rbp+16+8n is memory argument eightbyte n
+        for (int j = 0; j < stackLength; j++) {
+          printf("  mov %s, [rbp+%d]\n", "r11",
+                 16 + argumentStackOffset + j * 8);
+          printf("  mov [%s+%d], %s\n", "rax", j * 8, "r11");
+        }
+        argumentStackOffset += type_to_stack_size(node->type);
+      }
+    }
+    INSERT_COMMENT("function arguments assign end : %s", functionName);
   }
-  INSERT_COMMENT("function arguments assign end : %s", functionName);
 
   INSERT_COMMENT("function body start : %s", functionName);
   generate_statement(new_statement_union_compound(functionDefinition->body),
-                     labelCount, -1, -1);
+                     labelCount, returnTarget, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
-  INSERT_COMMENT("function epilogue start : %s", functionName);
-  printf("  mov rsp, rbp\n");
-  printf("  pop rbp\n");
-  printf("  ret\n");
-  INSERT_COMMENT("function epilogue end : %s", functionName);
+  {
+    INSERT_COMMENT("function epilogue start : %s", functionName);
+    printf(".Lreturn%d:\n", returnTarget);
+    {
+      Type *returnType = functionDefinition->returnType;
+      int stackLength = type_to_stack_size(returnType) / 8;
+      // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+      // ポインタになっている戻り値から値を取り出し
+      // 下位64bitをrdx(2nd return register)に代入
+      //
+      // stackLength > 2のとき
+      // 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
+      if (stackLength == 2) {
+        printf("  mov rdx, [rax+8]\n");
+        printf("  mov rax, [rax]\n");
+      } else if (stackLength > 2) {
+        printf("  mov rdx, [rbp-%zu]\n", functionDefinition->stackSize + 8);
+        generate_assign_large(type_to_size(returnType), "rdx", "rax");
+        printf("  mov rax, [rbp-%zu]\n", functionDefinition->stackSize + 8);
+      }
+    }
+
+    printf("  mov rsp, rbp\n");
+    printf("  pop rbp\n");
+    printf("  ret\n");
+    INSERT_COMMENT("function epilogue end : %s", functionName);
+  }
 }
 
 //抽象構文木をもとにコード生成を行う
@@ -982,8 +1170,8 @@ void generate_code(Program *program) {
 
   int labelCount = 0;
   for (int i = 0; i < vector_length(program->functionDefinitions); i++) {
-    const FunctionDefinition *function =
-        vector_get(program->functionDefinitions, i);
+    FunctionDefinition *function = vector_get(program->functionDefinitions, i);
+    allocate_return_stack_to_function(function);
     generate_function_definition(function, &labelCount);
   }
 }

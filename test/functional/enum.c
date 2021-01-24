@@ -6,20 +6,20 @@ void test1() {
   TestKind kind = TEST_A;
   switch (kind) {
   case TEST_A:
-    assert(0, 0, "expected pass");
+    test_assert(0, 0, "expected pass");
     break;
   case TEST_B:
-    assert(0, 1, "unexpected pass");
+    test_assert(0, 1, "unexpected pass");
     break;
   }
 
   kind = TEST_B;
   switch (kind) {
   case TEST_A:
-    assert(0, 1, "unexpected pass");
+    test_assert(0, 1, "unexpected pass");
     break;
   case TEST_B:
-    assert(0, 0, "expected pass");
+    test_assert(0, 0, "expected pass");
     break;
   }
 
@@ -32,7 +32,7 @@ int test2sub() {
   return 174;
 }
 void test2() {
-  assert(174, test2sub(), "emum A b;");
+  test_assert(174, test2sub(), "emum A b;");
   printf("OK\n");
 }
 

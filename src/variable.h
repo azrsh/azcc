@@ -5,6 +5,7 @@
 #include "type.h"
 
 typedef struct Node Node;
+typedef struct FunctionDefinition FunctionDefinition;
 
 typedef enum {
   VARIABLE_LOCAL,      // ローカル変数
@@ -20,6 +21,7 @@ struct Variable {
   VariableKind kind;  //変数の種類
   int offset; // RBPからのオフセット、ローカル変数でのみ使用
   Node *initialization; // 初期化式、グローバル変数でのみ使用
+  FunctionDefinition *function; //関数型のときのみ使用する
 };
 
 #endif

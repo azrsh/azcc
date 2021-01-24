@@ -36,7 +36,7 @@ typedef enum {
   NODE_STRING, // 文字列
   NODE_ARRAY,  // 配列
   NODE_CAST,   // キャスト
-  NODE_DOT     // ドット演算子
+  NODE_DOT,    // ドット演算子
 } NodeKind;
 
 typedef struct Node Node;
