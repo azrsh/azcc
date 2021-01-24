@@ -22,6 +22,7 @@ void generate_variable(Node *node);
 void generate_function_call(Node *node, int *labelCount);
 void generate_assign_lhs(Node *node, int *labelCount);
 void generate_value_extension(Node *node);
+void generate_rhs_extension(Node *node);
 
 void generate_variable(Node *node) {
   if (node->kind != NODE_VAR)
@@ -45,19 +46,51 @@ void generate_variable(Node *node) {
   }
 }
 
-void generate_dot_operator(Node *node, int *labelCount) {
+void generate_lhs_dot_operator(Node *node, int *labelCount) {
   if (node->kind != NODE_DOT)
     ERROR_AT(node->source, "ドット演算子ではありません");
 
-  INSERT_COMMENT("dot operator start");
+  INSERT_COMMENT("dot lhs operator start");
   if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
       node->rhs->variable->kind != VARIABLE_MEMBER*/)
     ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+
   generate_assign_lhs(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
   printf("  push rax\n");
-  INSERT_COMMENT("dot operator end");
+  INSERT_COMMENT("dot lhs operator end");
+}
+
+void generate_rhs_dot_operator(Node *node, int *labelCount) {
+  if (node->kind != NODE_DOT)
+    ERROR_AT(node->source, "ドット演算子ではありません");
+
+  INSERT_COMMENT("dot rhs operator start");
+  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
+      node->rhs->variable->kind != VARIABLE_MEMBER*/)
+    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+
+  generate_expression(node->lhs, labelCount);
+
+  const int stackUnitSize = 8;
+  const int bitOfByte = 8;
+  if (type_to_size(node->lhs->type) > stackUnitSize) {
+    printf("  pop rax\n");
+    printf("  add rax, %d\n", node->rhs->variable->offset);
+    printf("  push rax\n");
+    generate_rhs_extension(node);
+  } else {
+    const int memberSize = type_to_size(node->rhs->variable->type);
+    const int memberOffset = node->rhs->variable->offset;
+    printf("  pop rax\n");
+    printf("  shl rax, %d\n",
+           (stackUnitSize - memberOffset - memberSize) * bitOfByte);
+    printf("  shr rax, %d\n", (stackUnitSize - memberSize) * bitOfByte);
+    printf("  push rax\n");
+  }
+
+  INSERT_COMMENT("dot rhs operator end");
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -74,7 +107,7 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   }
 
   if (node->kind == NODE_DOT) {
-    generate_dot_operator(node, labelCount);
+    generate_lhs_dot_operator(node, labelCount);
     return;
   }
 
@@ -438,8 +471,7 @@ void generate_expression(Node *node, int *labelCount) {
     generate_rhs_extension(node);
     return;
   case NODE_DOT:
-    generate_dot_operator(node, labelCount);
-    generate_rhs_extension(node);
+    generate_rhs_dot_operator(node, labelCount);
     return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
