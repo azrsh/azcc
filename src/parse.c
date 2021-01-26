@@ -1,3 +1,8 @@
+/*
+ * 翻訳単位をパースする。
+ * parseのみを公開する。
+ */
+
 #include "parse.h"
 #include "analyze.h"
 #include "container.h"
@@ -8,10 +13,8 @@
 #include "parseutil.h"
 #include "statement.h"
 #include "statementparse.h"
-#include "tokenize.h"
 #include "type.h"
 #include "typecheck.h"
-#include "typecontainer.h"
 #include "util.h"
 #include "variable.h"
 #include "variablecontainer.h"
@@ -19,25 +22,17 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// EBNFパーサ
+// EBNF
+// program = (function_definition | declaration)*
+// function_definition = declaration_specifier declarator compound_statement
+
 Program *program();
 Variable *function_definition(Declaration *base, ParseContext *context);
 
-// program = (function_definition | global_variable_definition |
-// function_declaration | type_specifier ";")*
-// function_declaration = type_specifier identity "("
-// function_declaration_argument? ")" ";"
-// function_declaration_argument = type_specifier identifier? (","
-// type_specifier identifier?)*
-// function_definition = type_specifier identity "("
-// function_definition_argument? ")" compound_statement
-// function_definition_argument = type_specifier identity ("," type_specifier
-// identity)*
-// global_variable_definition = variable_definition ("=" initializer)? ";"
-// struct_definition = "struct" identifier "{" (type_specifier identifier
-// ";")*
-// "}" ";"
-// type_definition = "typedef" type_specifier identifier
+Program *parse(Token *head) {
+  token = head;
+  return program();
+}
 
 //プログラムをパースする
 Program *program() {
@@ -232,9 +227,4 @@ Variable *function_definition(Declaration *base, ParseContext *context) {
   definition->body = body;
   definition->stackSize = localContext->function->currentStackOffset;
   return functionVariable;
-}
-
-Program *parse(Token *head) {
-  token = head;
-  return program();
 }

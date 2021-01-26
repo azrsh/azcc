@@ -1,3 +1,8 @@
+/*
+ * 文をパースする。
+ * statementのみを公開する。
+ */
+
 #include "analyze.h"
 #include "container.h"
 #include "declaration.h"
@@ -14,22 +19,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-// EBNFパーサ
-StatementUnion *statement(ParseContext *context);
-
-NullStatement *null_statement(ParseContext *context);
-ExpressionStatement *expression_statement(ParseContext *context);
-ReturnStatement *return_statement(ParseContext *context);
-IfStatement *if_statement(ParseContext *context);
-SwitchStatement *switch_statement(ParseContext *context);
-LabeledStatement *labeled_statement(ParseContext *context);
-WhileStatement *while_statement(ParseContext *context);
-DoWhileStatement *do_while_statement(ParseContext *context);
-ForStatement *for_statement(ParseContext *context);
-CompoundStatement *compound_statement(ParseContext *context);
-BreakStatement *break_statement(ParseContext *context);
-ContinueStatement *continue_statement(ParseContext *context);
-
+// EBNF
 // statement = null_statement | expression_statement | return_statement |
 // if_statement | switch_statement | labeled_statement | while_statementa |
 // do_while_statement | break_statement | continue_statement
@@ -46,6 +36,21 @@ ContinueStatement *continue_statement(ParseContext *context);
 // compound_statement = "{" statement* "}"
 // break_statement = "break" ";"
 // continue_statement = "continue" ";"
+
+StatementUnion *statement(ParseContext *context);
+
+NullStatement *null_statement(ParseContext *context);
+ExpressionStatement *expression_statement(ParseContext *context);
+ReturnStatement *return_statement(ParseContext *context);
+IfStatement *if_statement(ParseContext *context);
+SwitchStatement *switch_statement(ParseContext *context);
+LabeledStatement *labeled_statement(ParseContext *context);
+WhileStatement *while_statement(ParseContext *context);
+DoWhileStatement *do_while_statement(ParseContext *context);
+ForStatement *for_statement(ParseContext *context);
+CompoundStatement *compound_statement(ParseContext *context);
+BreakStatement *break_statement(ParseContext *context);
+ContinueStatement *continue_statement(ParseContext *context);
 
 //文をパースする
 StatementUnion *statement(ParseContext *context) {

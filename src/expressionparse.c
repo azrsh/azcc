@@ -1,3 +1,8 @@
+/*
+ * 式をパースする。
+ * expression、assign、constant_expressionを公開する。
+ */
+
 #include "container.h"
 #include "declarationparse.h"
 #include "node.h"
