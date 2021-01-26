@@ -1052,15 +1052,15 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_function_definition(const FunctionDefinition *definition,
-                                  int *labelCount) {
+void generate_function_definition(Variable *variable, int *labelCount) {
+  const FunctionDefinition *definition = variable->function;
   const char *functionName = string_to_char(definition->name);
   const int returnTarget = *labelCount;
   *labelCount += 1;
 
   //ラベルを生成
   printf("  .text\n");
-  if (definition->storage != STORAGE_STATIC)
+  if (variable->storage != STORAGE_STATIC)
     printf("  .global %s\n", functionName);
   // macは先頭に_を挿入するらしい
   printf("%s:\n", functionName);
@@ -1175,8 +1175,8 @@ void generate_code(Program *program) {
 
   int labelCount = 0;
   for (int i = 0; i < vector_length(program->functionDefinitions); i++) {
-    FunctionDefinition *function = vector_get(program->functionDefinitions, i);
-    allocate_return_stack_to_function(function);
+    Variable *function = vector_get(program->functionDefinitions, i);
+    allocate_return_stack_to_function(function->function);
     generate_function_definition(function, &labelCount);
   }
 }

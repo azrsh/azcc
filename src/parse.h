@@ -8,7 +8,6 @@
 
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
-  StorageKind storage;
   FunctionKind function;
   const String *name;      //常に非NULL
   Type *returnType;        //常に非NULL
@@ -19,7 +18,7 @@ struct FunctionDefinition {
 
 typedef struct Program Program;
 struct Program {
-  Vector *functionDefinitions; // FunctionDefinition vector
+  Vector *functionDefinitions; // Variable vector
   Vector *globalVariables;     // Variable vector
   Vector *stringLiterals;      // char* vector
 };

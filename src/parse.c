@@ -236,8 +236,7 @@ StatementUnion *analyze_blockItem_declaration(Declaration *declaration,
 
 // EBNFパーサ
 Program *program();
-FunctionDefinition *function_definition(Declaration *base,
-                                        ParseContext *context);
+Variable *function_definition(Declaration *base, ParseContext *context);
 
 StatementUnion *statement(ParseContext *context);
 NullStatement *null_statement(ParseContext *context);
@@ -348,11 +347,9 @@ Program *program() {
     {
       Token *head = token;
 
-      FunctionDefinition *functionDefinition =
-          function_definition(base, context);
+      Variable *functionDefinition = function_definition(base, context);
       if (functionDefinition) {
-        if (functionDefinition->body)
-          vector_push_back(result->functionDefinitions, functionDefinition);
+        vector_push_back(result->functionDefinitions, functionDefinition);
         continue;
       }
 
@@ -380,15 +377,12 @@ Program *program() {
 ListNode *switchStatementNest; //引数に押し込みたい
 
 //関数の定義をパースする
-FunctionDefinition *function_definition(Declaration *base,
-                                        ParseContext *context) {
-  Token *tokenHead = token;
-
+Variable *function_definition(Declaration *base, ParseContext *context) {
   if (base->storage != STORAGE_NONE && base->storage != STORAGE_STATIC)
     return NULL;
 
-  Variable *functionDeclaration = declarator(base->type, context);
-  if (!functionDeclaration || functionDeclaration->type->kind != TYPE_FUNC)
+  Variable *functionVariable = declarator(base->type, context);
+  if (!functionVariable || functionVariable->type->kind != TYPE_FUNC)
     return NULL;
 
   //引数のパース
@@ -397,13 +391,13 @@ FunctionDefinition *function_definition(Declaration *base,
   localContext->function = calloc(1, sizeof(FunctionContext));
 
   //関数定義では引数の指定がないとき引数なしの関数に読み替える
-  if (!functionDeclaration->type->arguments)
-    functionDeclaration->type->arguments = new_vector(0);
+  if (!functionVariable->type->arguments)
+    functionVariable->type->arguments = new_vector(0);
 
   // Node Vector
   Vector *argumentNodes = new_vector(16);
   {
-    Vector *argumentDeclarations = functionDeclaration->type->arguments;
+    Vector *argumentDeclarations = functionVariable->type->arguments;
     const int parameterCount = vector_length(argumentDeclarations);
     for (int i = 0; i < parameterCount; i++) {
       Declaration *declaration = vector_get(argumentDeclarations, i);
@@ -415,7 +409,7 @@ FunctionDefinition *function_definition(Declaration *base,
       // func(void)への対応とvoid型の値の排除
       if (type->kind == TYPE_VOID) {
         if (i == 0 && parameterCount == 1 && !variable->name) {
-          functionDeclaration->type->arguments = new_vector(0);
+          functionVariable->type->arguments = new_vector(0);
           argumentNodes = new_vector(0);
           break;
         } else {
@@ -451,15 +445,15 @@ FunctionDefinition *function_definition(Declaration *base,
   FunctionDefinition *definition = NULL;
   {
     Variable *variable = variable_container_get(
-        localContext->scope->variableContainer, functionDeclaration->name);
+        localContext->scope->variableContainer, functionVariable->name);
     if (variable && variable->type->kind != TYPE_FUNC)
-      ERROR_AT(functionDeclaration->name->head,
+      ERROR_AT(functionVariable->name->head,
                "同名のシンボルが既に定義されています");
 
     if (variable) {
-      if (!type_compare_deep(functionDeclaration->type->returnType,
+      if (!type_compare_deep(functionVariable->type->returnType,
                              variable->type->returnType))
-        ERROR_AT(functionDeclaration->name->head,
+        ERROR_AT(functionVariable->name->head,
                  "関数の定義と前方宣言の戻り値が一致しません");
 
       //宣言に引数がなければ引数チェックをスキップ
@@ -467,24 +461,23 @@ FunctionDefinition *function_definition(Declaration *base,
         if (!type_vector_compare(parameter_declaration_vector_to_type_vector(
                                      variable->type->arguments),
                                  node_vector_to_type_vector(argumentNodes)))
-          ERROR_AT(functionDeclaration->name->head,
+          ERROR_AT(functionVariable->name->head,
                    "関数の定義と前方宣言の引数が一致しません");
       }
-      definition = variable->function =
-          new_function_declaration(functionDeclaration->type->returnType,
-                                   functionDeclaration->name, argumentNodes);
+      definition = functionVariable->function =
+          new_function_declaration(functionVariable->type->returnType,
+                                   functionVariable->name, argumentNodes);
       definition->arguments = argumentNodes; //一致が確認できたので上書き
     } else {
       definition =
-          new_function_declaration(functionDeclaration->type->returnType,
-                                   functionDeclaration->name, argumentNodes);
-      functionDeclaration =
-          variable_to_function(functionDeclaration, definition);
+          new_function_declaration(functionVariable->type->returnType,
+                                   functionVariable->name, argumentNodes);
+      functionVariable = variable_to_function(functionVariable, definition);
       variable_container_push(context->scope->variableContainer,
-                              functionDeclaration);
+                              functionVariable);
     }
 
-    definition->storage = base->storage;
+    functionVariable->storage = base->storage;
     definition->function = base->function;
   }
   //--------------------------------
@@ -523,14 +516,14 @@ FunctionDefinition *function_definition(Declaration *base,
   {
     //型検査
     TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
-    context->returnType = functionDeclaration->type->returnType;
+    context->returnType = functionVariable->type->returnType;
     context->variableContainer = localContext->scope->variableContainer;
     tag_type_to_statement(new_statement_union_compound(body), context);
   }
 
   definition->body = body;
   definition->stackSize = localContext->function->currentStackOffset;
-  return definition;
+  return functionVariable;
 }
 
 //文をパースする
