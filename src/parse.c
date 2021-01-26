@@ -483,6 +483,9 @@ FunctionDefinition *function_definition(Declaration *base,
       variable_container_push(context->scope->variableContainer,
                               functionDeclaration);
     }
+
+    definition->storage = base->storage;
+    definition->function = base->function;
   }
   //--------------------------------
 

@@ -8,6 +8,8 @@
 
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
+  StorageKind storage;
+  FunctionKind function;
   const String *name;      //常に非NULL
   Type *returnType;        //常に非NULL
   Vector *arguments;       // Variavble Nodes、常に非NULL

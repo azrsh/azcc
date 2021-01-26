@@ -138,7 +138,6 @@ Declaration *declaration_specifier(ParseContext *context) {
       continue;
     } else if (consume("static")) {
       result->storage = STORAGE_STATIC;
-      ERROR_AT(token->string->head, "staticはサポートされていません");
       continue;
     } else if (consume("_Thread_local")) {
       result->storage = STORAGE_THREAD_LOCAL;

@@ -1,4 +1,5 @@
 #include "container.h"
+#include "declaration.h"
 #include "node.h"
 #include "parse.h"
 #include "returnstack.h"
@@ -1051,15 +1052,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_function_definition(const FunctionDefinition *functionDefinition,
+void generate_function_definition(const FunctionDefinition *definition,
                                   int *labelCount) {
-  const char *functionName = string_to_char(functionDefinition->name);
+  const char *functionName = string_to_char(definition->name);
   const int returnTarget = *labelCount;
   *labelCount += 1;
 
   //ラベルを生成
   printf("  .text\n");
-  printf("  .global %s\n", functionName);
+  if (definition->storage != STORAGE_STATIC)
+    printf("  .global %s\n", functionName);
   // macは先頭に_を挿入するらしい
   printf("%s:\n", functionName);
 
@@ -1072,8 +1074,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     {
       //構造体の値渡しの戻り値のための暗黙の第一引数が存在するなら
       //それを保管するためのスタック領域を確保
-      size_t stackSize = functionDefinition->stackSize;
-      if (type_to_stack_size(functionDefinition->returnType) > 2)
+      size_t stackSize = definition->stackSize;
+      if (type_to_stack_size(definition->returnType) > 2)
         stackSize += 8;
       printf("  sub rsp, %zu\n", stackSize);
     }
@@ -1087,14 +1089,14 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     int registerIndex = 0;
 
     //構造体の値渡しの戻り値のための暗黙の第一引数の処理
-    if (type_to_stack_size(functionDefinition->returnType) > 2 * 8) {
-      printf("  mov [rbp-%zu], %s\n", functionDefinition->stackSize + 8,
+    if (type_to_stack_size(definition->returnType) > 2 * 8) {
+      printf("  mov [rbp-%zu], %s\n", definition->stackSize + 8,
              argumentRegister64[registerIndex++]);
     }
 
     int argumentStackOffset = 0;
-    for (int i = 0; i < vector_length(functionDefinition->arguments); i++) {
-      Node *node = vector_get(functionDefinition->arguments, i);
+    for (int i = 0; i < vector_length(definition->arguments); i++) {
+      Node *node = vector_get(definition->arguments, i);
       generate_variable(node);
       printf("  pop rax\n");
 
@@ -1121,8 +1123,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   }
 
   INSERT_COMMENT("function body start : %s", functionName);
-  generate_statement(new_statement_union_compound(functionDefinition->body),
-                     labelCount, returnTarget, -1, -1);
+  generate_statement(new_statement_union_compound(definition->body), labelCount,
+                     returnTarget, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ
@@ -1131,7 +1133,7 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     INSERT_COMMENT("function epilogue start : %s", functionName);
     printf(".Lreturn%d:\n", returnTarget);
     {
-      Type *returnType = functionDefinition->returnType;
+      Type *returnType = definition->returnType;
       int stackLength = type_to_stack_size(returnType) / 8;
       // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
       // ポインタになっている戻り値から値を取り出し
@@ -1143,9 +1145,9 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
         printf("  mov rdx, [rax+8]\n");
         printf("  mov rax, [rax]\n");
       } else if (stackLength > 2) {
-        printf("  mov rdx, [rbp-%zu]\n", functionDefinition->stackSize + 8);
+        printf("  mov rdx, [rbp-%zu]\n", definition->stackSize + 8);
         generate_assign_large(type_to_size(returnType), "rdx", "rax");
-        printf("  mov rax, [rbp-%zu]\n", functionDefinition->stackSize + 8);
+        printf("  mov rax, [rbp-%zu]\n", definition->stackSize + 8);
       }
     }
 
