@@ -29,6 +29,7 @@ struct Scope {
 typedef struct FunctionContext FunctionContext;
 struct FunctionContext {
   int currentStackOffset;
+  ListNode *switchStatementNest; // SwitchStatement List
 };
 
 typedef struct ParseContext ParseContext;
