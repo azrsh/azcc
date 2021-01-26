@@ -16,6 +16,36 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+// 関数宣言の読み替え
+void analyze_function_type(Type *type) {
+  assert(type->kind == TYPE_FUNC);
+  if (!type->arguments)
+    return;
+
+  // func(void)の読み替え
+  if (vector_length(type->arguments)) {
+    Vector *argumentTypes =
+        parameter_declaration_vector_to_type_vector(type->arguments);
+    Type *argumentType = vector_get(argumentTypes, 0);
+    if (argumentType->kind == TYPE_VOID)
+      type->arguments = new_vector(0);
+  }
+
+  //関数定義の引数のうち、配列はポインタに読み替え
+  {
+    Vector *argumentDeclarations = type->arguments;
+    Vector *argumentTypes =
+        parameter_declaration_vector_to_type_vector(argumentDeclarations);
+    for (int i = 0; i < vector_length(argumentTypes); i++) {
+      Type *type = vector_get(argumentTypes, i);
+      if (type->kind == TYPE_ARRAY) {
+        type->kind = TYPE_PTR;
+        type->length = 0;
+      }
+    }
+  }
+}
+
 Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
   Node *node = NULL;
 
@@ -31,6 +61,17 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
           storage = STORAGE_EXTERN;
         else
           storage = STORAGE_AUTO;
+      }
+
+      // 関数宣言の読み替え
+      {
+        Type *type = declarator->type;
+        while (type) {
+          if (type->kind == TYPE_FUNC)
+            analyze_function_type(type);
+
+          type = type->base;
+        }
       }
 
       assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN);
@@ -97,28 +138,13 @@ void analyze_global_declaration(Declaration *target, Vector *globalVariables,
       }
 
       // 関数宣言の読み替え
-      if (declarator->type->kind == TYPE_FUNC && declarator->type->arguments) {
-        // func(void)の読み替え
-        if (vector_length(declarator->type->arguments)) {
-          Vector *argumentTypes = parameter_declaration_vector_to_type_vector(
-              declarator->type->arguments);
-          Type *argumentType = vector_get(argumentTypes, 0);
-          if (argumentType->kind == TYPE_VOID)
-            declarator->type->arguments = new_vector(0);
-        }
+      {
+        Type *type = declarator->type;
+        while (type) {
+          if (type->kind == TYPE_FUNC)
+            analyze_function_type(type);
 
-        //関数定義の引数のうち、配列はポインタに読み替え
-        {
-          Vector *argumentDeclarations = declarator->type->arguments;
-          Vector *argumentTypes =
-              parameter_declaration_vector_to_type_vector(argumentDeclarations);
-          for (int i = 0; i < vector_length(argumentTypes); i++) {
-            Type *type = vector_get(argumentTypes, i);
-            if (type->kind == TYPE_ARRAY) {
-              type->kind = TYPE_PTR;
-              type->length = 0;
-            }
-          }
+          type = type->base;
         }
       }
 
