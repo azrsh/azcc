@@ -24,6 +24,7 @@ bool type_is_primitive(Type *type) {
   case TYPE_PTR:
   case TYPE_ARRAY:
   case TYPE_STRUCT:
+  case TYPE_UNION:
   case TYPE_FUNC:
     return false;
   }
@@ -47,6 +48,7 @@ int type_to_size(Type *type) {
   case TYPE_ARRAY:
     return type_to_size(type->base) * type->length;
   case TYPE_STRUCT:
+  case TYPE_UNION:
     if (!type->isDefined)
       ERROR("未定義の型のサイズは取得できません");
     return member_container_aligned_size(type->members);
@@ -70,6 +72,7 @@ int type_to_align(Type *type) {
   case TYPE_ARRAY:
     return type_to_align(type->base);
   case TYPE_STRUCT:
+  case TYPE_UNION:
     if (!type->isDefined)
       ERROR("未定義の型のサイズは取得できません");
     return member_container_align(type->members);
@@ -101,6 +104,8 @@ char *type_kind_to_syntactic_string(TypeKind kind) {
     return "_Bool";
   case TYPE_STRUCT:
     return "struct";
+  case TYPE_UNION:
+    return "union";
   case TYPE_PTR:
     return "Pointer";
   case TYPE_ARRAY:
@@ -149,6 +154,8 @@ char *type_kind_to_semantic_string(TypeKind kind) {
     return "_Bool";
   case TYPE_STRUCT:
     return "struct";
+  case TYPE_UNION:
+    return "union";
   case TYPE_PTR:
     return "Pointer";
   case TYPE_ARRAY:
@@ -176,7 +183,8 @@ char *type_to_semantic_string(Type *type) {
     sprintf(buffer, "%s", kind);
     break;
   case TYPE_ENUM:
-  case TYPE_STRUCT: {
+  case TYPE_STRUCT:
+  case TYPE_UNION: {
     const int limit = capacity - strlen(kind) - 1;
     char *tagName = type->name ? string_to_char(type->name) // move from callee
                                : "anonymous";

@@ -6,6 +6,7 @@
 #include "type.h"
 #include "util.h"
 #include "variable.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -25,8 +26,7 @@ void generate_value_extension(Node *node);
 void generate_rhs_extension(Node *node);
 
 void generate_variable(Node *node) {
-  if (node->kind != NODE_VAR)
-    ERROR_AT(node->source, "変数ではありません");
+  assert(node->kind == NODE_VAR);
 
   const Variable *variable = node->variable;
   const char *name = string_to_char(variable->name);
@@ -47,12 +47,13 @@ void generate_variable(Node *node) {
 }
 
 void generate_lhs_dot_operator(Node *node, int *labelCount) {
-  if (node->kind != NODE_DOT)
-    ERROR_AT(node->source, "ドット演算子ではありません");
+  assert(node->kind == NODE_DOT);
 
   INSERT_COMMENT("dot lhs operator start");
-  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
-      node->rhs->variable->kind != VARIABLE_MEMBER*/)
+  if ((node->lhs->type->kind != TYPE_STRUCT &&
+       node->lhs->type->kind != TYPE_UNION) ||
+      node->rhs->kind != NODE_VAR
+      /*|| node->rhs->variable->kind != VARIABLE_MEMBER*/)
     ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
 
   generate_assign_lhs(node->lhs, labelCount);
@@ -63,12 +64,13 @@ void generate_lhs_dot_operator(Node *node, int *labelCount) {
 }
 
 void generate_rhs_dot_operator(Node *node, int *labelCount) {
-  if (node->kind != NODE_DOT)
-    ERROR_AT(node->source, "ドット演算子ではありません");
+  assert(node->kind == NODE_DOT);
 
   INSERT_COMMENT("dot rhs operator start");
-  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
-      node->rhs->variable->kind != VARIABLE_MEMBER*/)
+  if ((node->lhs->type->kind != TYPE_STRUCT &&
+       node->lhs->type->kind != TYPE_UNION) ||
+      node->rhs->kind != NODE_VAR
+      /*|| node->rhs->variable->kind != VARIABLE_MEMBER*/)
     ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
 
   generate_expression(node->lhs, labelCount);
@@ -290,6 +292,8 @@ void generate_function_call(Node *node, int *labelCount) {
 }
 
 void generate_cast(Node *node) {
+  assert(node->kind == NODE_CAST);
+
   INSERT_COMMENT("cast start");
 
   Type *source = node->lhs->type;
@@ -311,8 +315,7 @@ void generate_cast(Node *node) {
     printf("  setne al\n");
     printf("  movzb rax, al\n");
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
-    // generate_variable(node);
-    // 今はgenerate_rhd_extensionでやっている
+    // assert(0); // forbidden
   }
 
   // void*とポインタ型のキャストを許可
@@ -367,10 +370,8 @@ void generate_rhs_extension(Node *node) {
   printf("  pop rax\n");
   switch (node->type->kind) {
   case TYPE_CHAR:
-    printf("  movsx rax, BYTE PTR [rax]\n");
-    break;
   case TYPE_BOOL:
-    printf("  movzx rax, BYTE PTR [rax]\n");
+    printf("  movsx rax, BYTE PTR [rax]\n");
     break;
   case TYPE_INT:
   case TYPE_ENUM:
@@ -379,7 +380,8 @@ void generate_rhs_extension(Node *node) {
   case TYPE_PTR:
     printf("  mov rax, [rax]\n");
     break;
-  case TYPE_STRUCT: {
+  case TYPE_STRUCT:
+  case TYPE_UNION: {
     int size = type_to_size(node->type);
     //サイズが8byte以上ならポインタのまま
     if (size <= 8)
@@ -414,6 +416,7 @@ void generate_value_extension(Node *node) {
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
   case TYPE_STRUCT: //構造体はそのままでよい
+  case TYPE_UNION:  //共用体はそのままでよい
   case TYPE_FUNC:   //関数はそのままでよい
     break;
   case TYPE_VOID:

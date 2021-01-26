@@ -2,7 +2,6 @@
 #include "container.h"
 #include "declaration.h"
 #include "declarationparse.h"
-#include "membercontainer.h"
 #include "node.h"
 #include "parseutil.h"
 #include "statement.h"

@@ -260,7 +260,12 @@ Type *type_specifier(ParseContext *context) {
 }
 
 Type *struct_or_union_specifier(ParseContext *context) {
-  if (!consume("struct"))
+  TypeKind kind = TYPE_VOID;
+  if (consume("struct"))
+    kind = TYPE_STRUCT;
+  else if (consume("union"))
+    kind = TYPE_UNION;
+  else
     return NULL;
 
   Type *result = NULL;
@@ -272,7 +277,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
     Type *type =
         type_container_get(context->scope->tagContainer, identifier->string);
     if (type) {
-      if (type->kind == TYPE_STRUCT) {
+      if (type->kind == kind) {
         result = type;
       } else {
         ERROR_AT(identifier->string->head,
@@ -284,7 +289,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
 
   // 解決できなければ生成
   if (!result) {
-    result = new_type(TYPE_STRUCT);
+    result = new_type(kind);
     if (identifier) {
       result->name = identifier->string;
 
@@ -298,7 +303,8 @@ Type *struct_or_union_specifier(ParseContext *context) {
       result->isDefined = true;
       result->members = new_member_container();
     } else {
-      ERROR_AT(identifier->string->head, "構造体が多重に定義されています")
+      ERROR_AT(identifier->string->head,
+               "構造体または共用体が多重に定義されています")
     }
 
     int memberOffset = 0;
@@ -308,14 +314,25 @@ Type *struct_or_union_specifier(ParseContext *context) {
       for (int i = 0; i < vector_length(memberDeclaration->declarators); i++) {
         Variable *member = vector_get(memberDeclaration->declarators, i);
         if (!member)
-          ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
+          ERROR_AT(token->string->head,
+                   "構造体または共用体のメンバの定義が不正です");
 
         member->kind = VARIABLE_LOCAL;
         size_t memberAlignment = type_to_align(member->type);
-        memberOffset += (memberAlignment - memberOffset % memberAlignment) %
-                        memberAlignment;
-        member->offset = memberOffset;
-        memberOffset += type_to_size(member->type);
+        if (kind == TYPE_STRUCT) {
+          memberOffset += (memberAlignment - memberOffset % memberAlignment) %
+                          memberAlignment;
+          member->offset = memberOffset;
+          memberOffset += type_to_size(member->type);
+        } else if (kind == TYPE_UNION) {
+          member->offset = 0;
+
+          INSERT_COMMENT("name:%.*s offset:%d size:%d", member->name->length,
+                         member->name->head, member->offset,
+                         type_to_size(member->type));
+        } else {
+          assert(0); // unreachable
+        }
 
         if (!member_container_push(result->members, member))
           ERROR_AT(member->name->head, "同名のメンバが既に定義されています");
@@ -323,7 +340,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
     }
   } else if (!identifier) {
     ERROR_AT(token->string->head,
-             "無名構造体を定義なしで使用することはできません");
+             "無名構造体または共用体を定義なしで使用することはできません");
   }
 
   return result;

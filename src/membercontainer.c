@@ -32,7 +32,7 @@ bool member_container_push(MemberContainer *container, Variable *variable) {
 
 size_t member_container_align(MemberContainer *container) {
   size_t alignMax = 0;
-  int numberOfMembers = vector_length(container->vector);
+  const int numberOfMembers = vector_length(container->vector);
   for (int i = 0; i < numberOfMembers; i++) {
     Variable *variable = vector_get(container->vector, i);
     size_t align = type_to_align(variable->type);
@@ -43,9 +43,16 @@ size_t member_container_align(MemberContainer *container) {
 }
 
 size_t member_container_aligned_size(MemberContainer *container) {
-  int numberOfMembers = vector_length(container->vector);
   size_t alignment = member_container_align(container);
-  Variable *endVariable = vector_get(container->vector, numberOfMembers - 1);
-  int addressEnd = endVariable->offset + type_to_size(endVariable->type);
+
+  const int numberOfMembers = vector_length(container->vector);
+  size_t addressEnd = 0;
+  for (int i = 0; i < numberOfMembers; i++) {
+    Variable *variable = vector_get(container->vector, i);
+    size_t end = variable->offset + type_to_size(variable->type);
+    if (addressEnd < end)
+      addressEnd = end;
+  }
+
   return addressEnd + (alignment - addressEnd % alignment) % alignment;
 }

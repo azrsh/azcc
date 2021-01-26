@@ -126,6 +126,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_VAR:
     node->type = node->variable->type;
+
     return;
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
@@ -232,12 +233,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   }
   case NODE_DOT:
     tag_type_to_node(node->lhs, context);
-    if (node->lhs->type->kind != TYPE_STRUCT)
+    if (node->lhs->type->kind != TYPE_STRUCT &&
+        node->lhs->type->kind != TYPE_UNION)
       ERROR_AT(node->source, "ドット演算子のオペランド型が不正です");
     if (!node->lhs->type->members)
       ERROR_AT(node->source, "構造体の定義がみつかりません");
     if (node->rhs->kind != NODE_VAR)
       ERROR_AT(node->source, "ドット演算子のオペランド型が不正です");
+
     node->rhs->variable = member_container_get(node->lhs->type->members,
                                                node->rhs->variable->name);
     tag_type_to_node(node->rhs, context);
