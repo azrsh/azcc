@@ -145,7 +145,6 @@ Declaration *declaration_specifier(ParseContext *context) {
       continue;
     } else if (consume("auto")) {
       result->storage = STORAGE_AUTO;
-      ERROR_AT(token->string->head, "autoはサポートされていません");
       continue;
     } else if (consume("register")) {
       result->storage = STORAGE_REGISTER;
