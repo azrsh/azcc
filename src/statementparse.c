@@ -51,6 +51,7 @@ ForStatement *for_statement(ParseContext *context);
 CompoundStatement *compound_statement(ParseContext *context);
 BreakStatement *break_statement(ParseContext *context);
 ContinueStatement *continue_statement(ParseContext *context);
+GotoStatement *goto_statement(ParseContext *context);
 
 //文をパースする
 StatementUnion *statement(ParseContext *context) {
@@ -107,6 +108,11 @@ StatementUnion *statement(ParseContext *context) {
   NullStatement *nullPattern = null_statement(context);
   if (nullPattern) {
     return new_statement_union_null(nullPattern);
+  }
+
+  GotoStatement *gotoPattern = goto_statement(context);
+  if (gotoPattern) {
+    return new_statement_union_goto(gotoPattern);
   }
 
   ExpressionStatement *expressionPattern = expression_statement(context);
@@ -348,5 +354,16 @@ ContinueStatement *continue_statement(ParseContext *context) {
   }
   expect(";");
   ContinueStatement *result = calloc(1, sizeof(ContinueStatement));
+  return result;
+}
+
+GotoStatement *goto_statement(ParseContext *context) {
+  if (!consume("goto")) {
+    return NULL;
+  }
+
+  GotoStatement *result = calloc(1, sizeof(GotoStatement));
+  result->label = expect_identifier()->string;
+  expect(";");
   return result;
 }

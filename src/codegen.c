@@ -1036,6 +1036,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     }
   }
 
+  // match goto
+  {
+    GotoStatement *gotoPattern = statement_union_take_goto(statementUnion);
+    if (gotoPattern) {
+      INSERT_COMMENT("goto statement");
+      printf("  jmp .L%s\n", string_to_char(gotoPattern->label));
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =

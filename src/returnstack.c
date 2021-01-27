@@ -227,6 +227,14 @@ void allocate_return_stack_to_statement(StatementUnion *statementUnion,
     }
   }
 
+  // match goto
+  {
+    GotoStatement *gotoPattern = statement_union_take_goto(statementUnion);
+    if (gotoPattern) {
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =
