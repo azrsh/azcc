@@ -190,36 +190,49 @@ Variable *function_definition(Declaration *base, ParseContext *context) {
   }
   //--------------------------------
 
-  //
-  //関数には引数があるので複文オブジェクトの生成を特別扱いしている
-  //
-  CompoundStatement *body = calloc(1, sizeof(CompoundStatement));
-
-  //新しいスコープの追加を外へ移動
-
-  //ブロック内の文をパース
-  body->blockItemList = new_vector(32);
-  while (!consume("}")) {
-    BlockItem *blockItem = calloc(1, sizeof(BlockItem));
-    blockItem->declaration =
-        declaration(declaration_specifier(localContext), localContext);
-    if (blockItem->declaration) {
-      blockItem->statement =
-          analyze_blockItem_declaration(blockItem->declaration, localContext);
-      blockItem->declaration = NULL;
-      if (!blockItem->statement)
-        continue;
-    } else {
-      blockItem->statement = statement(localContext);
-    }
-    vector_push_back(body->blockItemList, blockItem);
-  }
-  //
-  //
-  //
-
+  //事前定義識別子
   {
-    //型検査
+    //__func__
+    Type *charPtr = new_type(TYPE_PTR);
+    charPtr->base = new_type(TYPE_CHAR);
+    Variable *func = new_variable(charPtr, char_to_string("__func__"));
+    func->kind = VARIABLE_LOCAL;
+    func->storage = STORAGE_STATIC;
+    func->initialization =
+        new_node_num(vector_length(context->translationUnit->stringLiterals));
+    func->initialization->kind = NODE_STRING;
+    vector_push_back(context->translationUnit->stringLiterals,
+                     string_to_char(functionVariable->name));
+    vector_push_back(context->translationUnit->staticMemoryVariables, func);
+    variable_container_push(localContext->scope->variableContainer, func);
+  }
+
+  //関数には引数があるので複文オブジェクトの生成を特別扱いしている
+  CompoundStatement *body = calloc(1, sizeof(CompoundStatement));
+  {
+    //新しいスコープの追加を外へ移動
+
+    //ブロック内の文をパース
+    body->blockItemList = new_vector(32);
+    while (!consume("}")) {
+      BlockItem *blockItem = calloc(1, sizeof(BlockItem));
+      blockItem->declaration =
+          declaration(declaration_specifier(localContext), localContext);
+      if (blockItem->declaration) {
+        blockItem->statement =
+            analyze_blockItem_declaration(blockItem->declaration, localContext);
+        blockItem->declaration = NULL;
+        if (!blockItem->statement)
+          continue;
+      } else {
+        blockItem->statement = statement(localContext);
+      }
+      vector_push_back(body->blockItemList, blockItem);
+    }
+  }
+
+  //型検査
+  {
     TypeCheckContext *context = calloc(1, sizeof(TypeCheckContext));
     context->returnType = functionVariable->type->returnType;
     context->variableContainer = localContext->scope->variableContainer;
