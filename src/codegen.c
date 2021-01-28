@@ -57,49 +57,16 @@ void generate_lhs_dot_operator(Node *node, int *labelCount) {
   assert(node->kind == NODE_DOT);
 
   INSERT_COMMENT("dot lhs operator start");
-  if ((node->lhs->type->kind != TYPE_STRUCT &&
-       node->lhs->type->kind != TYPE_UNION) ||
-      node->rhs->kind != NODE_VAR
-      /*|| node->rhs->variable->kind != VARIABLE_MEMBER*/)
-    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+  assert(node->lhs->type->kind == TYPE_STRUCT ||
+         node->lhs->type->kind == TYPE_UNION);
+  assert(node->rhs->kind == NODE_VAR);
 
-  generate_assign_lhs(node->lhs, labelCount);
+  //複雑な型(構造体、共用体)は常に左辺値扱いできる
+  generate_expression(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
   printf("  push rax\n");
   INSERT_COMMENT("dot lhs operator end");
-}
-
-void generate_rhs_dot_operator(Node *node, int *labelCount) {
-  assert(node->kind == NODE_DOT);
-
-  INSERT_COMMENT("dot rhs operator start");
-  if ((node->lhs->type->kind != TYPE_STRUCT &&
-       node->lhs->type->kind != TYPE_UNION) ||
-      node->rhs->kind != NODE_VAR
-      /*|| node->rhs->variable->kind != VARIABLE_MEMBER*/)
-    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
-
-  generate_expression(node->lhs, labelCount);
-
-  const int stackUnitSize = 8;
-  const int bitOfByte = 8;
-  if (type_to_size(node->lhs->type) > stackUnitSize) {
-    printf("  pop rax\n");
-    printf("  add rax, %d\n", node->rhs->variable->offset);
-    printf("  push rax\n");
-    generate_rhs_extension(node);
-  } else {
-    const int memberSize = type_to_size(node->rhs->variable->type);
-    const int memberOffset = node->rhs->variable->offset;
-    printf("  pop rax\n");
-    printf("  shl rax, %d\n",
-           (stackUnitSize - memberOffset - memberSize) * bitOfByte);
-    printf("  shr rax, %d\n", (stackUnitSize - memberSize) * bitOfByte);
-    printf("  push rax\n");
-  }
-
-  INSERT_COMMENT("dot rhs operator end");
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -177,10 +144,11 @@ void generate_function_call(Node *node, int *labelCount) {
       Node *argument = vector_get(arguments, i);
       generate_expression(argument, labelCount);
 
-      // 8byte以上の値はポインタとして格納されているので
+      // 複雑な型(構造体、共用体)の値はポインタとして格納されているので
       // 値に変換してスタックに積み直す
-      int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
-      if (stackLength > 1) {
+      if (argument->type->kind == TYPE_STRUCT ||
+          argument->type->kind == TYPE_UNION) {
+        int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
         printf("  pop %s\n", "rax");
         for (int j = stackLength - 1; j >= 0; j--) {
           printf("  push [%s+%d]\n", "rax", j * 8);
@@ -272,16 +240,23 @@ void generate_function_call(Node *node, int *labelCount) {
   printf("  add rsp, %d\n", stackUnitSize);
   printf(".Lend%d:\n", currentLabel);
 
-  {
-    // stack_length > 1 && stack_length <= 2 <=> stack_length == 2のとき
-    // raxとrdxに戻り値が値として格納されているのでポインタに変換
-    // stack_length <= 1のとき
-    // 値がraxにそのまま積まれているので何もしなくてよい
-    // stack_length > 2のとき
-    // 値へのポインタが返ってくるので何もしなくてよい
+  if (node->type->kind == TYPE_STRUCT || node->type->kind == TYPE_UNION) {
+    /*
+     * stack_length > 1 && stack_length <= 2 <=> stack_length == 2のとき
+     * raxとrdxに戻り値が値として格納されているのでポインタに変換
+     *
+     * stack_length == 1のとき
+     * raxに戻り値が値として格納されているのでポインタに変換
+     +
+     * stack_length > 2のとき
+     * 値へのポインタが返ってくるので何もしなくてよい
+     */
     Type *returnType = node->type;
     Variable *returnStack = node->functionCall->returnStack;
-    if (type_to_stack_size(returnType) / stackUnitSize == 2) {
+    if (type_to_stack_size(returnType) / stackUnitSize == 1) {
+      printf("  mov [rbp-%d], rax\n", returnStack->offset);
+      printf("  lea rax, [rbp-%d]\n", returnStack->offset);
+    } else if (type_to_stack_size(returnType) / stackUnitSize == 2) {
       printf("  mov [rbp-%d], rax\n", returnStack->offset);
       printf("  mov [rbp-%d], rdx\n", returnStack->offset - stackUnitSize);
       printf("  lea rax, [rbp-%d]\n", returnStack->offset);
@@ -344,8 +319,8 @@ void generate_assign_i8(const char *destination, const char *source) {
   printf("  mov BYTE PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_large(int size, const char *destination,
-                           const char *source) {
+void generate_assign_complex(int size, const char *destination,
+                             const char *source) {
   int current = 0;
   for (int i = 0; i < size / 8; i++) {
     printf("  mov r11, [%s+%d]\n", source, current);
@@ -387,13 +362,7 @@ void generate_rhs_extension(Node *node) {
     printf("  mov rax, [rax]\n");
     break;
   case TYPE_STRUCT:
-  case TYPE_UNION: {
-    int size = type_to_size(node->type);
-    //サイズが8byte以上ならポインタのまま
-    if (size <= 8)
-      printf("  mov rax, [rax]\n");
-    break;
-  }
+  case TYPE_UNION:
   case TYPE_ARRAY:
   case TYPE_FUNC:
     break; //配列と関数はポインタのままにする
@@ -480,7 +449,9 @@ void generate_expression(Node *node, int *labelCount) {
     generate_rhs_extension(node);
     return;
   case NODE_DOT:
-    generate_rhs_dot_operator(node, labelCount);
+    //構造体は常に左辺値にできる
+    generate_lhs_dot_operator(node, labelCount);
+    generate_rhs_extension(node);
     return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
@@ -502,16 +473,19 @@ void generate_expression(Node *node, int *labelCount) {
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
-    if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8("rax", "dil");
-    else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i32("rax", "edi");
-    else if (lhsSize == 8 && rhsSize == 8)
-      generate_assign_i64("rax", "rdi");
-    else if (lhsSize == rhsSize)
-      generate_assign_large(lhsSize, "rax", "rdi");
-    else
-      ERROR_AT(node->source, "予期しない代入");
+    if (node->lhs->type->kind == TYPE_STRUCT ||
+        node->type->kind == TYPE_UNION) {
+      generate_assign_complex(lhsSize, "rax", "rdi");
+    } else {
+      if (lhsSize == 1 && rhsSize == 1)
+        generate_assign_i8("rax", "dil");
+      else if (lhsSize == 4 && rhsSize == 4)
+        generate_assign_i32("rax", "edi");
+      else if (lhsSize == 8 && rhsSize == 8)
+        generate_assign_i64("rax", "rdi");
+      else
+        ERROR_AT(node->source, "予期しない代入");
+    }
     printf("  push rdi\n");
 
     INSERT_COMMENT("assign end");
@@ -1153,21 +1127,29 @@ void generate_function_definition(Variable *variable, int *labelCount) {
   {
     INSERT_COMMENT("function epilogue start : %s", functionName);
     printf(".Lreturn%d:\n", returnTarget);
-    {
+    if (definition->returnType->kind == TYPE_STRUCT ||
+        definition->returnType->kind == TYPE_UNION) {
       Type *returnType = definition->returnType;
       int stackLength = type_to_stack_size(returnType) / 8;
-      // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
-      // ポインタになっている戻り値から値を取り出し
-      // 下位64bitをrdx(2nd return register)に代入
-      //
-      // stackLength > 2のとき
-      // 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
-      if (stackLength == 2) {
+      /*
+       * stack_size <= 1 <=> stack_size == 1のとき
+       * ポインタになっている戻り値から値を取り出す
+       *
+       * stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+       * ポインタになっている戻り値から値を取り出し
+       * 下位64bitをrdx(2nd return register)に代入
+       *
+       * stackLength > 2のとき
+       * 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
+       */
+      if (stackLength == 1) {
+        printf("  mov rax, [rax]\n");
+      } else if (stackLength == 2) {
         printf("  mov rdx, [rax+8]\n");
         printf("  mov rax, [rax]\n");
       } else if (stackLength > 2) {
         printf("  mov rdx, [rbp-%zu]\n", definition->stackSize + 8);
-        generate_assign_large(type_to_size(returnType), "rdx", "rax");
+        generate_assign_complex(type_to_size(returnType), "rdx", "rax");
         printf("  mov rax, [rbp-%zu]\n", definition->stackSize + 8);
       }
     }

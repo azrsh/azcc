@@ -43,7 +43,7 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
   case NODE_FUNC: {
     allocate_return_stack_to_node(node->lhs, context);
 
-    if (type_to_stack_size(node->type) > 1 * 8) {
+    if (node->type->kind == TYPE_STRUCT || node->type->kind == TYPE_UNION) {
       //識別子として無効な変数名を生成
       const String *name =
           string_concat(char_to_string("0"), char_to_string("return stack"));
