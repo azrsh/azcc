@@ -63,6 +63,8 @@ diff $TEMP.gcc.txt $TEMP.azcc.txt
 DIFF=$?
 echo -n "\033[m"
 
+rm $TEMP*
+
 if [ $DIFF -eq 0 ]; then
   echo "\033[32mPASS\033[m"
   exit 0
