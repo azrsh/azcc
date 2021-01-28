@@ -10,6 +10,7 @@
 #include "util.h"
 #include "variable.h"
 #include "variablecontainer.h"
+#include <assert.h>
 #include <stdlib.h>
 
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
@@ -126,6 +127,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
     return;
   case NODE_VAR:
     node->type = node->variable->type;
+
     return;
   case NODE_FUNC: {
     //存在確認はパーサが行うので存在確認をスキップ
@@ -232,12 +234,14 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   }
   case NODE_DOT:
     tag_type_to_node(node->lhs, context);
-    if (node->lhs->type->kind != TYPE_STRUCT)
+    if (node->lhs->type->kind != TYPE_STRUCT &&
+        node->lhs->type->kind != TYPE_UNION)
       ERROR_AT(node->source, "ドット演算子のオペランド型が不正です");
     if (!node->lhs->type->members)
       ERROR_AT(node->source, "構造体の定義がみつかりません");
     if (node->rhs->kind != NODE_VAR)
       ERROR_AT(node->source, "ドット演算子のオペランド型が不正です");
+
     node->rhs->variable = member_container_get(node->lhs->type->members,
                                                node->rhs->variable->name);
     tag_type_to_node(node->rhs, context);
@@ -413,11 +417,6 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   ERROR_AT(node->source, "予期しないノードが指定されました");
 }
 
-void tag_type_to_declaration(Declaration *declaration,
-                             TypeCheckContext *context) {
-  ERROR("invalid abstract syntax tree");
-}
-
 void tag_type_to_statement(StatementUnion *statementUnion,
                            TypeCheckContext *context) {
   if (!statementUnion) {
@@ -505,7 +504,7 @@ void tag_type_to_statement(StatementUnion *statementUnion,
       for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
         BlockItem *item = vector_get(compoundPattern->blockItemList, i);
         if (item->declaration)
-          tag_type_to_declaration(item->declaration, context);
+          assert(0); // 意味解析で文に変換されるはずなので到達不可能
         else if (item->statement)
           tag_type_to_statement(item->statement, context);
       }
@@ -557,6 +556,14 @@ void tag_type_to_statement(StatementUnion *statementUnion,
   {
     NullStatement *nullPattern = statement_union_take_null(statementUnion);
     if (nullPattern) {
+      return;
+    }
+  }
+
+  // match goto
+  {
+    GotoStatement *gotoPattern = statement_union_take_goto(statementUnion);
+    if (gotoPattern) {
       return;
     }
   }

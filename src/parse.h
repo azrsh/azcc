@@ -8,6 +8,7 @@
 
 typedef struct FunctionDefinition FunctionDefinition;
 struct FunctionDefinition {
+  FunctionKind function;
   const String *name;      //常に非NULL
   Type *returnType;        //常に非NULL
   Vector *arguments;       // Variavble Nodes、常に非NULL
@@ -17,9 +18,11 @@ struct FunctionDefinition {
 
 typedef struct Program Program;
 struct Program {
-  Vector *functionDefinitions; // FunctionDefinition vector
-  Vector *globalVariables;     // Variable vector
-  Vector *stringLiterals;      // char* vector
+  Vector *functionDefinitions; // Variable vector
+  Vector *
+      staticMemoryVariables; // Variable vector
+                             // ここでいうstaticは静的なメモリ領域に確保されるという意味で、グローバル変数を含む
+  Vector *stringLiterals;    // char* vector
 };
 
 Program *parse(Token *head);

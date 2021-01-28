@@ -17,7 +17,6 @@
 #include "variablecontainer.h"
 
 extern Token *token;
-extern Vector *stringLiterals; // String vector
 
 typedef struct Scope Scope;
 struct Scope {
@@ -29,17 +28,25 @@ struct Scope {
 typedef struct FunctionContext FunctionContext;
 struct FunctionContext {
   int currentStackOffset;
+  ListNode *switchStatementNest; // SwitchStatement List
+};
+
+typedef struct TranslationUnitContext TranslationUnitContext;
+struct TranslationUnitContext {
+  Vector *staticMemoryVariables; // Variable Vector
+  Vector *stringLiterals;        // String vector
 };
 
 typedef struct ParseContext ParseContext;
 struct ParseContext {
   Scope *scope;
   FunctionContext *function;
+  TranslationUnitContext *translationUnit;
 };
 
 ParseContext *new_scope_context(ParseContext *parent);
 
-bool at_eof();
+bool at_eof(void);
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
@@ -47,15 +54,15 @@ bool consume(const char *op);
 
 //次のトークンが文字列のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_string();
+Token *consume_string(void);
 
 //次のトークンが文字のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_character();
+Token *consume_character(void);
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_identifier();
+Token *consume_identifier(void);
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
@@ -63,21 +70,22 @@ void expect(char *op);
 
 //次のトークンが数値のときには、トークンを1つ読み進めてその数値を返す
 //それ以外の場合にはエラーを報告する
-int expect_number();
+int expect_number(void);
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはエラーを報告する
-Token *expect_identifier();
+Token *expect_identifier(void);
 
 Variable *new_variable(Type *type, const String *name);
-Variable *variable_to_local(Variable *variable, ParseContext *context);
+Variable *variable_to_auto(Variable *variable, ParseContext *context);
+Variable *variable_to_local_static(Variable *variable);
 Variable *variable_to_global(Variable *variable);
 Variable *variable_to_function(Variable *variable,
                                FunctionDefinition *function);
 Variable *variable_to_enumerator(Variable *variable, Node *initialization);
 Variable *variable_to_member(Variable *variable);
 
-FunctionCall *new_function_call();
+FunctionCall *new_function_call(void);
 
 TypeKind map_token_to_kind(Token *token);
 Type *wrap_by_pointer(Type *base, Token *token);

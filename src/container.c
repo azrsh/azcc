@@ -142,7 +142,7 @@ KeyValuePair *new_key_value_pair(const String *key, void *value) {
   return pair;
 }
 
-HashTable *new_hash_table() { return calloc(1, sizeof(HashTable)); }
+HashTable *new_hash_table(void) { return calloc(1, sizeof(HashTable)); }
 
 void hash_table_store(HashTable *table, const String *key, void *data) {
   const int keyhash = hash(key);

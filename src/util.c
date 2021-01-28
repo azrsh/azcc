@@ -39,7 +39,7 @@ const char *read_path(const char *path) {
 }
 
 //本来はread_file(FILE *stream)としたいが、stdioを宣言できないのでこの形とする
-const char *read_stdin() {
+const char *read_stdin(void) {
   const int bufferSize = 4096;
   char *buffer = calloc(bufferSize, sizeof(char));
   for (int i = 0;; i++) {

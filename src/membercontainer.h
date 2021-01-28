@@ -5,7 +5,7 @@
 #include "variable.h"
 
 typedef struct MemberContainer MemberContainer;
-MemberContainer *new_member_container();
+MemberContainer *new_member_container(void);
 Variable *member_container_get(MemberContainer *container, const String *name);
 bool member_container_push(MemberContainer *container, Variable *varibale);
 size_t member_container_align(MemberContainer *container);

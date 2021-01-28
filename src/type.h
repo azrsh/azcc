@@ -14,6 +14,7 @@ typedef enum {
   TYPE_PTR,
   TYPE_ARRAY,
   TYPE_STRUCT,
+  TYPE_UNION,
   TYPE_FUNC,
   TYPE_ENUM,
 } TypeKind;

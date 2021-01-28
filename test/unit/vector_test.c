@@ -16,15 +16,15 @@ int main() {
   source[9] = 8;*/
 
   Vector *vector = new_vector(16);
-  for (int i = 0; i < sizeof(source) / sizeof(int); i++)
+  for (size_t i = 0; i < sizeof(source) / sizeof(int); i++)
     vector_push_back(vector, &source[i]);
 
   test_assert(1, sizeof(source) / sizeof(int) == vector_length(vector),
-         "sizeof(source)/sizeof(int) == vector_length(vector)");
+              "sizeof(source)/sizeof(int) == vector_length(vector)");
 
   for (int i = 0; i < vector_length(vector); i++) {
     test_assert(1, source + i == vector_get(vector, i),
-           "source + i == vector_get(i)");
+                "source + i == vector_get(i)");
   }
 
   return 0;

@@ -1,4 +1,5 @@
 #include "container.h"
+#include "declaration.h"
 #include "node.h"
 #include "parse.h"
 #include "returnstack.h"
@@ -6,6 +7,7 @@
 #include "type.h"
 #include "util.h"
 #include "variable.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -25,16 +27,21 @@ void generate_value_extension(Node *node);
 void generate_rhs_extension(Node *node);
 
 void generate_variable(Node *node) {
-  if (node->kind != NODE_VAR)
-    ERROR_AT(node->source, "変数ではありません");
+  assert(node->kind == NODE_VAR);
 
   const Variable *variable = node->variable;
   const char *name = string_to_char(variable->name);
   switch (variable->kind) {
   case VARIABLE_LOCAL:
-    printf("  lea rax, [rbp-%d]\n", variable->offset);
-    printf("  push rax\n");
-    return;
+    if (variable->storage == STORAGE_STATIC) {
+      printf("  lea rax, %s.%d[rip]\n", name, variable->id);
+      printf("  push rax\n");
+      return;
+    } else {
+      printf("  lea rax, [rbp-%d]\n", variable->offset);
+      printf("  push rax\n");
+      return;
+    }
   case VARIABLE_GLOBAL:
     printf("  lea rax, %s[rip]\n", name);
     printf("  push rax\n");
@@ -47,50 +54,19 @@ void generate_variable(Node *node) {
 }
 
 void generate_lhs_dot_operator(Node *node, int *labelCount) {
-  if (node->kind != NODE_DOT)
-    ERROR_AT(node->source, "ドット演算子ではありません");
+  assert(node->kind == NODE_DOT);
 
   INSERT_COMMENT("dot lhs operator start");
-  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
-      node->rhs->variable->kind != VARIABLE_MEMBER*/)
-    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
+  assert(node->lhs->type->kind == TYPE_STRUCT ||
+         node->lhs->type->kind == TYPE_UNION);
+  assert(node->rhs->kind == NODE_VAR);
 
-  generate_assign_lhs(node->lhs, labelCount);
+  //複雑な型(構造体、共用体)は常に左辺値扱いできる
+  generate_expression(node->lhs, labelCount);
   printf("  pop rax\n");
   printf("  add rax, %d\n", node->rhs->variable->offset);
   printf("  push rax\n");
   INSERT_COMMENT("dot lhs operator end");
-}
-
-void generate_rhs_dot_operator(Node *node, int *labelCount) {
-  if (node->kind != NODE_DOT)
-    ERROR_AT(node->source, "ドット演算子ではありません");
-
-  INSERT_COMMENT("dot rhs operator start");
-  if (node->lhs->type->kind != TYPE_STRUCT || node->rhs->kind != NODE_VAR /*||
-      node->rhs->variable->kind != VARIABLE_MEMBER*/)
-    ERROR_AT(node->source, "ドット演算子のオペランドが不正です");
-
-  generate_expression(node->lhs, labelCount);
-
-  const int stackUnitSize = 8;
-  const int bitOfByte = 8;
-  if (type_to_size(node->lhs->type) > stackUnitSize) {
-    printf("  pop rax\n");
-    printf("  add rax, %d\n", node->rhs->variable->offset);
-    printf("  push rax\n");
-    generate_rhs_extension(node);
-  } else {
-    const int memberSize = type_to_size(node->rhs->variable->type);
-    const int memberOffset = node->rhs->variable->offset;
-    printf("  pop rax\n");
-    printf("  shl rax, %d\n",
-           (stackUnitSize - memberOffset - memberSize) * bitOfByte);
-    printf("  shr rax, %d\n", (stackUnitSize - memberSize) * bitOfByte);
-    printf("  push rax\n");
-  }
-
-  INSERT_COMMENT("dot rhs operator end");
 }
 
 void generate_assign_lhs(Node *node, int *labelCount) {
@@ -163,16 +139,16 @@ void generate_function_call(Node *node, int *labelCount) {
   //引数の評価
   {
     INSERT_COMMENT("function %s argument evaluation start", functionName);
-    int argumentStackLengthSum = 0;
     for (int i = vector_length(arguments) - 1; i >= 0; i--) {
       INSERT_COMMENT("function %s argument %d start", functionName, i);
       Node *argument = vector_get(arguments, i);
       generate_expression(argument, labelCount);
 
-      // 8byte以上の値はポインタとして格納されているので
+      // 複雑な型(構造体、共用体)の値はポインタとして格納されているので
       // 値に変換してスタックに積み直す
-      int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
-      if (stackLength > 1) {
+      if (argument->type->kind == TYPE_STRUCT ||
+          argument->type->kind == TYPE_UNION) {
+        int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
         printf("  pop %s\n", "rax");
         for (int j = stackLength - 1; j >= 0; j--) {
           printf("  push [%s+%d]\n", "rax", j * 8);
@@ -264,16 +240,23 @@ void generate_function_call(Node *node, int *labelCount) {
   printf("  add rsp, %d\n", stackUnitSize);
   printf(".Lend%d:\n", currentLabel);
 
-  {
-    // stack_length > 1 && stack_length <= 2 <=> stack_length == 2のとき
-    // raxとrdxに戻り値が値として格納されているのでポインタに変換
-    // stack_length <= 1のとき
-    // 値がraxにそのまま積まれているので何もしなくてよい
-    // stack_length > 2のとき
-    // 値へのポインタが返ってくるので何もしなくてよい
+  if (node->type->kind == TYPE_STRUCT || node->type->kind == TYPE_UNION) {
+    /*
+     * stack_length > 1 && stack_length <= 2 <=> stack_length == 2のとき
+     * raxとrdxに戻り値が値として格納されているのでポインタに変換
+     *
+     * stack_length == 1のとき
+     * raxに戻り値が値として格納されているのでポインタに変換
+     +
+     * stack_length > 2のとき
+     * 値へのポインタが返ってくるので何もしなくてよい
+     */
     Type *returnType = node->type;
     Variable *returnStack = node->functionCall->returnStack;
-    if (type_to_stack_size(returnType) / stackUnitSize == 2) {
+    if (type_to_stack_size(returnType) / stackUnitSize == 1) {
+      printf("  mov [rbp-%d], rax\n", returnStack->offset);
+      printf("  lea rax, [rbp-%d]\n", returnStack->offset);
+    } else if (type_to_stack_size(returnType) / stackUnitSize == 2) {
       printf("  mov [rbp-%d], rax\n", returnStack->offset);
       printf("  mov [rbp-%d], rdx\n", returnStack->offset - stackUnitSize);
       printf("  lea rax, [rbp-%d]\n", returnStack->offset);
@@ -290,6 +273,8 @@ void generate_function_call(Node *node, int *labelCount) {
 }
 
 void generate_cast(Node *node) {
+  assert(node->kind == NODE_CAST);
+
   INSERT_COMMENT("cast start");
 
   Type *source = node->lhs->type;
@@ -311,8 +296,7 @@ void generate_cast(Node *node) {
     printf("  setne al\n");
     printf("  movzb rax, al\n");
   } else if (source->kind == TYPE_ARRAY && dest->kind == TYPE_PTR) {
-    // generate_variable(node);
-    // 今はgenerate_rhd_extensionでやっている
+    // assert(0); // forbidden
   }
 
   // void*とポインタ型のキャストを許可
@@ -335,8 +319,8 @@ void generate_assign_i8(const char *destination, const char *source) {
   printf("  mov BYTE PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_large(int size, const char *destination,
-                           const char *source) {
+void generate_assign_complex(int size, const char *destination,
+                             const char *source) {
   int current = 0;
   for (int i = 0; i < size / 8; i++) {
     printf("  mov r11, [%s+%d]\n", source, current);
@@ -367,10 +351,8 @@ void generate_rhs_extension(Node *node) {
   printf("  pop rax\n");
   switch (node->type->kind) {
   case TYPE_CHAR:
-    printf("  movsx rax, BYTE PTR [rax]\n");
-    break;
   case TYPE_BOOL:
-    printf("  movzx rax, BYTE PTR [rax]\n");
+    printf("  movsx rax, BYTE PTR [rax]\n");
     break;
   case TYPE_INT:
   case TYPE_ENUM:
@@ -379,13 +361,8 @@ void generate_rhs_extension(Node *node) {
   case TYPE_PTR:
     printf("  mov rax, [rax]\n");
     break;
-  case TYPE_STRUCT: {
-    int size = type_to_size(node->type);
-    //サイズが8byte以上ならポインタのまま
-    if (size <= 8)
-      printf("  mov rax, [rax]\n");
-    break;
-  }
+  case TYPE_STRUCT:
+  case TYPE_UNION:
   case TYPE_ARRAY:
   case TYPE_FUNC:
     break; //配列と関数はポインタのままにする
@@ -414,6 +391,7 @@ void generate_value_extension(Node *node) {
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
   case TYPE_STRUCT: //構造体はそのままでよい
+  case TYPE_UNION:  //共用体はそのままでよい
   case TYPE_FUNC:   //関数はそのままでよい
     break;
   case TYPE_VOID:
@@ -471,7 +449,9 @@ void generate_expression(Node *node, int *labelCount) {
     generate_rhs_extension(node);
     return;
   case NODE_DOT:
-    generate_rhs_dot_operator(node, labelCount);
+    //構造体は常に左辺値にできる
+    generate_lhs_dot_operator(node, labelCount);
+    generate_rhs_extension(node);
     return;
   case NODE_FUNC:
     generate_function_call(node, labelCount);
@@ -493,16 +473,19 @@ void generate_expression(Node *node, int *labelCount) {
 
     printf("  pop rdi\n");
     printf("  pop rax\n");
-    if (lhsSize == 1 && rhsSize == 1)
-      generate_assign_i8("rax", "dil");
-    else if (lhsSize == 4 && rhsSize == 4)
-      generate_assign_i32("rax", "edi");
-    else if (lhsSize == 8 && rhsSize == 8)
-      generate_assign_i64("rax", "rdi");
-    else if (lhsSize == rhsSize)
-      generate_assign_large(lhsSize, "rax", "rdi");
-    else
-      ERROR_AT(node->source, "予期しない代入");
+    if (node->lhs->type->kind == TYPE_STRUCT ||
+        node->type->kind == TYPE_UNION) {
+      generate_assign_complex(lhsSize, "rax", "rdi");
+    } else {
+      if (lhsSize == 1 && rhsSize == 1)
+        generate_assign_i8("rax", "dil");
+      else if (lhsSize == 4 && rhsSize == 4)
+        generate_assign_i32("rax", "edi");
+      else if (lhsSize == 8 && rhsSize == 8)
+        generate_assign_i64("rax", "rdi");
+      else
+        ERROR_AT(node->source, "予期しない代入");
+    }
     printf("  push rdi\n");
 
     INSERT_COMMENT("assign end");
@@ -750,14 +733,20 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
   }
 }
 
-void generate_global_variable(const Variable *variable) {
-  if (variable->kind != VARIABLE_GLOBAL)
-    ERROR("グローバル変数ではありません");
+void generate_static_memory_variable(const Variable *variable) {
+  assert(variable->kind == VARIABLE_GLOBAL ||
+         variable->storage == STORAGE_STATIC);
 
   const char *name = string_to_char(variable->name);
-  printf("  .globl %s\n", name);
+  if (variable->storage != STORAGE_STATIC)
+    printf("  .globl %s\n", name);
+
   printf("  .data\n");
-  printf("%s:\n", name);
+
+  if (variable->kind == VARIABLE_GLOBAL)
+    printf("%s:\n", name);
+  else
+    printf("%s.%d:\n", name, variable->id);
   generate_global_variable_initializer(variable->type,
                                        variable->initialization);
 }
@@ -1032,6 +1021,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
     }
   }
 
+  // match goto
+  {
+    GotoStatement *gotoPattern = statement_union_take_goto(statementUnion);
+    if (gotoPattern) {
+      INSERT_COMMENT("goto statement");
+      printf("  jmp .L%s\n", string_to_char(gotoPattern->label));
+      return;
+    }
+  }
+
   // match expression
   {
     ExpressionStatement *expressionPattern =
@@ -1048,15 +1047,16 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_function_definition(const FunctionDefinition *functionDefinition,
-                                  int *labelCount) {
-  const char *functionName = string_to_char(functionDefinition->name);
+void generate_function_definition(Variable *variable, int *labelCount) {
+  const FunctionDefinition *definition = variable->function;
+  const char *functionName = string_to_char(definition->name);
   const int returnTarget = *labelCount;
   *labelCount += 1;
 
   //ラベルを生成
   printf("  .text\n");
-  printf("  .global %s\n", functionName);
+  if (variable->storage != STORAGE_STATIC)
+    printf("  .global %s\n", functionName);
   // macは先頭に_を挿入するらしい
   printf("%s:\n", functionName);
 
@@ -1069,8 +1069,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     {
       //構造体の値渡しの戻り値のための暗黙の第一引数が存在するなら
       //それを保管するためのスタック領域を確保
-      size_t stackSize = functionDefinition->stackSize;
-      if (type_to_stack_size(functionDefinition->returnType) > 2)
+      size_t stackSize = definition->stackSize;
+      if (type_to_stack_size(definition->returnType) > 2)
         stackSize += 8;
       printf("  sub rsp, %zu\n", stackSize);
     }
@@ -1084,14 +1084,14 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
     int registerIndex = 0;
 
     //構造体の値渡しの戻り値のための暗黙の第一引数の処理
-    if (type_to_stack_size(functionDefinition->returnType) > 2 * 8) {
-      printf("  mov [rbp-%zu], %s\n", functionDefinition->stackSize + 8,
+    if (type_to_stack_size(definition->returnType) > 2 * 8) {
+      printf("  mov [rbp-%zu], %s\n", definition->stackSize + 8,
              argumentRegister64[registerIndex++]);
     }
 
     int argumentStackOffset = 0;
-    for (int i = 0; i < vector_length(functionDefinition->arguments); i++) {
-      Node *node = vector_get(functionDefinition->arguments, i);
+    for (int i = 0; i < vector_length(definition->arguments); i++) {
+      Node *node = vector_get(definition->arguments, i);
       generate_variable(node);
       printf("  pop rax\n");
 
@@ -1118,8 +1118,8 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   }
 
   INSERT_COMMENT("function body start : %s", functionName);
-  generate_statement(new_statement_union_compound(functionDefinition->body),
-                     labelCount, returnTarget, -1, -1);
+  generate_statement(new_statement_union_compound(definition->body), labelCount,
+                     returnTarget, -1, -1);
   INSERT_COMMENT("function body end : %s", functionName);
 
   //エピローグ
@@ -1127,22 +1127,30 @@ void generate_function_definition(const FunctionDefinition *functionDefinition,
   {
     INSERT_COMMENT("function epilogue start : %s", functionName);
     printf(".Lreturn%d:\n", returnTarget);
-    {
-      Type *returnType = functionDefinition->returnType;
+    if (definition->returnType->kind == TYPE_STRUCT ||
+        definition->returnType->kind == TYPE_UNION) {
+      Type *returnType = definition->returnType;
       int stackLength = type_to_stack_size(returnType) / 8;
-      // stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
-      // ポインタになっている戻り値から値を取り出し
-      // 下位64bitをrdx(2nd return register)に代入
-      //
-      // stackLength > 2のとき
-      // 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
-      if (stackLength == 2) {
+      /*
+       * stack_size <= 1 <=> stack_size == 1のとき
+       * ポインタになっている戻り値から値を取り出す
+       *
+       * stack_size > 1 && stack_size <= 2 <=> stack_size == 2のとき
+       * ポインタになっている戻り値から値を取り出し
+       * 下位64bitをrdx(2nd return register)に代入
+       *
+       * stackLength > 2のとき
+       * 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
+       */
+      if (stackLength == 1) {
+        printf("  mov rax, [rax]\n");
+      } else if (stackLength == 2) {
         printf("  mov rdx, [rax+8]\n");
         printf("  mov rax, [rax]\n");
       } else if (stackLength > 2) {
-        printf("  mov rdx, [rbp-%zu]\n", functionDefinition->stackSize + 8);
-        generate_assign_large(type_to_size(returnType), "rdx", "rax");
-        printf("  mov rax, [rbp-%zu]\n", functionDefinition->stackSize + 8);
+        printf("  mov rdx, [rbp-%zu]\n", definition->stackSize + 8);
+        generate_assign_complex(type_to_size(returnType), "rdx", "rax");
+        printf("  mov rax, [rbp-%zu]\n", definition->stackSize + 8);
       }
     }
 
@@ -1163,15 +1171,21 @@ void generate_code(Program *program) {
     generate_string_literal(i, string);
   }
 
-  for (int i = 0; i < vector_length(program->globalVariables); i++) {
-    const Variable *variable = vector_get(program->globalVariables, i);
-    generate_global_variable(variable);
+  for (int i = 0; i < vector_length(program->staticMemoryVariables); i++) {
+    Variable *variable = vector_get(program->staticMemoryVariables, i);
+
+    // 静的領域に保存される変数にidを割り当て
+    // この処理は関数の生成前に行われなければならない
+    // variableはポインタなので、コード生成に使用されるデータにも伝播される
+    variable->id = i;
+
+    generate_static_memory_variable(variable);
   }
 
   int labelCount = 0;
   for (int i = 0; i < vector_length(program->functionDefinitions); i++) {
-    FunctionDefinition *function = vector_get(program->functionDefinitions, i);
-    allocate_return_stack_to_function(function);
+    Variable *function = vector_get(program->functionDefinitions, i);
+    allocate_return_stack_to_function(function->function);
     generate_function_definition(function, &labelCount);
   }
 }

@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 //全てのメンバがNullまたはNoneに初期化される
-Declaration *new_declaration() {
+Declaration *new_declaration(void) {
   Declaration *result = calloc(1, sizeof(Declaration));
   return result;
 }
@@ -94,7 +94,7 @@ Vector *parameter_list(ParseContext *context);
 Declaration *parameter_declaration(ParseContext *context);
 
 // Declaration Vector
-Vector *identifier_list(ParseContext *context);
+Vector *identifier_list(void);
 
 Type *type_name(ParseContext *context);
 
@@ -138,7 +138,6 @@ Declaration *declaration_specifier(ParseContext *context) {
       continue;
     } else if (consume("static")) {
       result->storage = STORAGE_STATIC;
-      ERROR_AT(token->string->head, "staticはサポートされていません");
       continue;
     } else if (consume("_Thread_local")) {
       result->storage = STORAGE_THREAD_LOCAL;
@@ -146,7 +145,6 @@ Declaration *declaration_specifier(ParseContext *context) {
       continue;
     } else if (consume("auto")) {
       result->storage = STORAGE_AUTO;
-      ERROR_AT(token->string->head, "autoはサポートされていません");
       continue;
     } else if (consume("register")) {
       result->storage = STORAGE_REGISTER;
@@ -260,7 +258,12 @@ Type *type_specifier(ParseContext *context) {
 }
 
 Type *struct_or_union_specifier(ParseContext *context) {
-  if (!consume("struct"))
+  TypeKind kind = TYPE_VOID;
+  if (consume("struct"))
+    kind = TYPE_STRUCT;
+  else if (consume("union"))
+    kind = TYPE_UNION;
+  else
     return NULL;
 
   Type *result = NULL;
@@ -272,7 +275,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
     Type *type =
         type_container_get(context->scope->tagContainer, identifier->string);
     if (type) {
-      if (type->kind == TYPE_STRUCT) {
+      if (type->kind == kind) {
         result = type;
       } else {
         ERROR_AT(identifier->string->head,
@@ -284,7 +287,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
 
   // 解決できなければ生成
   if (!result) {
-    result = new_type(TYPE_STRUCT);
+    result = new_type(kind);
     if (identifier) {
       result->name = identifier->string;
 
@@ -298,7 +301,8 @@ Type *struct_or_union_specifier(ParseContext *context) {
       result->isDefined = true;
       result->members = new_member_container();
     } else {
-      ERROR_AT(identifier->string->head, "構造体が多重に定義されています")
+      ERROR_AT(identifier->string->head,
+               "構造体または共用体が多重に定義されています")
     }
 
     int memberOffset = 0;
@@ -308,14 +312,25 @@ Type *struct_or_union_specifier(ParseContext *context) {
       for (int i = 0; i < vector_length(memberDeclaration->declarators); i++) {
         Variable *member = vector_get(memberDeclaration->declarators, i);
         if (!member)
-          ERROR_AT(token->string->head, "構造体のメンバの定義が不正です");
+          ERROR_AT(token->string->head,
+                   "構造体または共用体のメンバの定義が不正です");
 
         member->kind = VARIABLE_LOCAL;
         size_t memberAlignment = type_to_align(member->type);
-        memberOffset += (memberAlignment - memberOffset % memberAlignment) %
-                        memberAlignment;
-        member->offset = memberOffset;
-        memberOffset += type_to_size(member->type);
+        if (kind == TYPE_STRUCT) {
+          memberOffset += (memberAlignment - memberOffset % memberAlignment) %
+                          memberAlignment;
+          member->offset = memberOffset;
+          memberOffset += type_to_size(member->type);
+        } else if (kind == TYPE_UNION) {
+          member->offset = 0;
+
+          INSERT_COMMENT("name:%.*s offset:%d size:%d", member->name->length,
+                         member->name->head, member->offset,
+                         type_to_size(member->type));
+        } else {
+          assert(0); // unreachable
+        }
 
         if (!member_container_push(result->members, member))
           ERROR_AT(member->name->head, "同名のメンバが既に定義されています");
@@ -323,7 +338,7 @@ Type *struct_or_union_specifier(ParseContext *context) {
     }
   } else if (!identifier) {
     ERROR_AT(token->string->head,
-             "無名構造体を定義なしで使用することはできません");
+             "無名構造体または共用体を定義なしで使用することはできません");
   }
 
   return result;
@@ -380,7 +395,7 @@ Type *enum_specifier(ParseContext *context) {
 
       Node *constantExpression = NULL;
       if (consume("="))
-        constantExpression = constant_expression(context);
+        constantExpression = constant_expression();
       else {
         constantExpression = new_node_num(count);
         count++;
@@ -431,8 +446,6 @@ Vector *init_declarator_list(Type *base, ParseContext *context) {
 }
 
 Variable *init_declarator(Type *base, ParseContext *context) {
-  Token *tokenHead = token;
-
   // declarator
   Variable *variable = declarator(base, context);
   if (!variable)
@@ -489,7 +502,7 @@ Variable *direct_declarator(Type *base, ParseContext *context) {
       if (!consume(")")) {
         parameters = parameter_type_list(context);
         if (!parameters)
-          parameters = identifier_list(context);
+          parameters = identifier_list();
 
         assert(parameters);
 
@@ -543,7 +556,7 @@ Type *pointer(Type *base) {
   return type;
 }
 
-bool type_qualifier_list() {
+bool type_qualifier_list(void) {
   bool result = false;
   for (;;) {
     if (consume("const")) {
@@ -610,7 +623,7 @@ Declaration *parameter_declaration(ParseContext *context) {
 
 // identifier_list = identifier ("," identifier)*
 // パラメータが少なくとも1つはあることを期待する
-Vector *identifier_list(ParseContext *context) {
+Vector *identifier_list(void) {
   Vector *result = new_vector(16);
   do {
     Variable *variable =

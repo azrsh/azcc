@@ -4,7 +4,8 @@
 #include "node.h"
 #include "parseutil.h"
 
-Node *constant_expression(ParseContext *context);
+Node *expression(ParseContext *context);
+Node *constant_expression(void);
 Node *assign(ParseContext *context);
 
 #endif

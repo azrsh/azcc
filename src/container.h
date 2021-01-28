@@ -34,7 +34,7 @@ void vector_set(Vector *vector, int index, void *element);
 int vector_length(Vector *vector);
 
 typedef struct HashTable HashTable;
-HashTable *new_hash_table();
+HashTable *new_hash_table(void);
 void hash_table_store(HashTable *table, const String *key, void *data);
 bool hash_table_contain(HashTable *table, const String *key);
 void *hash_table_find(HashTable *table, const String *key);

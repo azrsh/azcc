@@ -1,6 +1,7 @@
 #ifndef STATEMENT_H
 #define STATEMENT_H
 
+#include "container.h"
 #include "declaration.h"
 #include "node.h"
 
@@ -82,6 +83,11 @@ struct ContinueStatement {
   int dummy;
 };
 
+typedef struct GotoStatement GotoStatement;
+struct GotoStatement {
+  const String *label;
+};
+
 StatementUnion *new_statement_union_null(NullStatement *statement);
 StatementUnion *new_statement_union_expression(ExpressionStatement *statement);
 StatementUnion *new_statement_union_return(ReturnStatement *statement);
@@ -94,6 +100,7 @@ StatementUnion *new_statement_union_for(ForStatement *statement);
 StatementUnion *new_statement_union_compound(CompoundStatement *statement);
 StatementUnion *new_statement_union_break(BreakStatement *statement);
 StatementUnion *new_statement_union_continue(ContinueStatement *statement);
+StatementUnion *new_statement_union_goto(GotoStatement *statement);
 
 NullStatement *statement_union_take_null(StatementUnion *statementUnion);
 ExpressionStatement *
@@ -110,5 +117,6 @@ statement_union_take_compound(StatementUnion *statementUnion);
 BreakStatement *statement_union_take_break(StatementUnion *statementUnion);
 ContinueStatement *
 statement_union_take_continue(StatementUnion *statementUnion);
+GotoStatement *statement_union_take_goto(StatementUnion *statementUnion);
 
 #endif

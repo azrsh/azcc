@@ -122,6 +122,7 @@ Token *tokenize(const char *p) {
     length += is_reserved(p, "short");
     length += is_reserved(p, "signed");
     length += is_reserved(p, "sizeof");
+    length += is_reserved(p, "static");
     length += is_reserved(p, "struct");
     length += is_reserved(p, "switch");
     length += is_reserved(p, "typedef");

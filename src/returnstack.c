@@ -7,6 +7,7 @@
 #include "type.h"
 #include "util.h"
 #include "variable.h"
+#include <assert.h>
 
 typedef struct StackAllocContext StackAllocContext;
 struct StackAllocContext {
@@ -42,7 +43,7 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
   case NODE_FUNC: {
     allocate_return_stack_to_node(node->lhs, context);
 
-    if (type_to_stack_size(node->type) > 1 * 8) {
+    if (node->type->kind == TYPE_STRUCT || node->type->kind == TYPE_UNION) {
       //識別子として無効な変数名を生成
       const String *name =
           string_concat(char_to_string("0"), char_to_string("return stack"));
@@ -89,11 +90,6 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
   }
 
   ERROR_AT(node->source, "予期しないノードが指定されました");
-}
-
-void allocate_return_stack_to_declaration(Declaration *declaration,
-                                          StackAllocContext *context) {
-  ERROR("invalid abstract syntax tree");
 }
 
 void allocate_return_stack_to_statement(StatementUnion *statementUnion,
@@ -182,7 +178,7 @@ void allocate_return_stack_to_statement(StatementUnion *statementUnion,
       for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
         BlockItem *item = vector_get(compoundPattern->blockItemList, i);
         if (item->declaration)
-          allocate_return_stack_to_declaration(item->declaration, context);
+          assert(0); // 意味解析で文に変換されるはずなので到達不可能
         else if (item->statement)
           allocate_return_stack_to_statement(item->statement, context);
       }
@@ -223,6 +219,14 @@ void allocate_return_stack_to_statement(StatementUnion *statementUnion,
   {
     NullStatement *nullPattern = statement_union_take_null(statementUnion);
     if (nullPattern) {
+      return;
+    }
+  }
+
+  // match goto
+  {
+    GotoStatement *gotoPattern = statement_union_take_goto(statementUnion);
+    if (gotoPattern) {
       return;
     }
   }
