@@ -33,9 +33,15 @@ void generate_variable(Node *node) {
   const char *name = string_to_char(variable->name);
   switch (variable->kind) {
   case VARIABLE_LOCAL:
-    printf("  lea rax, [rbp-%d]\n", variable->offset);
-    printf("  push rax\n");
-    return;
+    if (variable->storage == STORAGE_STATIC) {
+      printf("  lea rax, %s.%d[rip]\n", name, variable->id);
+      printf("  push rax\n");
+      return;
+    } else {
+      printf("  lea rax, [rbp-%d]\n", variable->offset);
+      printf("  push rax\n");
+      return;
+    }
   case VARIABLE_GLOBAL:
     printf("  lea rax, %s[rip]\n", name);
     printf("  push rax\n");
@@ -754,14 +760,20 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
   }
 }
 
-void generate_global_variable(const Variable *variable) {
-  if (variable->kind != VARIABLE_GLOBAL)
-    ERROR("グローバル変数ではありません");
+void generate_static_memory_variable(const Variable *variable) {
+  assert(variable->kind == VARIABLE_GLOBAL ||
+         variable->storage == STORAGE_STATIC);
 
   const char *name = string_to_char(variable->name);
-  printf("  .globl %s\n", name);
+  if (variable->storage != STORAGE_STATIC)
+    printf("  .globl %s\n", name);
+
   printf("  .data\n");
-  printf("%s:\n", name);
+
+  if (variable->kind == VARIABLE_GLOBAL)
+    printf("%s:\n", name);
+  else
+    printf("%s.%d:\n", name, variable->id);
   generate_global_variable_initializer(variable->type,
                                        variable->initialization);
 }
@@ -1178,9 +1190,15 @@ void generate_code(Program *program) {
     generate_string_literal(i, string);
   }
 
-  for (int i = 0; i < vector_length(program->globalVariables); i++) {
-    const Variable *variable = vector_get(program->globalVariables, i);
-    generate_global_variable(variable);
+  for (int i = 0; i < vector_length(program->staticMemoryVariables); i++) {
+    Variable *variable = vector_get(program->staticMemoryVariables, i);
+
+    // 静的領域に保存される変数にidを割り当て
+    // この処理は関数の生成前に行われなければならない
+    // variableはポインタなので、コード生成に使用されるデータにも伝播される
+    variable->id = i;
+
+    generate_static_memory_variable(variable);
   }
 
   int labelCount = 0;

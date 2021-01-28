@@ -38,11 +38,14 @@ Program *parse(Token *head) {
 Program *program() {
   Program *result = calloc(1, sizeof(Program));
   result->functionDefinitions = new_vector(16);
-  result->globalVariables = new_vector(16);
+  result->staticMemoryVariables = new_vector(16);
   result->stringLiterals = new_vector(16);
-  stringLiterals = result->stringLiterals;
 
   ParseContext *context = new_scope_context(NULL);
+  context->translationUnit = calloc(1, sizeof(TranslationUnitContext));
+  context->translationUnit->staticMemoryVariables =
+      result->staticMemoryVariables;
+  context->translationUnit->stringLiterals = result->stringLiterals;
 
   while (!at_eof()) {
     Declaration *base = declaration_specifier(context);
@@ -67,8 +70,7 @@ Program *program() {
       Token *head = token;
       Declaration *declarationResult = declaration(base, context);
       if (declarationResult) {
-        analyze_global_declaration(declarationResult, result->globalVariables,
-                                   context);
+        analyze_global_declaration(declarationResult, context);
         continue;
       }
       token = head; //ロールバック

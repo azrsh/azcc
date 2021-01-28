@@ -17,7 +17,6 @@
 #include "variablecontainer.h"
 
 extern Token *token;
-extern Vector *stringLiterals; // String vector
 
 typedef struct Scope Scope;
 struct Scope {
@@ -32,10 +31,17 @@ struct FunctionContext {
   ListNode *switchStatementNest; // SwitchStatement List
 };
 
+typedef struct TranslationUnitContext TranslationUnitContext;
+struct TranslationUnitContext {
+  Vector *staticMemoryVariables; // Variable Vector
+  Vector *stringLiterals;  // String vector
+};
+
 typedef struct ParseContext ParseContext;
 struct ParseContext {
   Scope *scope;
   FunctionContext *function;
+  TranslationUnitContext *translationUnit;
 };
 
 ParseContext *new_scope_context(ParseContext *parent);
@@ -71,14 +77,15 @@ int expect_number();
 Token *expect_identifier();
 
 Variable *new_variable(Type *type, const String *name);
-Variable *variable_to_local(Variable *variable, ParseContext *context);
+Variable *variable_to_auto(Variable *variable, ParseContext *context);
+Variable *variable_to_local_static(Variable *variable);
 Variable *variable_to_global(Variable *variable);
 Variable *variable_to_function(Variable *variable,
                                FunctionDefinition *function);
 Variable *variable_to_enumerator(Variable *variable, Node *initialization);
 Variable *variable_to_member(Variable *variable);
 
-FunctionCall *new_function_call();
+FunctionCall *new_function_call(void);
 
 TypeKind map_token_to_kind(Token *token);
 Type *wrap_by_pointer(Type *base, Token *token);

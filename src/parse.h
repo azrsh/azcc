@@ -19,8 +19,10 @@ struct FunctionDefinition {
 typedef struct Program Program;
 struct Program {
   Vector *functionDefinitions; // Variable vector
-  Vector *globalVariables;     // Variable vector
-  Vector *stringLiterals;      // char* vector
+  Vector *
+      staticMemoryVariables; // Variable vector
+                             // ここでいうstaticは静的なメモリ領域に確保されるという意味で、グローバル変数を含む
+  Vector *stringLiterals;    // char* vector
 };
 
 Program *parse(Token *head);

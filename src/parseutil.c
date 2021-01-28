@@ -55,8 +55,10 @@ ParseContext *new_scope_context(ParseContext *parent) {
 
   {
     //スコープが変わっても関数のコンテキストは不変
-    if (parent)
+    if (parent) {
       result->function = parent->function;
+      result->translationUnit = parent->translationUnit;
+    }
   }
 
   return result;
@@ -138,10 +140,15 @@ Variable *new_variable(Type *type, const String *name) {
   return variable;
 }
 
-Variable *variable_to_local(Variable *variable, ParseContext *context) {
+Variable *variable_to_auto(Variable *variable, ParseContext *context) {
   variable->kind = VARIABLE_LOCAL;
   context->function->currentStackOffset += type_to_stack_size(variable->type);
   variable->offset = context->function->currentStackOffset;
+  return variable;
+}
+
+Variable *variable_to_local_static(Variable *variable) {
+  variable->kind = VARIABLE_LOCAL;
   return variable;
 }
 
@@ -254,7 +261,7 @@ Node *new_node_variable_definition(Variable *variable, ParseContext *context,
   Node *node = calloc(1, sizeof(Node));
   node->kind = NODE_VAR;
 
-  Variable *localVariable = variable_to_local(variable, context);
+  Variable *localVariable = variable_to_auto(variable, context);
   if (!variable_container_push(context->scope->variableContainer,
                                localVariable))
     ERROR_AT(variable->name->head, "同名の変数が既に定義されています");

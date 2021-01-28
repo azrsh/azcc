@@ -46,8 +46,9 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
     Variable *declarator = vector_get(target->declarators, i);
 
     //例外処理
-    StorageKind storage = target->storage;
     {
+      StorageKind storage = target->storage;
+
       //未指定の場合、デフォルトの値を設定
       if (storage == STORAGE_NONE) {
         if (declarator->type->kind == TYPE_FUNC)
@@ -68,9 +69,11 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
       }
 
       assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN);
+
+      declarator->storage = storage;
     }
 
-    switch (storage) {
+    switch (declarator->storage) {
     case STORAGE_NONE:
       assert(0);
       break;
@@ -89,7 +92,16 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
                "ローカルでのextern指定子はサポートされていません");
       break;
     }
-    case STORAGE_STATIC:
+    case STORAGE_STATIC: {
+      //静的変数の宣言
+      Variable *staticVariable = variable_to_local_static(declarator);
+      if (!variable_container_push(context->scope->variableContainer,
+                                   staticVariable))
+        ERROR_AT(token->string->head, "変数宣言が衝突しています");
+      vector_push_back(context->translationUnit->staticMemoryVariables,
+                       staticVariable);
+      break;
+    }
     case STORAGE_THREAD_LOCAL:
       ERROR_AT(token->string->head, "サポートされていない記憶クラス指定子です");
       break;
@@ -116,14 +128,14 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
   return node;
 }
 
-void analyze_global_declaration(Declaration *target, Vector *globalVariables,
-                                ParseContext *context) {
+void analyze_global_declaration(Declaration *target, ParseContext *context) {
   for (int i = 0; i < vector_length(target->declarators); i++) {
     Variable *declarator = vector_get(target->declarators, i);
 
     //例外処理
-    StorageKind storage = target->storage;
     {
+      StorageKind storage = target->storage;
+
       //未指定の場合、デフォルトの値を設定
       if (storage == STORAGE_NONE) {
         if (declarator->type->kind == TYPE_FUNC)
@@ -142,10 +154,14 @@ void analyze_global_declaration(Declaration *target, Vector *globalVariables,
       }
 
       assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN);
+
+      declarator->storage = storage;
     }
 
-    switch (storage) {
+    switch (declarator->storage) {
+    case STORAGE_STATIC:
     case STORAGE_NONE: {
+      Vector *globalVariables = context->translationUnit->staticMemoryVariables;
       for (int i = 0; i < vector_length(globalVariables); i++) {
         Variable *variable = vector_get(globalVariables, i);
         if (string_compare(variable->name, declarator->name)) {
@@ -197,7 +213,6 @@ void analyze_global_declaration(Declaration *target, Vector *globalVariables,
       }
       break;
     }
-    case STORAGE_STATIC:
     case STORAGE_THREAD_LOCAL:
       ERROR_AT(token->string->head, "サポートされていない記憶クラス指定子です");
       break;

@@ -10,8 +10,7 @@
 // 関数宣言の読み替え
 void analyze_function_type(Type *type);
 Node *analyze_local_declaration(Declaration *target, ParseContext *context);
-void analyze_global_declaration(Declaration *target, Vector *globalVariables,
-                                ParseContext *context);
+void analyze_global_declaration(Declaration *target, ParseContext *context);
 StatementUnion *analyze_blockItem_declaration(Declaration *declaration,
                                               ParseContext *context);
 

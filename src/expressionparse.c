@@ -33,7 +33,7 @@ Node *multiply(ParseContext *context);
 Node *unary(ParseContext *context);
 Node *postfix(ParseContext *context);
 Node *primary(ParseContext *context);
-Node *literal();
+Node *literal(ParseContext *context);
 
 // expression = (assign ("," assign)*) | variable_definition
 // argument_expression_list = expression ("," expression)*
@@ -401,10 +401,10 @@ Node *primary(ParseContext *context) {
   }
 
   //そうでなければリテラル
-  return literal();
+  return literal(context);
 }
 
-Node *literal() {
+Node *literal(ParseContext *context) {
   Token *character = consume_character();
   if (character) {
     Node *node = new_node(NODE_CHAR, NULL, NULL);
@@ -465,9 +465,10 @@ Node *literal() {
     }
 
     Node *node = new_node(NODE_STRING, NULL, NULL);
-    node->val = vector_length(stringLiterals);
+    node->val = vector_length(context->translationUnit->stringLiterals);
     //コンテナはポインタしか受け入れられないので
-    vector_push_back(stringLiterals, string_to_char(content));
+    vector_push_back(context->translationUnit->stringLiterals,
+                     string_to_char(content));
     return node;
   }
 

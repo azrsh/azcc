@@ -22,6 +22,7 @@ struct Variable {
   Type *type;          //型
   VariableKind kind;   //変数の種類
   int offset; // RBPからのオフセット、ローカル変数でのみ使用
+  int id; // codegen.cで生成して付与する。ローカルのstatic変数でのみ使用する
   Node *initialization; // 初期化式、グローバル変数でのみ使用
   FunctionDefinition *function; //関数型のときのみ使用する
 };
