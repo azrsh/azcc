@@ -8,14 +8,15 @@ int main() {
 
   ListNode head;
   ListNode *list = &head;
-  for (int i = 0; i < sizeof(source) / sizeof(int); i++)
+  for (size_t i = 0; i < sizeof(source) / sizeof(int); i++)
     list = list_push_back(list, &source[i]);
 
   list = &head;
   int count = 0;
   while (list->next) {
     list = list->next;
-    test_assert(1, list->body == &source[count], "list->body == &source[count]");
+    test_assert(1, list->body == &source[count],
+                "list->body == &source[count]");
     count++;
   }
 

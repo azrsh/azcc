@@ -7,6 +7,7 @@
 #include "type.h"
 #include "util.h"
 #include "variable.h"
+#include <assert.h>
 
 typedef struct StackAllocContext StackAllocContext;
 struct StackAllocContext {
@@ -89,11 +90,6 @@ void allocate_return_stack_to_node(Node *node, StackAllocContext *context) {
   }
 
   ERROR_AT(node->source, "予期しないノードが指定されました");
-}
-
-void allocate_return_stack_to_declaration(Declaration *declaration,
-                                          StackAllocContext *context) {
-  ERROR("invalid abstract syntax tree");
 }
 
 void allocate_return_stack_to_statement(StatementUnion *statementUnion,
@@ -182,7 +178,7 @@ void allocate_return_stack_to_statement(StatementUnion *statementUnion,
       for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
         BlockItem *item = vector_get(compoundPattern->blockItemList, i);
         if (item->declaration)
-          allocate_return_stack_to_declaration(item->declaration, context);
+          assert(0); // 意味解析で文に変換されるはずなので到達不可能
         else if (item->statement)
           allocate_return_stack_to_statement(item->statement, context);
       }

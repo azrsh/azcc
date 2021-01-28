@@ -34,7 +34,7 @@ struct FunctionContext {
 typedef struct TranslationUnitContext TranslationUnitContext;
 struct TranslationUnitContext {
   Vector *staticMemoryVariables; // Variable Vector
-  Vector *stringLiterals;  // String vector
+  Vector *stringLiterals;        // String vector
 };
 
 typedef struct ParseContext ParseContext;
@@ -46,7 +46,7 @@ struct ParseContext {
 
 ParseContext *new_scope_context(ParseContext *parent);
 
-bool at_eof();
+bool at_eof(void);
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
@@ -54,15 +54,15 @@ bool consume(const char *op);
 
 //次のトークンが文字列のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_string();
+Token *consume_string(void);
 
 //次のトークンが文字のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_character();
+Token *consume_character(void);
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_identifier();
+Token *consume_identifier(void);
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進める
 //それ以外の場合にはエラーを報告する
@@ -70,11 +70,11 @@ void expect(char *op);
 
 //次のトークンが数値のときには、トークンを1つ読み進めてその数値を返す
 //それ以外の場合にはエラーを報告する
-int expect_number();
+int expect_number(void);
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはエラーを報告する
-Token *expect_identifier();
+Token *expect_identifier(void);
 
 Variable *new_variable(Type *type, const String *name);
 Variable *variable_to_auto(Variable *variable, ParseContext *context);

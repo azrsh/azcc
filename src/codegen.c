@@ -172,7 +172,6 @@ void generate_function_call(Node *node, int *labelCount) {
   //引数の評価
   {
     INSERT_COMMENT("function %s argument evaluation start", functionName);
-    int argumentStackLengthSum = 0;
     for (int i = vector_length(arguments) - 1; i >= 0; i--) {
       INSERT_COMMENT("function %s argument %d start", functionName, i);
       Node *argument = vector_get(arguments, i);

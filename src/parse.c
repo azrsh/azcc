@@ -26,7 +26,7 @@
 // program = (function_definition | declaration)*
 // function_definition = declaration_specifier declarator compound_statement
 
-Program *program();
+Program *program(void);
 Variable *function_definition(Declaration *base, ParseContext *context);
 
 Program *parse(Token *head) {
@@ -35,7 +35,7 @@ Program *parse(Token *head) {
 }
 
 //プログラムをパースする
-Program *program() {
+Program *program(void) {
   Program *result = calloc(1, sizeof(Program));
   result->functionDefinitions = new_vector(16);
   result->staticMemoryVariables = new_vector(16);

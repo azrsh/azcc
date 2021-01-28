@@ -10,6 +10,7 @@
 #include "util.h"
 #include "variable.h"
 #include "variablecontainer.h"
+#include <assert.h>
 #include <stdlib.h>
 
 Type *check_arithmetic_binary_operator(Type *lhs, Type *rhs) {
@@ -416,11 +417,6 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
   ERROR_AT(node->source, "予期しないノードが指定されました");
 }
 
-void tag_type_to_declaration(Declaration *declaration,
-                             TypeCheckContext *context) {
-  ERROR("invalid abstract syntax tree");
-}
-
 void tag_type_to_statement(StatementUnion *statementUnion,
                            TypeCheckContext *context) {
   if (!statementUnion) {
@@ -508,7 +504,7 @@ void tag_type_to_statement(StatementUnion *statementUnion,
       for (int i = 0; i < vector_length(compoundPattern->blockItemList); i++) {
         BlockItem *item = vector_get(compoundPattern->blockItemList, i);
         if (item->declaration)
-          tag_type_to_declaration(item->declaration, context);
+          assert(0); // 意味解析で文に変換されるはずなので到達不可能
         else if (item->statement)
           tag_type_to_statement(item->statement, context);
       }

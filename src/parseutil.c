@@ -64,7 +64,7 @@ ParseContext *new_scope_context(ParseContext *parent) {
   return result;
 }
 
-bool at_eof() { return token->kind == TOKEN_EOF; }
+bool at_eof(void) { return token->kind == TOKEN_EOF; }
 
 //次のトークンが期待している記号のときには、トークンを1つ読み進めて真を返す
 //それ以外の場合には偽を返す
@@ -78,7 +78,7 @@ bool consume(const char *op) {
 
 //次のトークンが文字列のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_string() {
+Token *consume_string(void) {
   if (token->kind != TOKEN_STRING)
     return NULL;
   Token *current = token;
@@ -88,7 +88,7 @@ Token *consume_string() {
 
 //次のトークンが文字のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_character() {
+Token *consume_character(void) {
   if (token->kind != TOKEN_CHAR)
     return NULL;
   Token *current = token;
@@ -98,7 +98,7 @@ Token *consume_character() {
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはNULLを返す
-Token *consume_identifier() {
+Token *consume_identifier(void) {
   if (token->kind != TOKEN_IDENTIFIER)
     return NULL;
   Token *current = token;
@@ -115,7 +115,7 @@ void expect(char *op) {
 
 //次のトークンが数値のときには、トークンを1つ読み進めてその数値を返す
 //それ以外の場合にはエラーを報告する
-int expect_number() {
+int expect_number(void) {
   if (token->kind != TOKEN_NUMBER)
     ERROR_AT(token->string->head, "数ではありません");
   const int value = token->value;
@@ -125,7 +125,7 @@ int expect_number() {
 
 //次のトークンが識別子のときには、トークンを1つ読み進めてそのトークンを返す
 //それ以外の場合にはエラーを報告する
-Token *expect_identifier() {
+Token *expect_identifier(void) {
   if (token->kind != TOKEN_IDENTIFIER)
     ERROR_AT(token->string->head, "識別子ではありません");
   Token *current = token;
@@ -175,7 +175,7 @@ Variable *variable_to_member(Variable *variable) {
   return variable;
 }
 
-FunctionCall *new_function_call() {
+FunctionCall *new_function_call(void) {
   FunctionCall *functionCall = calloc(1, sizeof(FunctionCall));
   return functionCall;
 }

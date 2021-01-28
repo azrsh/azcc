@@ -9,7 +9,7 @@ struct MemberContainer {
   size_t maxSize;
 };
 
-MemberContainer *new_member_container() {
+MemberContainer *new_member_container(void) {
   MemberContainer *container = calloc(1, sizeof(MemberContainer));
   container->table = new_hash_table();
   container->vector = new_vector(16);

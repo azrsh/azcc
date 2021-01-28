@@ -17,7 +17,7 @@
 #include <stdlib.h>
 
 //全てのメンバがNullまたはNoneに初期化される
-Declaration *new_declaration() {
+Declaration *new_declaration(void) {
   Declaration *result = calloc(1, sizeof(Declaration));
   return result;
 }
@@ -94,7 +94,7 @@ Vector *parameter_list(ParseContext *context);
 Declaration *parameter_declaration(ParseContext *context);
 
 // Declaration Vector
-Vector *identifier_list(ParseContext *context);
+Vector *identifier_list(void);
 
 Type *type_name(ParseContext *context);
 
@@ -395,7 +395,7 @@ Type *enum_specifier(ParseContext *context) {
 
       Node *constantExpression = NULL;
       if (consume("="))
-        constantExpression = constant_expression(context);
+        constantExpression = constant_expression();
       else {
         constantExpression = new_node_num(count);
         count++;
@@ -446,8 +446,6 @@ Vector *init_declarator_list(Type *base, ParseContext *context) {
 }
 
 Variable *init_declarator(Type *base, ParseContext *context) {
-  Token *tokenHead = token;
-
   // declarator
   Variable *variable = declarator(base, context);
   if (!variable)
@@ -504,7 +502,7 @@ Variable *direct_declarator(Type *base, ParseContext *context) {
       if (!consume(")")) {
         parameters = parameter_type_list(context);
         if (!parameters)
-          parameters = identifier_list(context);
+          parameters = identifier_list();
 
         assert(parameters);
 
@@ -558,7 +556,7 @@ Type *pointer(Type *base) {
   return type;
 }
 
-bool type_qualifier_list() {
+bool type_qualifier_list(void) {
   bool result = false;
   for (;;) {
     if (consume("const")) {
@@ -625,7 +623,7 @@ Declaration *parameter_declaration(ParseContext *context) {
 
 // identifier_list = identifier ("," identifier)*
 // パラメータが少なくとも1つはあることを期待する
-Vector *identifier_list(ParseContext *context) {
+Vector *identifier_list(void) {
   Vector *result = new_vector(16);
   do {
     Variable *variable =

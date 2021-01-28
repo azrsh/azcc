@@ -39,7 +39,7 @@
 
 StatementUnion *statement(ParseContext *context);
 
-NullStatement *null_statement(ParseContext *context);
+NullStatement *null_statement(void);
 ExpressionStatement *expression_statement(ParseContext *context);
 ReturnStatement *return_statement(ParseContext *context);
 IfStatement *if_statement(ParseContext *context);
@@ -49,9 +49,9 @@ WhileStatement *while_statement(ParseContext *context);
 DoWhileStatement *do_while_statement(ParseContext *context);
 ForStatement *for_statement(ParseContext *context);
 CompoundStatement *compound_statement(ParseContext *context);
-BreakStatement *break_statement(ParseContext *context);
-ContinueStatement *continue_statement(ParseContext *context);
-GotoStatement *goto_statement(ParseContext *context);
+BreakStatement *break_statement(void);
+ContinueStatement *continue_statement(void);
+GotoStatement *goto_statement(void);
 
 //文をパースする
 StatementUnion *statement(ParseContext *context) {
@@ -95,22 +95,22 @@ StatementUnion *statement(ParseContext *context) {
     return new_statement_union_compound(compoundPattern);
   }
 
-  BreakStatement *breakPattern = break_statement(context);
+  BreakStatement *breakPattern = break_statement();
   if (breakPattern) {
     return new_statement_union_break(breakPattern);
   }
 
-  ContinueStatement *continuePattern = continue_statement(context);
+  ContinueStatement *continuePattern = continue_statement();
   if (continuePattern) {
     return new_statement_union_continue(continuePattern);
   }
 
-  NullStatement *nullPattern = null_statement(context);
+  NullStatement *nullPattern = null_statement();
   if (nullPattern) {
     return new_statement_union_null(nullPattern);
   }
 
-  GotoStatement *gotoPattern = goto_statement(context);
+  GotoStatement *gotoPattern = goto_statement();
   if (gotoPattern) {
     return new_statement_union_goto(gotoPattern);
   }
@@ -119,7 +119,7 @@ StatementUnion *statement(ParseContext *context) {
   return new_statement_union_expression(expressionPattern);
 }
 
-NullStatement *null_statement(ParseContext *context) {
+NullStatement *null_statement(void) {
   if (!consume(";"))
     return NULL;
 
@@ -338,7 +338,7 @@ CompoundStatement *compound_statement(ParseContext *context) {
 }
 
 // break文をパースする
-BreakStatement *break_statement(ParseContext *context) {
+BreakStatement *break_statement(void) {
   if (!consume("break")) {
     return NULL;
   }
@@ -348,7 +348,7 @@ BreakStatement *break_statement(ParseContext *context) {
 }
 
 // continue文をパースする
-ContinueStatement *continue_statement(ParseContext *context) {
+ContinueStatement *continue_statement(void) {
   if (!consume("continue")) {
     return NULL;
   }
@@ -357,7 +357,7 @@ ContinueStatement *continue_statement(ParseContext *context) {
   return result;
 }
 
-GotoStatement *goto_statement(ParseContext *context) {
+GotoStatement *goto_statement(void) {
   if (!consume("goto")) {
     return NULL;
   }

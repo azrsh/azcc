@@ -16,7 +16,7 @@
 
 Node *expression(ParseContext *context);
 Node *assign(ParseContext *context);
-Node *constant_expression(ParseContext *context);
+Node *constant_expression(void);
 
 Vector *argument_expression_list(ParseContext *context);
 Node *conditional(ParseContext *context);
@@ -77,9 +77,7 @@ Vector *argument_expression_list(ParseContext *context) {
   return arguments;
 }
 
-Node *constant_expression(ParseContext *context) {
-  return new_node_num(expect_number());
-}
+Node *constant_expression(void) { return new_node_num(expect_number()); }
 
 //代入をパースする
 Node *assign(ParseContext *context) {
