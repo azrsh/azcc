@@ -16,10 +16,11 @@ jobs:
       - name: Install cygwin packages
         run: |
           choco install cyg-get -y
-          cyg-get gcc-core make
+          cyg-get -debug gcc-core make
       - name: check
         run: |
-          C:\tools\cygwin\bin\usr\gcc --version
+          ls C:\tools\cygwin\bin
+          C:\tools\cygwin\usr\bin\gcc --version
           make --version
       - uses: actions/checkout@v2
       - name: make
