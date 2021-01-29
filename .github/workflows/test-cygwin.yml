@@ -19,9 +19,12 @@ jobs:
           cyg-get -debug gcc-core make
       - name: check
         run: |
-          ls C:\tools\cygwin\bin
-          C:\tools\cygwin\usr\bin\gcc --version
-          make --version
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          which bash.exe
+          bash.exe --version
+          bash.exe -c "uname -a"
       - uses: actions/checkout@v2
       - name: make
-        run: make test-all
+        run: |
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          bash.exe -c "make test-all"
