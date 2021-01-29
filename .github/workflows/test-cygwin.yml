@@ -18,11 +18,9 @@ jobs:
           choco install cyg-get -y
           cyg-get gcc-core make
       - name: check
-        shell: cygwin
         run: |
-          gcc --version
+          C:\tools\cygwin\bin\usr\gcc --version
           make --version
       - uses: actions/checkout@v2
       - name: make
-        shell: cygwin
-        run: make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)"
+        run: make test-all
