@@ -1,7 +1,16 @@
 #!/bin/sh
 
+# 第一引数として、コンパイラへのパスを取る
+
+if [ $# != 1 ]; then
+    echo invalid arguments: $*
+    echo required only path to target compiler.
+    exit 1
+fi
+
+AZCC=$1
+
 TEMP=$(mktemp)
-AZCC="$(cd $(dirname $0) && pwd)/../../bin/gen1/azcc"
 
 set -e
 echo "

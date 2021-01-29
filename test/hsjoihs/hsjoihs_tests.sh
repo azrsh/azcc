@@ -1,13 +1,28 @@
-#!/bin/bash
+#!/bin/sh
+
+ECHO='echo -e'
+case `$ECHO` in
+    -e)
+        ECHO='echo'
+esac
+
+# 第一引数として、コンパイラへのパスを取る
+if [ $# != 1 ]; then
+    $ECHO invalid arguments: $*
+    $ECHO required only path to target compiler.
+    exit 1
+fi
+
+AZCC=$1
+
 run_test() {
-	echo -e "$2" > test/hsjoihs_tmp/task$1.c 
-    bin/gen1//azcc test/hsjoihs_tmp/task$1.c > test/hsjoihs_tmp/task$1.s 2> /dev/null
+    $ECHO "$2" | $AZCC > test/hsjoihs_tmp/task$1.s 2>| /dev/null
     d=$?
-    if [ $d -ne 0 ]; then { echo -e "compile FAIL, at test case" $1: "$2"; return 0; }; else echo -e "\033[32mcompile PASS\033[m"; fi
+    if [ $d -ne 0 ]; then { $ECHO "compile FAIL, at test case" $1: "$2"; return 0; }; else $ECHO "\033[32mcompile PASS\033[m"; fi
     gcc test/hsjoihs_tmp/task$1.s -o test/hsjoihs_tmp/task$1.out -static
 	./test/hsjoihs_tmp/task$1.out
 	res=$?
-	if [ $res -ne $3 ]; then { echo "got:" $res; echo "expected:" $3; echo -e "\033[31mFAIL\033[m, at test case" $1: "$2"; }; else echo -e "\033[32mPASS\033[m"; fi
+	if [ $res -ne $3 ]; then { $ECHO "got:" $res; echo "expected:" $3; $ECHO "\033[31mFAIL\033[m, at test case" $1: "$2"; }; else $ECHO "\033[32mPASS\033[m"; fi
 }
 
 run_test 365 'int foo(void) { return 3; } int bar(void) { return 5;} int main(void) { int (*foo1)(void) = foo; int (*bar1)(void) = bar; return (1? foo1 : bar1)(); }' 3
