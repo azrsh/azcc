@@ -79,8 +79,9 @@ test-unit1: $(UNIT_CC_TESTS)
 test-functional1: $(FUNCTIONAL_AZ1_TESTS)
 	$(RUN_TESTS)
 
-test-shell-scripts1: $(TEST_SHELL_SCRIPTS)
-	test/run_tests.sh $(^:%.sh="%.sh $(GEN1_BIN)")
+test-shell-scripts1: $(GEN1_BIN) $(TEST_SHELL_SCRIPTS)
+	$(eval TMP:=$(filter-out $(GEN1_BIN), $^))
+	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN)")
 
 test1: test-unit1 test-functional1 test-shell-scripts1
 
@@ -127,8 +128,9 @@ test-unit2: $(UNIT_AZ1CC_TESTS) $(UNIT_AZ1AZ1_TESTS) $(UNIT_CCAZ1_TESTS)
 test-functional2: $(FUNCTIONAL_AZ2_TESTS)
 	$(RUN_TESTS)
 
-test-shell-scripts2: $(TEST_SHELL_SCRIPTS)
-	test/run_tests.sh $(^:%.sh="%.sh $(GEN2_BIN)")
+test-shell-scripts2: $(GEN2_BIN) $(TEST_SHELL_SCRIPTS)
+	$(eval TMP:=$(filter-out $(GEN2_BIN), $^))
+	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN2_BIN)")
 
 test2: test-unit2 test-functional2 test-shell-scripts2
 
@@ -176,8 +178,9 @@ test-unit3: $(UNIT_AZ2CC_TESTS) $(UNIT_AZ2AZ2_TESTS) $(UNIT_CCAZ2_TESTS)
 test-functional3: $(FUNCTIONAL_AZ3_TESTS)
 	$(RUN_TESTS)
 
-test-shell-scripts3: $(TEST_SHELL_SCRIPTS)
-	test/run_tests.sh $(^:%.sh="%.sh $(GEN3_BIN)")
+test-shell-scripts3: $(GEN3_BIN) $(TEST_SHELL_SCRIPTS)
+	$(eval TMP:=$(filter-out $(GEN3_BIN), $^))
+	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN3_BIN)")
 
 log/diff-gen2-gen3-%.log: $(GEN2_BIN) $(GEN3_BIN)
 	@mkdir -p log
