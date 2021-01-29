@@ -18,6 +18,7 @@ jobs:
           choco install cyg-get -y
           cyg-get -debug gcc-core make
       - name: check
+        shell: cmd
         run: |
           path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
           which bash.exe
@@ -25,6 +26,7 @@ jobs:
           bash.exe -c "uname -a"
       - uses: actions/checkout@v2
       - name: make
+        shell: cmd
         run: |
           path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
           bash.exe -c "make test-all"
