@@ -1,0 +1,29 @@
+name: Cygwin CI
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Install cygwin with chocolatey
+        run: |
+          choco install cygwin -y
+      - name: Install cygwin packages
+        run: |
+          C:\tools\cygwin\cygwinsetup.exe -qgnNdO -R C:/tools/cygwin -l C:/tools/cygwin/package -s http://mirrors.kernel.org/sourceware/cygwin/ -P gcc-core,make
+      - name: set PATH
+        run: |
+          echo '::set-env name=PATH::C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin'
+      - name: check
+        run: |
+          which gcc
+          gcc --version
+          make --version
+      - uses: actions/checkout@v2
+      - name: make
+        run: make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)"
