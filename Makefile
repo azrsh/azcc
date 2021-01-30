@@ -81,7 +81,7 @@ test-functional1: $(FUNCTIONAL_AZ1_TESTS)
 
 test-shell-scripts1: $(GEN1_BIN) $(TEST_SHELL_SCRIPTS)
 	$(eval TMP:=$(filter-out $(GEN1_BIN), $^))
-	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN)")
+	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN)") 
 
 test1: test-unit1 test-functional1 test-shell-scripts1
 
@@ -202,7 +202,9 @@ clean:
 	-rm -rf test/functional/*/
 	-rm -rf bin
 
-all: clean test-all
+all:
+	$(MAKE) clean
+	$(MAKE) test-all
 
 .PHONY: test-old test-all test1 test-unit1 test-functional1 test-shell-scripts1 test2 test-unit2 test-functional2 test-shell-scripts2 test3 test-unit3 test-functional3 test-shell-scripts3 test-gen2-gen3-diff clean all
-.SILENT: test-all test1 test-unit1 test-functional1 test-shell-scripts1 test2 test-unit2 test-functional2 test-shell-scripts2 test3 test-unit3 test-functional3 test-shell-scripts3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF)
+.SILENT: test-all test1 test-unit1 test-functional1 test-shell-scripts1 test2 test-unit2 test-functional2 test-shell-scripts2 test3 test-unit3 test-functional3 test-shell-scripts3 test-gen2-gen3-diff $(GEN2_GEN3_DIFF) all
