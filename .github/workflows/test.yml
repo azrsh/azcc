@@ -13,4 +13,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)"
+      run: make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" -j2
