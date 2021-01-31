@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 
   Token *head = tokenize(user_input);
   Program *program = parse(head);
-  generate_code_system_v_amd64(program);
+  generate_code(program, config);
 
   return EXIT_SUCCESS;
 }
