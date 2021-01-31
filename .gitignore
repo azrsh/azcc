@@ -5,6 +5,7 @@ tmp*
 *.s
 *.out
 *.log
+*.exe
 azcc
 test/unit/*.h
 temp/*
