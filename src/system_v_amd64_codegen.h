@@ -1,5 +1,5 @@
-#ifndef CODEGEN_H
-#define CODEGEN_H
+#ifndef SYSTEM_V_AMD64_CODEGEN_H
+#define SYSTEM_V_AMD64_CODEGEN_H
 
 #include "parse.h"
 
