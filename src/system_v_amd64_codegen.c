@@ -1,3 +1,4 @@
+#include "system_v_amd64_codegen.h"
 #include "container.h"
 #include "declaration.h"
 #include "node.h"
@@ -14,19 +15,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char *argumentRegister64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
-const char *argumentRegister32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
-const char *argumentRegister16[6] = {"di", "si", "dx", "cx", "r8w", "r9w"};
-const char *argumentRegister8[6] = {"dil", "sil", "dl", "cl", "r8b", "r9b"};
+static const char *argumentRegister64[6] = {"rdi", "rsi", "rdx",
+                                            "rcx", "r8",  "r9"};
+// static const char *argumentRegister32[6] = {"edi", "esi", "edx",
+//                                            "ecx", "r8d", "r9d"};
+// static const char *argumentRegister16[6] = {"di", "si",  "dx",
+//                                            "cx", "r8w", "r9w"};
+// static const char *argumentRegister8[6] = {"dil", "sil", "dl",
+//                                           "cl",  "r8b", "r9b"};
 
-void generate_expression(Node *node, int *labelCount);
-void generate_variable(Node *node);
-void generate_function_call(Node *node, int *labelCount);
-void generate_assign_lhs(Node *node, int *labelCount);
-void generate_value_extension(Node *node);
-void generate_rhs_extension(Node *node);
+static void generate_expression(Node *node, int *labelCount);
+static void generate_variable(Node *node);
+static void generate_function_call(Node *node, int *labelCount);
+static void generate_assign_lhs(Node *node, int *labelCount);
+static void generate_value_extension(Node *node);
+static void generate_rhs_extension(Node *node);
 
-void generate_variable(Node *node) {
+static void generate_variable(Node *node) {
   assert(node->kind == NODE_VAR);
 
   const Variable *variable = node->variable;
@@ -53,7 +58,7 @@ void generate_variable(Node *node) {
   }
 }
 
-void generate_lhs_dot_operator(Node *node, int *labelCount) {
+static void generate_lhs_dot_operator(Node *node, int *labelCount) {
   assert(node->kind == NODE_DOT);
 
   INSERT_COMMENT("dot lhs operator start");
@@ -69,7 +74,7 @@ void generate_lhs_dot_operator(Node *node, int *labelCount) {
   INSERT_COMMENT("dot lhs operator end");
 }
 
-void generate_assign_lhs(Node *node, int *labelCount) {
+static void generate_assign_lhs(Node *node, int *labelCount) {
   if (node->kind == NODE_VAR) {
     generate_variable(node);
     return;
@@ -90,7 +95,7 @@ void generate_assign_lhs(Node *node, int *labelCount) {
   ERROR_AT(node->source, "代入の左辺として予期しないノードが指定されました");
 }
 
-void generate_function_call(Node *node, int *labelCount) {
+static void generate_function_call(Node *node, int *labelCount) {
   if (node->kind != NODE_FUNC)
     ERROR("関数ではありません");
 
@@ -272,7 +277,7 @@ void generate_function_call(Node *node, int *labelCount) {
   INSERT_COMMENT("function call end : %s", functionName);
 }
 
-void generate_cast(Node *node) {
+static void generate_cast(Node *node) {
   assert(node->kind == NODE_CAST);
 
   INSERT_COMMENT("cast start");
@@ -307,20 +312,20 @@ void generate_cast(Node *node) {
   INSERT_COMMENT("cast end");
 }
 
-void generate_assign_i64(const char *destination, const char *source) {
+static void generate_assign_i64(const char *destination, const char *source) {
   printf("  mov [%s], %s\n", destination, source);
 }
 
-void generate_assign_i32(const char *destination, const char *source) {
+static void generate_assign_i32(const char *destination, const char *source) {
   printf("  mov DWORD PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_i8(const char *destination, const char *source) {
+static void generate_assign_i8(const char *destination, const char *source) {
   printf("  mov BYTE PTR [%s], %s\n", destination, source);
 }
 
-void generate_assign_complex(int size, const char *destination,
-                             const char *source) {
+static void generate_assign_complex(int size, const char *destination,
+                                    const char *source) {
   int current = 0;
   for (int i = 0; i < size / 8; i++) {
     printf("  mov r11, [%s+%d]\n", source, current);
@@ -344,7 +349,7 @@ void generate_assign_complex(int size, const char *destination,
   }
 }
 
-void generate_rhs_extension(Node *node) {
+static void generate_rhs_extension(Node *node) {
   //暗黙的なキャスト
   //配列はポインタに
   //それ以外の値は64bitに符号拡張
@@ -372,7 +377,7 @@ void generate_rhs_extension(Node *node) {
   printf("  push rax\n");
 }
 
-void generate_value_extension(Node *node) {
+static void generate_value_extension(Node *node) {
   // 64bitに符号拡張
   printf("  pop rax\n");
   switch (node->type->kind) {
@@ -400,7 +405,7 @@ void generate_value_extension(Node *node) {
   printf("  push rax\n");
 }
 
-void generate_expression(Node *node, int *labelCount) {
+static void generate_expression(Node *node, int *labelCount) {
   switch (node->kind) {
   case NODE_NUM:
   case NODE_CHAR:
@@ -687,13 +692,14 @@ void generate_expression(Node *node, int *labelCount) {
   printf("  push rax\n");
 }
 
-void generate_string_literal(int index, const char *string) {
+static void generate_string_literal(int index, const char *string) {
   printf("  .data\n");
   printf(".LC%d:\n", index);
   printf("  .string \"%s\"\n", string);
 }
 
-void generate_global_variable_initializer(Type *type, Node *initializer) {
+static void generate_global_variable_initializer(Type *type,
+                                                 Node *initializer) {
   //計算に使用しているのが64bit整数なので8byte確保しないと代入で壊れる
   const size_t typeSize = type_to_stack_size(type);
   if (initializer) {
@@ -733,7 +739,7 @@ void generate_global_variable_initializer(Type *type, Node *initializer) {
   }
 }
 
-void generate_static_memory_variable(const Variable *variable) {
+static void generate_static_memory_variable(const Variable *variable) {
   assert(variable->kind == VARIABLE_GLOBAL ||
          variable->storage == STORAGE_STATIC);
 
@@ -751,9 +757,9 @@ void generate_static_memory_variable(const Variable *variable) {
                                        variable->initialization);
 }
 
-void generate_statement(StatementUnion *statementUnion, int *labelCount,
-                        int returnTarget, int latestBreakTarget,
-                        int latestSwitch) {
+static void generate_statement(StatementUnion *statementUnion, int *labelCount,
+                               int returnTarget, int latestBreakTarget,
+                               int latestSwitch) {
   // match if
   {
     IfStatement *ifPattern = statement_union_take_if(statementUnion);
@@ -1047,7 +1053,7 @@ void generate_statement(StatementUnion *statementUnion, int *labelCount,
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_function_definition(Variable *variable, int *labelCount) {
+static void generate_function_definition(Variable *variable, int *labelCount) {
   const FunctionDefinition *definition = variable->function;
   const char *functionName = string_to_char(definition->name);
   const int returnTarget = *labelCount;
@@ -1161,7 +1167,6 @@ void generate_function_definition(Variable *variable, int *labelCount) {
   }
 }
 
-//抽象構文木をもとにコード生成を行う
 void generate_code_system_v_amd64(Program *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
