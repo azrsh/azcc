@@ -1162,7 +1162,7 @@ void generate_function_definition(Variable *variable, int *labelCount) {
 }
 
 //抽象構文木をもとにコード生成を行う
-void generate_code(Program *program) {
+void generate_code_system_v_amd64(Program *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
 
