@@ -167,13 +167,13 @@ Declaration *declaration_specifier(ParseContext *context) {
 
     // function specifier
     {
+      // これらの関数指定子で挙動を変える必要はないので
+      // パースしているが何もしない
       if (consume("inline")) {
         result->function = FUNCTION_INLINE;
-        ERROR_AT(token->string->head, "inlineはサポートされていません");
         continue;
       } else if (consume("_Noreturn")) {
         result->function = FUNCTION_NORETURN;
-        ERROR_AT(token->string->head, "_Noreturnはサポートされていません");
         continue;
       }
     }
