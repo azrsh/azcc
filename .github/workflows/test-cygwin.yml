@@ -1,0 +1,31 @@
+name: Cygwin CI
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Install cygwin with chocolatey
+        run: |
+          choco install cygwin -y
+      - name: Install cygwin packages
+        run: |
+          choco install cyg-get -y
+          cyg-get -debug gcc-core make
+      - name: check
+        shell: cmd
+        run: |
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          which bash.exe
+          bash.exe -c "uname -a"
+      - uses: actions/checkout@v2
+      - name: make
+        shell: cmd
+        run: |
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          bash.exe -c "make test-all"
