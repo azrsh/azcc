@@ -28,4 +28,4 @@ jobs:
         shell: cmd
         run: |
           path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
-          bash.exe -c "make test-all"
+          bash.exe -c "make test1"
