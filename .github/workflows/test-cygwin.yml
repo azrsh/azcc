@@ -10,6 +10,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      - uses: actions/cache@v2
+        with:
+          path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
+          key: ${{ runner.os }}-choco
       - name: Install cygwin with chocolatey
         run: |
           choco install cygwin -y
