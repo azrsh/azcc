@@ -111,27 +111,15 @@ static void generate_function_call(Node *node, int *labelCount) {
   printf("  mov rax, rsp\n");
 
   //引数うちスタックに積まれる部分のサイズ計算
-  int stackArgumentSize = 0;
-  {
-    int argumentStackLengthSum = 0;
+  //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
+  const int returnTypeStackSize = type_to_stack_size(node->type);
+  const int argumentCount = vector_length(arguments) +
+                            (returnTypeStackSize > 1 * stackUnitSize ? 1 : 0);
+  const int argumentStackSize =
+      (argumentCount > 4 ? argumentCount : 4) * stackUnitSize;
+  assert(argumentStackSize >= 4);
 
-    //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
-    Type *returnType = node->type;
-    if (type_to_stack_size(returnType) > 1 * stackUnitSize)
-      argumentStackLengthSum++;
-
-    for (int i = 0; i < vector_length(arguments); i++) {
-      Node *node = vector_get(arguments, i);
-      int stackLength = type_to_stack_size(node->type) / stackUnitSize;
-      argumentStackLengthSum += stackLength;
-      if (stackLength > 1 || argumentStackLengthSum > 6)
-        stackArgumentSize += stackLength * stackUnitSize;
-    }
-  }
-
-  if (stackArgumentSize) {
-    printf("  sub rax, %d\n", stackArgumentSize);
-  }
+  printf("  sub rax, %d\n", argumentStackSize);
   printf("  and rax, %d\n", alignmentSize - 1);
   printf("  jz .Lcall%d\n", currentLabel);
   printf("  push 1\n");
@@ -140,24 +128,43 @@ static void generate_function_call(Node *node, int *labelCount) {
   //引数の評価
   {
     INSERT_COMMENT("function %s argument evaluation start", functionName);
+
+    if (argumentCount < 4) {
+      printf("  sub rsp, %d\n", (4 - argumentCount) * stackUnitSize);
+    }
+
     for (int i = vector_length(arguments) - 1; i >= 0; i--) {
       INSERT_COMMENT("function %s argument %d start", functionName, i);
       Node *argument = vector_get(arguments, i);
       generate_expression(argument, labelCount);
 
       // 複雑な型(構造体、共用体)の値はポインタとして格納されているので
-      // 値に変換してスタックに積み直す
+      // 値渡しされる1、2、4、8byte以下の構造体は変換してスタックに積み直す
       if (argument->type->kind == TYPE_STRUCT ||
           argument->type->kind == TYPE_UNION) {
-        int stackLength = type_to_stack_size(argument->type) / stackUnitSize;
-        printf("  pop %s\n", "rax");
-        for (int j = stackLength - 1; j >= 0; j--) {
-          printf("  push [%s+%d]\n", "rax", j * 8);
+        int typeSize = type_to_size(argument->type);
+        if (typeSize == 8 || typeSize == 4 || typeSize == 2 || typeSize == 1) {
+          printf("  pop %s\n", "rax");
+          printf("  push [%s]\n", "rax");
         }
       }
 
       INSERT_COMMENT("function %s argument %d end", functionName, i);
     }
+
+    //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
+    Type *returnType = node->type;
+    if (type_to_stack_size(returnType) > 1 * stackUnitSize) {
+      INSERT_COMMENT("function %s implicit argument start", functionName);
+      printf("  lea %s, [rbp-%d]\n", "rax",
+             node->functionCall->returnStack->offset);
+      printf("  push rax");
+      INSERT_COMMENT("function %s implicit argument end", functionName);
+    } else {
+      INSERT_COMMENT("function %s no implicit argument insertion",
+                     functionName);
+    }
+
     INSERT_COMMENT("function %s argument evaluation end", functionName);
   }
 
@@ -181,45 +188,10 @@ static void generate_function_call(Node *node, int *labelCount) {
   {
     INSERT_COMMENT("function %s argument register allocation start",
                    functionName);
-    int registerIndex = 0;
-
     //戻り値がMEMORYクラスであるとき、第一引数として暗黙のうちに戻り値を格納するためのポインタが渡される
-    Type *returnType = node->type;
-    if (type_to_stack_size(returnType) > 1 * stackUnitSize) {
-      INSERT_COMMENT("function %s implicit argument assign start",
-                     functionName);
-      printf("  lea %s, [rbp-%d]\n", "rax",
-             node->functionCall->returnStack->offset);
-      printf("  mov %s, %s\n", argumentRegister64[registerIndex++], "rax");
-      INSERT_COMMENT("function %s implicit argument assign end", functionName);
-    } else {
-      INSERT_COMMENT("function %s no implicit argument insertion",
-                     functionName);
-    }
-
-    int currentStackIndex = 0;
-    for (int i = 0; i < vector_length(arguments); i++) {
-      Node *node = vector_get(arguments, i);
-      const int stackLength = type_to_stack_size(node->type) / stackUnitSize;
-      if (registerIndex + stackLength > 6)
-        break;
-
-      if (stackLength > 1) {
-        currentStackIndex += stackLength;
-        continue;
-      }
-
-      for (int j = 0; j < stackLength; j++)
-        printf("  mov %s, [rsp+%d]\n", argumentRegister64[registerIndex++],
-               (currentStackIndex + j) * 8);
-
-      //もしレジスタに移した値よりも前に引数があれば詰める
-      for (int j = currentStackIndex - 1; j >= 0; j--) {
-        printf("  mov r11, [rsp+%d]\n", j * stackUnitSize);
-        printf("  mov [rsp+%d], r11\n", (j + stackLength) * stackUnitSize);
-      }
-
-      printf("  add rsp, %d\n", stackLength * stackUnitSize);
+    for (int i = 0; i < 4 && i < argumentCount; i++) {
+      // Microsoft x64 ABIではスタック上の引数を破壊しない
+      printf("  mov %s, [rsp+%d]\n", argumentRegister64[i], i * stackUnitSize);
     }
 
     INSERT_COMMENT("function %s argument register allocation end",
@@ -230,9 +202,7 @@ static void generate_function_call(Node *node, int *labelCount) {
   printf("  call r10\n");
 
   //スタックに積んだ引数を処理
-  if (stackArgumentSize > 0) {
-    printf("  add rsp, %d\n", stackArgumentSize);
-  }
+  printf("  add rsp, %d\n", argumentStackSize);
 
   //アライメントの判定とスタックの復元
   printf("  pop r11\n");
@@ -1084,7 +1054,6 @@ static void generate_function_definition(Variable *variable, int *labelCount) {
              argumentRegister64[registerIndex++]);
     }
 
-    int argumentStackOffset = 0;
     for (int i = 0; i < vector_length(definition->arguments); i++) {
       Node *node = vector_get(definition->arguments, i);
       generate_variable(node);
@@ -1093,29 +1062,39 @@ static void generate_function_definition(Variable *variable, int *labelCount) {
       //このコンパイラにはINTEGERクラスしか存在しないのでこれでよい
       // INTEGERクラスとMEMORYクラスの境界は8byte(1 eight bytes)
       const int stackLength = type_to_stack_size(node->type) / 8;
-      if (stackLength <= 1 && registerIndex + stackLength <= 6) {
-        for (int j = 0; j < stackLength; j++) {
-          printf("  mov [%s+%d], %s\n", "rax", j * 8,
-                 argumentRegister64[registerIndex++]);
+      if (registerIndex < 4) {
+        if (stackLength <= 1) {
+          printf("  mov [rax], %s\n", argumentRegister64[registerIndex++]);
+        } else {
+          for (int j = 0; j < stackLength; j++) {
+            const char *current = argumentRegister64[registerIndex++];
+            printf("  mov %s, [%s+%d]\n", "r11", current, j * 8);
+            printf("  mov [%s+%d], %s\n", "rax", j * 8, "r11");
+          }
         }
       } else {
         // rbp+16 is memory argument eightbyte 0
         // rbp+16+8n is memory argument eightbyte n
-        for (int j = 0; j < stackLength; j++) {
-          printf("  mov %s, [rbp+%d]\n", "r11",
-                 16 + argumentStackOffset + j * 8);
-          printf("  mov [%s+%d], %s\n", "rax", j * 8, "r11");
+        const int argumentIndex =
+            i + (type_to_stack_size(definition->returnType) > 1 * 8 ? 1 : 0);
+        printf("  mov %s, [rbp+%d]\n", "r10", 16 + argumentIndex * 8);
+        if (stackLength <= 1) {
+          printf("  mov [%s], %s\n", "rax", "r10");
+        } else {
+          generate_assign_complex(stackLength, "rax", "r10");
         }
-        argumentStackOffset += type_to_stack_size(node->type);
       }
     }
     INSERT_COMMENT("function arguments assign end : %s", functionName);
   }
 
-  INSERT_COMMENT("function body start : %s", functionName);
-  generate_statement(new_statement_union_compound(definition->body), labelCount,
-                     returnTarget, -1, -1);
-  INSERT_COMMENT("function body end : %s", functionName);
+  //本体
+  {
+    INSERT_COMMENT("function body start : %s", functionName);
+    StatementUnion *statement = new_statement_union_compound(definition->body);
+    generate_statement(statement, labelCount, returnTarget, -1, -1);
+    INSERT_COMMENT("function body end : %s", functionName);
+  }
 
   //エピローグ
   //最後の式の評価結果はraxに格納済なので、それが戻り値となる
@@ -1133,9 +1112,9 @@ static void generate_function_definition(Variable *variable, int *labelCount) {
        * stackLength > 1のとき
        * 暗黙の第一引数として渡されたポインタの先のスタック領域に戻り値を格納
        */
-      if (stackLength == 1) {
+      if (stackLength <= 1) {
         printf("  mov rax, [rax]\n");
-      } else if (stackLength > 1) {
+      } else {
         printf("  mov rdx, [rbp-%zu]\n", definition->stackSize + 8);
         generate_assign_complex(type_to_size(returnType), "rdx", "rax");
         printf("  mov rax, [rbp-%zu]\n", definition->stackSize + 8);
