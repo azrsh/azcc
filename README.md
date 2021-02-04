@@ -1,5 +1,6 @@
 # azcc: Azarashi2931's C Compiler
-![C/C++ CI](https://github.com/azarashi2931/azcc/workflows/C/C++%20CI/badge.svg?branch=master)
+![x64 Linux CI](https://github.com/azarashi2931/azcc/workflows/x64%20Linux%20CI/badge.svg)
+![x64 Cygwin CI](https://github.com/azarashi2931/azcc/workflows/x64%20Cygwin%20CI/badge.svg)
 ![license](https://img.shields.io/github/license/azarashi2931/azcc)
 
 This is a toy C compiler, developed at seccamp2020.
