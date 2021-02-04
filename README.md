@@ -5,13 +5,13 @@
 This is a toy C compiler, developed at seccamp2020.
 
 ## How to Build and Test
-`make`: build.  
-`make test`: build and run tests for 1st generation azcc, which is built by gcc, clang, or such other C Compiler.  
-`make test2`: build and run tests for 2nd generation azcc, which is built by 1st generation azcc.  
-`make test3`: build and run tests for 3rd generation azcc, which is built by 2nd generation azcc.  
-`make test-all`: build and run tests for all generation azccs.  
-`make clean`: remove binaries.  
-`make all`: run `make clean` and `make test-all`.  
++ `make`: build 1st generation azcc.
++ `make test1`: build and run tests for 1st generation azcc, which is built by gcc, clang, or such other C Compiler.
++ `make test2`: build and run tests for 2nd generation azcc, which is built by 1st generation azcc.
++ `make test3`: build and run tests for 3rd generation azcc, which is built by 2nd generation azcc.
++ `make test-all`: build and run tests for all generation azccs.
++ `make clean`: remove binaries.
++ `make all`: run `make clean` and `make test-all`.
 
 ## Usage
 Makefile outputs `bin/genX/azcc`(`X` is the generation of azcc).  
@@ -27,6 +27,7 @@ $ gcc -o source.out source.s
 + hsjoihs, tutor at seccamp2020, contributor of this project
 + sksat, tutor at seccamp2020, contributor of this project
 + Takana-Norimasa, classmate at seccamp2020
++ yanorei32, contributor of this project
 + and more classmates at seccamp2020
 
 ## Reference
