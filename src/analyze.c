@@ -68,7 +68,8 @@ Node *analyze_local_declaration(Declaration *target, ParseContext *context) {
         }
       }
 
-      assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN);
+      assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN ||
+             storage == STORAGE_TYPEDEF);
 
       declarator->storage = storage;
     }
@@ -153,12 +154,21 @@ void analyze_global_declaration(Declaration *target, ParseContext *context) {
         }
       }
 
-      assert(declarator->type->kind != TYPE_FUNC || storage == STORAGE_EXTERN);
+      assert(storage != STORAGE_AUTO);
 
       declarator->storage = storage;
     }
 
-    switch (declarator->storage) {
+    //宣言の読み替えのうち、構文木には伝播しないもの
+    StorageKind storage = declarator->storage;
+    {
+      if (storage == STORAGE_STATIC) {
+        if (declarator->type->kind == TYPE_FUNC)
+          storage = STORAGE_EXTERN;
+      }
+    }
+
+    switch (storage) {
     case STORAGE_STATIC:
     case STORAGE_NONE: {
       Vector *globalVariables = context->translationUnit->staticMemoryVariables;

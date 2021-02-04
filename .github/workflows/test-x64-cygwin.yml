@@ -1,0 +1,40 @@
+name: x64 Cygwin CI
+
+on:
+  push:
+  pull_request:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/cache@v2
+        with:
+          path: C:\Users\runneradmin\AppData\Local\Temp\chocolatey
+          key: ${{ runner.os }}-choco
+      - name: Install cygwin with chocolatey
+        run: |
+          choco install cygwin -y
+      - name: Install cygwin packages
+        run: |
+          choco install cyg-get -y
+          cyg-get -debug gcc-core make
+      - name: check
+        shell: cmd
+        run: |
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          which bash.exe
+          bash.exe -c "uname -a"
+      - name: git-config
+        shell: cmd
+        run: |
+          bash.exe -c "git config --global core.autocrlf false"
+          bash.exe -c "git config --global core.eol lf"
+      - uses: actions/checkout@v2
+      - name: make
+        shell: cmd
+        run: |
+          path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
+          bash.exe -c "make test1 \"RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)\""
