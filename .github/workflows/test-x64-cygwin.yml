@@ -1,4 +1,4 @@
-name: Cygwin CI
+name: x64 Cygwin CI
 
 on:
   push:
