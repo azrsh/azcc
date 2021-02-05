@@ -4,6 +4,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+// GCCの属性を無効化
+#ifdef __GNUC__
+#define __attribute__(x)
+#endif
+
 #define ERROR(...)                                                             \
   {                                                                            \
     fprintf(stderr, __VA_ARGS__);                                              \
