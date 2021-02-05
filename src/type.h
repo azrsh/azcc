@@ -6,7 +6,10 @@
 
 typedef struct MemberContainer MemberContainer;
 
+typedef enum { SIGN_NONE, SIGN_SIGNED, SIGN_UNSIGNED } SignKind;
+
 typedef enum {
+  TYPE_NONE,
   TYPE_INT,
   TYPE_CHAR,
   TYPE_VOID,
@@ -21,6 +24,7 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
+  SignKind signKind;
   TypeKind kind;
   Type *base;
   size_t length; // TypeKindがTYPE_ARRAYのときのみ使用する
@@ -36,6 +40,7 @@ struct Type {
 };
 
 Type *new_type(TypeKind kind);
+Type *new_type_with_sign(TypeKind typeKind, SignKind signKind);
 bool type_is_primitive(Type *type);
 int type_to_size(Type *type);
 int type_to_align(Type *type);
