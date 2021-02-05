@@ -163,6 +163,30 @@ Declaration *declaration_specifier(ParseContext *context) {
           continue;
         }
 
+        // short、long long、long
+        {
+          if (typeSpecifier->kind == TYPE_INT &&
+              (result->type->kind == TYPE_SHORT ||
+               result->type->kind == TYPE_LONG ||
+               result->type->kind == TYPE_LONG_LONG)) {
+            continue;
+          }
+
+          if (result->type->kind == TYPE_INT &&
+              (typeSpecifier->kind == TYPE_SHORT ||
+               typeSpecifier->kind == TYPE_LONG ||
+               typeSpecifier->kind == TYPE_LONG_LONG)) {
+            result->type->kind = typeSpecifier->kind;
+            continue;
+          }
+
+          if (result->type->kind == TYPE_LONG &&
+              typeSpecifier->kind == TYPE_LONG) {
+            result->type->kind = TYPE_LONG_LONG;
+            continue;
+          }
+        }
+
         /* typedef struct A A; typedef struct A A;への対応
          * 本来はtypedef_nameを特別扱いすべきだが
          * 実装の都合上構造体および共用体の特別扱いとした
@@ -181,9 +205,7 @@ Declaration *declaration_specifier(ParseContext *context) {
                      result->type->signKind == SIGN_NONE) {
             result->type->signKind = typeSpecifier->signKind;
           } else {
-            ERROR_AT(token->string->head, "不正な型指定子です %s : %s",
-                     type_to_semantic_string(typeSpecifier),
-                     type_to_semantic_string(result->type));
+            ERROR_AT(token->string->head, "不正な型指定子です");
           }
           continue;
         }
@@ -238,13 +260,11 @@ Type *type_specifier(ParseContext *context) {
   } else if (consume("char")) {
     return new_type(TYPE_CHAR);
   } else if (consume("short")) {
-    // new_type(TYPE_SHORT);
-    ERROR_AT(token->string->head, "サポートされていない型です");
+    return new_type(TYPE_SHORT);
   } else if (consume("int")) {
     return new_type(TYPE_INT);
   } else if (consume("long")) {
-    // new_type(TYPE_LONG);
-    ERROR_AT(token->string->head, "サポートされていない型です");
+    return new_type(TYPE_LONG);
   } else if (consume("float")) {
     // new_type(TYPE_FLOAT);
     ERROR_AT(token->string->head, "サポートされていない型です");

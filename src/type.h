@@ -10,7 +10,10 @@ typedef enum { SIGN_NONE, SIGN_SIGNED, SIGN_UNSIGNED } SignKind;
 
 typedef enum {
   TYPE_NONE,
+  TYPE_LONG,
+  TYPE_LONG_LONG,
   TYPE_INT,
+  TYPE_SHORT,
   TYPE_CHAR,
   TYPE_VOID,
   TYPE_BOOL,

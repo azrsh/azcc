@@ -280,6 +280,10 @@ static void generate_assign_i32(const char *destination, const char *source) {
   printf("  mov DWORD PTR [%s], %s\n", destination, source);
 }
 
+static void generate_assign_i16(const char *destination, const char *source) {
+  printf("  mov WORD PTR [%s], %s\n", destination, source);
+}
+
 static void generate_assign_i8(const char *destination, const char *source) {
   printf("  mov BYTE PTR [%s], %s\n", destination, source);
 }
@@ -325,6 +329,11 @@ static void generate_rhs_extension(Node *node) {
     printf("  %s rax, BYTE PTR [rax]\n", instruction);
     break;
   }
+  case TYPE_SHORT: {
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, WORD PTR [rax]\n", instruction);
+    break;
+  }
   case TYPE_INT:
   case TYPE_ENUM: {
     // 32bitから64bitへの符号なし拡張はmov命令で行われる
@@ -334,6 +343,8 @@ static void generate_rhs_extension(Node *node) {
       printf("  movsx rax, DWORD PTR [rax]\n");
     break;
   }
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_PTR:
     printf("  mov rax, [rax]\n");
     break;
@@ -366,6 +377,12 @@ static void generate_value_extension(Node *node) {
     INSERT_COMMENT("extension bool to i64");
     printf("  movzx rax, al\n");
     break;
+  case TYPE_SHORT: {
+    INSERT_COMMENT("extension short to i64");
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, ax\n", instruction);
+    break;
+  }
   case TYPE_INT:
   case TYPE_ENUM: {
     // 32bitから64bitへの符号なし拡張はmov命令で行われる
@@ -373,6 +390,8 @@ static void generate_value_extension(Node *node) {
       printf("  movsx rax, eax\n");
     break;
   }
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
   case TYPE_STRUCT: //構造体はそのままでよい
@@ -464,6 +483,8 @@ static void generate_expression(Node *node, int *labelCount) {
     } else {
       if (lhsSize == 1 && rhsSize == 1)
         generate_assign_i8("rax", "dil");
+      else if (lhsSize == 2 && rhsSize == 2)
+        generate_assign_i16("rax", "di");
       else if (lhsSize == 4 && rhsSize == 4)
         generate_assign_i32("rax", "edi");
       else if (lhsSize == 8 && rhsSize == 8)
