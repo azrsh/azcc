@@ -1114,8 +1114,8 @@ static void generate_function_definition(Variable *variable, int *labelCount) {
         if (stackLength <= 1) {
           printf("  mov [rax], %s\n", argumentRegister64[registerIndex++]);
         } else {
+          const char *current = argumentRegister64[registerIndex++];
           for (int j = 0; j < stackLength; j++) {
-            const char *current = argumentRegister64[registerIndex++];
             printf("  mov %s, [%s+%d]\n", "r11", current, j * 8);
             printf("  mov [%s+%d], %s\n", "rax", j * 8, "r11");
           }
