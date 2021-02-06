@@ -8,8 +8,40 @@
 
 #include <stdlib.h>
 
-extern struct __FILE *stderr;
 typedef struct __FILE FILE;
+
+#if defined(__linux__) && defined(__x86_64)
+
+extern FILE *stderr;
+
+#elif defined(__CYGWIN__)
+
+struct _reent {
+  int _errno;
+  //__FILE *_stdin, *_stdout, *_stderr;
+  FILE *_stdin;
+  FILE *_stdout;
+  FILE *_stderr;
+
+  /*
+   * Struct BodY
+   */
+};
+
+extern struct _reent *_impure_ptr;
+
+// struct _reent *__getreent(void);
+// #define _REENT (__getreent())
+
+#define _REENT _impure_ptr
+
+#define stderr (_REENT->_stderr)
+
+#else
+
+static_assert(0, "Unsupported enviroment");
+
+#endif
 
 int fprintf();
 int printf();

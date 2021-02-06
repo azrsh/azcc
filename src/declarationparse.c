@@ -9,6 +9,7 @@
 #include "expressionparse.h"
 #include "membercontainer.h"
 #include "parseutil.h"
+#include "tokenize.h"
 #include "type.h"
 #include "typecontainer.h"
 #include "util.h"
@@ -154,10 +155,62 @@ Declaration *declaration_specifier(ParseContext *context) {
 
     // type specifier
     {
+      Token *head = token;
       Type *typeSpecifier = type_specifier(context);
       if (typeSpecifier) {
-        result->type = typeSpecifier;
-        continue;
+        if (!result->type) {
+          result->type = typeSpecifier;
+          continue;
+        }
+
+        // short、long long、long
+        {
+          if (typeSpecifier->kind == TYPE_INT &&
+              (result->type->kind == TYPE_SHORT ||
+               result->type->kind == TYPE_LONG ||
+               result->type->kind == TYPE_LONG_LONG)) {
+            continue;
+          }
+
+          if (result->type->kind == TYPE_INT &&
+              (typeSpecifier->kind == TYPE_SHORT ||
+               typeSpecifier->kind == TYPE_LONG ||
+               typeSpecifier->kind == TYPE_LONG_LONG)) {
+            result->type->kind = typeSpecifier->kind;
+            continue;
+          }
+
+          if (result->type->kind == TYPE_LONG &&
+              typeSpecifier->kind == TYPE_LONG) {
+            result->type->kind = TYPE_LONG_LONG;
+            continue;
+          }
+        }
+
+        /* typedef struct A A; typedef struct A A;への対応
+         * 本来はtypedef_nameを特別扱いすべきだが
+         * 実装の都合上構造体および共用体の特別扱いとした
+         * この実装では、実際にはコンパイルできない
+         * typedef int A; typedf unsigned A B;
+         * などが許可されてしまう
+         */
+        if (result->type->kind != TYPE_STRUCT &&
+            result->type->kind != TYPE_UNION) {
+          //これまでの型指定子と合成する
+          //本来ならanalyzeで行うべき
+          if (result->type->kind == TYPE_NONE &&
+              typeSpecifier->signKind == SIGN_NONE) {
+            result->type->kind = typeSpecifier->kind;
+          } else if (typeSpecifier->kind == TYPE_NONE &&
+                     result->type->signKind == SIGN_NONE) {
+            result->type->signKind = typeSpecifier->signKind;
+          } else {
+            ERROR_AT(token->string->head, "不正な型指定子です");
+          }
+          continue;
+        }
+
+        token = head;
       }
     }
 
@@ -188,6 +241,13 @@ Declaration *declaration_specifier(ParseContext *context) {
     if (!result->type)
       return NULL;
 
+    //デフォルトの値をセットする
+    //本来ならanalyzeで行うべき
+    if (result->type->kind == TYPE_NONE)
+      result->type->kind = TYPE_INT;
+    if (result->type->signKind == SIGN_NONE)
+      result->type->signKind = SIGN_SIGNED;
+
     return result;
   }
 }
@@ -200,13 +260,11 @@ Type *type_specifier(ParseContext *context) {
   } else if (consume("char")) {
     return new_type(TYPE_CHAR);
   } else if (consume("short")) {
-    // new_type(TYPE_SHORT);
-    ERROR_AT(token->string->head, "サポートされていない型です");
+    return new_type(TYPE_SHORT);
   } else if (consume("int")) {
     return new_type(TYPE_INT);
   } else if (consume("long")) {
-    // new_type(TYPE_LONG);
-    ERROR_AT(token->string->head, "サポートされていない型です");
+    return new_type(TYPE_LONG);
   } else if (consume("float")) {
     // new_type(TYPE_FLOAT);
     ERROR_AT(token->string->head, "サポートされていない型です");
@@ -214,11 +272,9 @@ Type *type_specifier(ParseContext *context) {
     // new_type(TYPE_DOUBLE);
     ERROR_AT(token->string->head, "サポートされていない型です");
   } else if (consume("signed")) {
-    // new_type(TYPE_SIGHNED);
-    return NULL;
+    return new_type_with_sign(TYPE_NONE, SIGN_SIGNED);
   } else if (consume("unsigned")) {
-    // new_type(TYPE_UNSIGNED);
-    return NULL;
+    return new_type_with_sign(TYPE_NONE, SIGN_UNSIGNED);
   } else if (consume("_Bool")) {
     return new_type(TYPE_BOOL);
   } else if (consume("_Complex")) {
@@ -559,12 +615,12 @@ Type *pointer(Type *base) {
 bool type_qualifier_list(void) {
   bool result = false;
   for (;;) {
-    if (consume("const")) {
+    if (consume("const") || consume("restrict")) {
       result = true;
       continue;
     }
 
-    if (consume("restrict") || consume("volatile") || consume("_Atomic"))
+    if (consume("volatile") || consume("_Atomic"))
       ERROR_AT(token->string->head, "Unsupported type qualifier");
 
     return result;

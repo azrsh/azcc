@@ -286,15 +286,16 @@ static void generate_cast(Node *node) {
   Type *dest = node->type;
   printf("  pop rax\n");
 
+  char *instruction = dest->signKind == SIGN_UNSIGNED ? "movzx" : "movsx";
   if (source->kind == TYPE_CHAR && dest->kind == TYPE_INT) {
     INSERT_COMMENT("cast char to int");
-    printf("  movsx rax, al\n");
+    printf("  %s rax, al\n", instruction);
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_CHAR) {
     // 上位56bitを破棄すればよいのでなにもしない
     INSERT_COMMENT("cast int to char");
   } else if (source->kind == TYPE_BOOL && dest->kind == TYPE_INT) {
     INSERT_COMMENT("cast bool to int");
-    printf("  movsx rax, al\n");
+    printf("  %s rax, al\n", instruction);
   } else if (source->kind == TYPE_INT && dest->kind == TYPE_BOOL) {
     INSERT_COMMENT("cast int to bool");
     printf("  cmp rax, 0\n");
@@ -318,6 +319,10 @@ static void generate_assign_i64(const char *destination, const char *source) {
 
 static void generate_assign_i32(const char *destination, const char *source) {
   printf("  mov DWORD PTR [%s], %s\n", destination, source);
+}
+
+static void generate_assign_i16(const char *destination, const char *source) {
+  printf("  mov WORD PTR [%s], %s\n", destination, source);
 }
 
 static void generate_assign_i8(const char *destination, const char *source) {
@@ -354,15 +359,33 @@ static void generate_rhs_extension(Node *node) {
   //配列はポインタに
   //それ以外の値は64bitに符号拡張
   printf("  pop rax\n");
+
+  bool isUnsigned = node->type->signKind == SIGN_UNSIGNED;
   switch (node->type->kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
-  case TYPE_BOOL:
-    printf("  movsx rax, BYTE PTR [rax]\n");
+  case TYPE_BOOL: {
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, BYTE PTR [rax]\n", instruction);
     break;
+  }
+  case TYPE_SHORT: {
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, WORD PTR [rax]\n", instruction);
+    break;
+  }
   case TYPE_INT:
-  case TYPE_ENUM:
-    printf("  movsx rax, DWORD PTR [rax]\n");
+  case TYPE_ENUM: {
+    // 32bitから64bitへの符号なし拡張はmov命令で行われる
+    if (isUnsigned)
+      printf("  mov eax, DWORD PTR [rax]\n");
+    else
+      printf("  movsx rax, DWORD PTR [rax]\n");
     break;
+  }
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_PTR:
     printf("  mov rax, [rax]\n");
     break;
@@ -380,19 +403,36 @@ static void generate_rhs_extension(Node *node) {
 static void generate_value_extension(Node *node) {
   // 64bitに符号拡張
   printf("  pop rax\n");
+
+  bool isUnsigned = node->type->signKind == SIGN_UNSIGNED;
   switch (node->type->kind) {
-  case TYPE_CHAR:
+  case TYPE_NONE:
+    assert(0);
+  case TYPE_CHAR: {
     INSERT_COMMENT("extension char to i64");
-    printf("  movsx rax, al\n");
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, al\n", instruction);
     break;
+  }
   case TYPE_BOOL:
     INSERT_COMMENT("extension bool to i64");
     printf("  movzx rax, al\n");
     break;
-  case TYPE_INT:
-  case TYPE_ENUM:
-    printf("  movsx rax, eax\n");
+  case TYPE_SHORT: {
+    INSERT_COMMENT("extension short to i64");
+    char *instruction = isUnsigned ? "movzx" : "movsx";
+    printf("  %s rax, ax\n", instruction);
     break;
+  }
+  case TYPE_INT:
+  case TYPE_ENUM: {
+    // 32bitから64bitへの符号なし拡張はmov命令で行われる
+    if (!isUnsigned)
+      printf("  movsx rax, eax\n");
+    break;
+  }
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_PTR:
   case TYPE_ARRAY: //値になった時点で配列はポインタに変換されていると考えて良い
   case TYPE_STRUCT: //構造体はそのままでよい
@@ -484,6 +524,8 @@ static void generate_expression(Node *node, int *labelCount) {
     } else {
       if (lhsSize == 1 && rhsSize == 1)
         generate_assign_i8("rax", "dil");
+      else if (lhsSize == 2 && rhsSize == 2)
+        generate_assign_i16("rax", "di");
       else if (lhsSize == 4 && rhsSize == 4)
         generate_assign_i32("rax", "edi");
       else if (lhsSize == 8 && rhsSize == 8)
@@ -644,12 +686,18 @@ static void generate_expression(Node *node, int *labelCount) {
     break;
   case NODE_LT:
     printf("  cmp rax, rdi\n");
-    printf("  setl al\n");
+    if (node->lhs->type->signKind == SIGN_UNSIGNED)
+      printf("  setb al\n");
+    else
+      printf("  setl al\n");
     printf("  movzb rax, al\n");
     break;
   case NODE_LE:
     printf("  cmp rax, rdi\n");
-    printf("  setle al\n");
+    if (node->lhs->type->signKind == SIGN_UNSIGNED)
+      printf("  setbe al\n");
+    else
+      printf("  setle al\n");
     printf("  movzb rax, al\n");
     break;
   case NODE_BAND:

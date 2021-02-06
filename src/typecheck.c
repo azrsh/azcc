@@ -350,7 +350,7 @@ void tag_type_to_node_inner(Node *node, TypeCheckContext *context) {
 
     if (target) {
       node->type = new_type(TYPE_INT);
-      insert_implicit_cast_to_binary_operator(target, node);
+      // insert_implicit_cast_to_binary_operator(target, node);
       return;
     }
     ERROR_AT(node->source, "比較演算子のオペランド型が不正です");

@@ -10,14 +10,27 @@
 Type *new_type(TypeKind kind) {
   Type *type = calloc(1, sizeof(Type));
   type->kind = kind;
+  type->signKind = SIGN_NONE;
+  return type;
+}
+
+Type *new_type_with_sign(TypeKind typeKind, SignKind signKind) {
+  Type *type = calloc(1, sizeof(Type));
+  type->kind = typeKind;
+  type->signKind = signKind;
   return type;
 }
 
 bool type_is_primitive(Type *type) {
   switch (type->kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_VOID:
   case TYPE_CHAR:
+  case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_BOOL:
   case TYPE_ENUM:
     return true;
@@ -35,14 +48,20 @@ bool type_is_primitive(Type *type) {
 
 int type_to_size(Type *type) {
   switch (type->kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
   case TYPE_VOID:
   case TYPE_BOOL:
     return 1;
-  case TYPE_INT:
+  case TYPE_SHORT: //この処理系では、shortを16bitとする
+    return 2;
+  case TYPE_INT: //この処理系では、intを32bitとする
   case TYPE_ENUM:
     return 4;
-  case TYPE_PTR:
+  case TYPE_LONG: //この処理系では、longおよびlong longを64bitとする
+  case TYPE_LONG_LONG:
+  case TYPE_PTR:  // 64bitCPUをターゲットとする
   case TYPE_FUNC: //関数型は常に関数ポインタなので
     return 8;
   case TYPE_ARRAY:
@@ -60,14 +79,20 @@ int type_to_size(Type *type) {
 
 int type_to_align(Type *type) {
   switch (type->kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
   case TYPE_VOID:
   case TYPE_BOOL:
     return 1;
-  case TYPE_INT:
+  case TYPE_SHORT: //この処理系では、shortを16bitとする
+    return 2;
+  case TYPE_INT: //この処理系では、intを16bitとする
   case TYPE_ENUM:
     return 4;
-  case TYPE_PTR:
+  case TYPE_LONG: //この処理系では、longおよびlong longを64bitとする
+  case TYPE_LONG_LONG:
+  case TYPE_PTR: // 64bitCPUをターゲットとする
     return 8;
   case TYPE_ARRAY:
     return type_to_align(type->base);
@@ -93,13 +118,21 @@ int type_to_stack_size(Type *type) {
 
 char *type_kind_to_syntactic_string(TypeKind kind) {
   switch (kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
     return "char";
   case TYPE_VOID:
     return "void";
+  case TYPE_SHORT:
+    return "short";
   case TYPE_INT:
   case TYPE_ENUM:
     return "int";
+  case TYPE_LONG:
+    return "long";
+  case TYPE_LONG_LONG:
+    return "long long";
   case TYPE_BOOL:
     return "_Bool";
   case TYPE_STRUCT:
@@ -143,13 +176,21 @@ char *type_to_syntactic_string(Type *type) {
 
 char *type_kind_to_semantic_string(TypeKind kind) {
   switch (kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
     return "char";
   case TYPE_VOID:
     return "void";
+  case TYPE_SHORT:
+    return "short";
   case TYPE_INT:
   case TYPE_ENUM:
     return "int";
+  case TYPE_LONG:
+    return "long";
+  case TYPE_LONG_LONG:
+    return "long long";
   case TYPE_BOOL:
     return "_Bool";
   case TYPE_STRUCT:
@@ -176,9 +217,14 @@ char *type_to_semantic_string(Type *type) {
 
   char *kind = type_kind_to_semantic_string(type->kind);
   switch (type->kind) {
+  case TYPE_NONE:
+    assert(0);
   case TYPE_CHAR:
   case TYPE_VOID:
+  case TYPE_SHORT:
   case TYPE_INT:
+  case TYPE_LONG:
+  case TYPE_LONG_LONG:
   case TYPE_BOOL:
     sprintf(buffer, "%s", kind);
     break;
