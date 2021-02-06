@@ -4,9 +4,11 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// GCCの属性を無効化
+// GCCの属性などを無効化
 #ifdef __GNUC__
 #define __attribute__(x)
+#define __extension__
+#define __restrict restrict
 #endif
 
 #define ERROR(...)                                                             \

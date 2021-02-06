@@ -37,4 +37,4 @@ jobs:
         shell: cmd
         run: |
           path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
-          bash.exe -c "make test1 \"RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)\""
+          bash.exe -c "make test-all \"RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)\""

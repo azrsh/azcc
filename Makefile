@@ -185,7 +185,12 @@ test-shell-scripts3: $(GEN3_BIN) $(TEST_SHELL_SCRIPTS)
 
 log/diff-gen2-gen3-%.log: $(GEN2_BIN) $(GEN3_BIN)
 	@mkdir -p log
-	{ diff bin/gen2/$*.s bin/gen3/$*.s > $@ && echo "\033[32mPASS\033[m $@";} || { echo "\033[31mFAIL\033[m $@ For more information, see $@";}
+	ECHO='echo -e'
+	case `$$ECHO` in
+		-e)
+			ECHO='echo'
+	esac
+	{ diff bin/gen2/$*.s bin/gen3/$*.s > $@ && $$ECHO "\033[32mPASS\033[m $@";} || { $$ECHO "\033[31mFAIL\033[m $@ For more information, see $@";}
 
 test-gen2-gen3-diff: $(GEN2_GEN3_DIFF)
 
