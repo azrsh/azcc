@@ -615,12 +615,12 @@ Type *pointer(Type *base) {
 bool type_qualifier_list(void) {
   bool result = false;
   for (;;) {
-    if (consume("const")) {
+    if (consume("const") || consume("restrict")) {
       result = true;
       continue;
     }
 
-    if (consume("restrict") || consume("volatile") || consume("_Atomic"))
+    if (consume("volatile") || consume("_Atomic"))
       ERROR_AT(token->string->head, "Unsupported type qualifier");
 
     return result;
