@@ -1,9 +1,21 @@
-# azcc: Azarashi2931's C Compiler
+azcc: Azarashi2931's C Compiler
+====
+
 ![x64 Linux CI](https://github.com/azarashi2931/azcc/workflows/x64%20Linux%20CI/badge.svg)
 ![x64 Cygwin CI](https://github.com/azarashi2931/azcc/workflows/x64%20Cygwin%20CI/badge.svg)
 ![license](https://img.shields.io/github/license/azarashi2931/azcc)
 
 This is a toy C compiler, developed at seccamp2020.
+
+## Enviroment
++ Linux on x86_64 CPU
++ Cygwin on x86_64 CPU
+
+## Requirement
++ GNU C Compiler
+  + For assembling, linking and running some tests.
++ GNU Make
+  + For building and running tests.
 
 ## How to Build and Test
 + `make`: build 1st generation azcc.
@@ -16,6 +28,7 @@ This is a toy C compiler, developed at seccamp2020.
 
 ## Usage
 Makefile outputs `bin/genX/azcc`(`X` is the generation of azcc).  
+After running make command, you can do the following: 
 ```sh
 $ cpp source.c > source.i
 $ bin/genX/azcc source.i > source.s
