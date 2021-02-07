@@ -4,7 +4,7 @@ CC:=gcc
 AS:=as
 
 CFLAGS:=-std=c11 -g -Wall -Wextra
-LDFLAGS:=-static
+LDFLAGS:=
 
 SRCS=$(wildcard src/*.c)
 UNIT_TEST_SRCS=$(wildcard test/unit/*.c)
@@ -187,7 +187,7 @@ log/diff-gen2-gen3-%.log: $(GEN2_BIN) $(GEN3_BIN)
 	@mkdir -p log
 	ECHO='echo -e'
 	case `$$ECHO` in
-		-e)
+		\-e)
 			ECHO='echo'
 	esac
 	{ diff bin/gen2/$*.s bin/gen3/$*.s > $@ && $$ECHO "\033[32mPASS\033[m $@";} || { $$ECHO "\033[31mFAIL\033[m $@ For more information, see $@";}
