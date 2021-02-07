@@ -14,5 +14,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: make
       run: |
-        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "-static"
-        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "-dynamic"
+        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "LDFLAGS:=-static"
+        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "LDFLAGS:=-dynamic"
