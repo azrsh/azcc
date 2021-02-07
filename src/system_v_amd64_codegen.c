@@ -48,7 +48,7 @@ static void generate_variable(Node *node) {
       return;
     }
   case VARIABLE_GLOBAL:
-    printf("  lea rax, %s[rip]\n", name);
+    printf("  lea rax, %s@PLT[rip]\n", name);
     printf("  push rax\n");
     return;
   case VARIABLE_MEMBER:

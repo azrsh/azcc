@@ -82,7 +82,7 @@ test-functional1: $(FUNCTIONAL_AZ1_TESTS)
 
 test-shell-scripts1: $(GEN1_BIN) $(TEST_SHELL_SCRIPTS)
 	$(eval TMP:=$(filter-out $(GEN1_BIN), $^))
-	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN)") 
+	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN) $(LDFLAGS)") 
 
 test1: test-unit1 test-functional1 test-shell-scripts1
 
