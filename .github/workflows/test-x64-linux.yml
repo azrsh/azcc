@@ -13,4 +13,8 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" -j2
+      run: |
+        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "LDFLAGS:=-static"
+        make clean
+        make test-all "RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)" "LDFLAGS:=-dynamic"
+        make clean
