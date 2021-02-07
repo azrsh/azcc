@@ -14,4 +14,5 @@ CC=`readlink -f $CC`
 LDFLAGS=$2
 
 cd `dirname $0`
+make clean
 make test "AZCC=$CC" "LDFLAGS=$LDFLAGS" -j32

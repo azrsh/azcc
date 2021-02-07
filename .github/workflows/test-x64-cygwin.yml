@@ -38,4 +38,6 @@ jobs:
         run: |
           path C:\tools\cygwin\bin;C:\tools\cygwin\usr\bin
           bash.exe -c "make test-all \"RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)\" \"LDFLAGS:=-static\""
+          bash.exe -c "make clean"
           bash.exe -c "make test-all \"RUN_TESTS=\$(RUN_TESTS_STOP_ON_FAIL)\" \"LDFLAGS:=-dynamic\""
+          bash.exe -c "make clean"
