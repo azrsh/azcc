@@ -14,7 +14,7 @@ typedef struct __FILE FILE;
 
 extern FILE *stderr;
 
-#elif defined(__CYGWIN__)
+#elif defined(__CYGWIN__) && defined(__x84_64)
 
 struct _reent {
   int _errno;
