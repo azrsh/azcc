@@ -3,7 +3,7 @@
 CC:=gcc
 AS:=as
 
-CFLAGS:=-std=c11 -g -Wall -Wextra
+CFLAGS:=-std=c11 -g -Wall -Wextra -pedantic-errors
 LDFLAGS:=
 
 SRCS=$(wildcard src/*.c)
