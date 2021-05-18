@@ -7,5 +7,5 @@ tmp*
 *.log
 *.exe
 azcc
-test/unit/*.h
+test/unit/*.sh
 temp/*
