@@ -82,7 +82,7 @@ test-functional1: $(FUNCTIONAL_AZ1_TESTS)
 
 test-shell-scripts1: $(GEN1_BIN) $(TEST_SHELL_SCRIPTS)
 	$(eval TMP:=$(filter-out $(GEN1_BIN), $^))
-	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN1_BIN) $(LDFLAGS)") 
+	test/run_tests.sh $(TMP:%.sh="%.sh gen1 $(GEN1_BIN) $(LDFLAGS)") 
 
 test1: test-unit1 test-functional1 test-shell-scripts1
 
@@ -131,7 +131,7 @@ test-functional2: $(FUNCTIONAL_AZ2_TESTS)
 
 test-shell-scripts2: $(GEN2_BIN) $(TEST_SHELL_SCRIPTS)
 	$(eval TMP:=$(filter-out $(GEN2_BIN), $^))
-	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN2_BIN)")
+	test/run_tests.sh $(TMP:%.sh="%.sh gen2 $(GEN2_BIN) $(LDFLAGS)")
 
 test2: test-unit2 test-functional2 test-shell-scripts2
 
@@ -181,7 +181,7 @@ test-functional3: $(FUNCTIONAL_AZ3_TESTS)
 
 test-shell-scripts3: $(GEN3_BIN) $(TEST_SHELL_SCRIPTS)
 	$(eval TMP:=$(filter-out $(GEN3_BIN), $^))
-	test/run_tests.sh $(TMP:%.sh="%.sh $(GEN3_BIN)")
+	test/run_tests.sh $(TMP:%.sh="%.sh gen3 $(GEN3_BIN) $(LDFLAGS)")
 
 log/diff-gen2-gen3-%.log: $(GEN2_BIN) $(GEN3_BIN)
 	@mkdir -p log
@@ -192,7 +192,7 @@ test-gen2-gen3-diff: $(GEN2_GEN3_DIFF)
 test3: test-unit3 test-functional3 test-shell-scripts3 test-gen2-gen3-diff
 
 
-test-all: test test2 test3
+test-all: test1 test2 test3
 
 # Others
 

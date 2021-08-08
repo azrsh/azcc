@@ -7,11 +7,12 @@ LDFLAGS:=-static
 CPP:=cpp
 AS:=as
 
+GEN=unknown
 SRCS=$(wildcard *.c)
-OBJS=$(SRCS:%.c=bin/%.o)
-BIN:=bin/hsjoihs_test.out
+OBJS=$(SRCS:%.c=bin/$(GEN)/%.o)
+BIN=bin/$(GEN)/hsjoihs_test.out
 
-bin/%.o: %.c *.h
+bin/$(GEN)/%.o: %.c *.h
 	@mkdir -p `dirname $@`
 	$(CPP) $< | $(AZCC) | $(AS) - -o $@
 

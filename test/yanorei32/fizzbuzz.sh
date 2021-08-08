@@ -2,15 +2,17 @@
 
 # 第一引数として、コンパイラへのパスを取る
 
-if [ $# -lt 1 ]; then
+if [ $# -lt 2 ]; then
     echo "invalid arguments: $*"
-    echo "required argument: path to target compiler(1st argument)"
-    echo "optional argument: linking option(2nd argument)"
+    echo "required argument: generation of test target compiler(1st argument)"
+    echo "required argument: path to target compiler(2nd argument)"
+    echo "optional argument: linking option(3rd argument)"
     exit 1
 fi
 
-AZCC=$1
-LDFLAGS=${2-"-static"}
+GEN=$1
+AZCC=$2
+LDFLAGS=${3-"-static"}
 TEMP=$(mktemp)
 SRC=$(dirname "$0")/fizzbuzz.c
 
