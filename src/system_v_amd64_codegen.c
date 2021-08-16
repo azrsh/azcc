@@ -1215,7 +1215,7 @@ static void generate_function_definition(Variable *variable, int *labelCount) {
   }
 }
 
-void generate_code_system_v_amd64(Program *program) {
+void generate_code_system_v_amd64(AbstractSyntaxTree *program) {
   //アセンブリの前半部分を出力
   printf(".intel_syntax noprefix\n");
 

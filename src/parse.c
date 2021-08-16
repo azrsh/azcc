@@ -26,17 +26,17 @@
 // program = (function_definition | declaration)*
 // function_definition = declaration_specifier declarator compound_statement
 
-Program *program(void);
+AbstractSyntaxTree *program(void);
 Variable *function_definition(Declaration *base, ParseContext *context);
 
-Program *parse(Token *head) {
+AbstractSyntaxTree *parse(Token *head) {
   token = head;
   return program();
 }
 
 //プログラムをパースする
-Program *program(void) {
-  Program *result = calloc(1, sizeof(Program));
+AbstractSyntaxTree *program(void) {
+  AbstractSyntaxTree *result = calloc(1, sizeof(AbstractSyntaxTree));
   result->functionDefinitions = new_vector(16);
   result->staticMemoryVariables = new_vector(16);
   result->stringLiterals = new_vector(16);

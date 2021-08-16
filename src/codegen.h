@@ -4,6 +4,6 @@
 #include "config.h"
 #include "parse.h"
 
-void generate_code(Program *program, Config *config);
+void generate_code(AbstractSyntaxTree *ast, Config *config);
 
 #endif

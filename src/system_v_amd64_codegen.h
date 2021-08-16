@@ -3,6 +3,6 @@
 
 #include "parse.h"
 
-void generate_code_system_v_amd64(Program *program);
+void generate_code_system_v_amd64(AbstractSyntaxTree *program);
 
 #endif

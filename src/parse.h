@@ -16,8 +16,8 @@ struct FunctionDefinition {
   size_t stackSize;        //定義済みのとき常に非NULL
 };
 
-typedef struct Program Program;
-struct Program {
+typedef struct AbstractSyntaxTree AbstractSyntaxTree;
+struct AbstractSyntaxTree {
   Vector *functionDefinitions; // Variable vector
   Vector *
       staticMemoryVariables; // Variable vector
@@ -25,6 +25,6 @@ struct Program {
   Vector *stringLiterals;    // char* vector
 };
 
-Program *parse(Token *head);
+AbstractSyntaxTree *parse(Token *head);
 
 #endif

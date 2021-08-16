@@ -21,8 +21,8 @@ int main(int argc, char **argv) {
   }
 
   Token *head = tokenize(user_input);
-  Program *program = parse(head);
-  generate_code(program, config);
+  AbstractSyntaxTree *ast = parse(head);
+  generate_code(ast, config);
 
   return EXIT_SUCCESS;
 }
