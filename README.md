@@ -1,9 +1,9 @@
-azcc: Azarashi2931's C Compiler
+azcc: AZrsh's C Compiler
 ====
 
-![x64 Linux CI](https://github.com/azarashi2931/azcc/workflows/x64%20Linux%20CI/badge.svg)
-![x64 Cygwin CI](https://github.com/azarashi2931/azcc/workflows/x64%20Cygwin%20CI/badge.svg)
-![license](https://img.shields.io/github/license/azarashi2931/azcc)
+![x64 Linux CI](https://github.com/azrsh/azcc/workflows/x64%20Linux%20CI/badge.svg)
+![x64 Cygwin CI](https://github.com/azrsh/azcc/workflows/x64%20Cygwin%20CI/badge.svg)
+![license](https://img.shields.io/github/license/azrsh/azcc)
 
 This is a toy C compiler, developed at seccamp2020.
 
